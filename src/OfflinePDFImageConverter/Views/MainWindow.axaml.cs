@@ -948,7 +948,9 @@ public partial class MainWindow : Window
         {
             Content = "OK",
             MinWidth = 90,
-            HorizontalAlignment = HorizontalAlignment.Right
+            HorizontalAlignment = HorizontalAlignment.Right,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center
         };
 
         var dialog = new Window
