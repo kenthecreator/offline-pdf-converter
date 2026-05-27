@@ -51,14 +51,22 @@
             BorderThickness="0,0,0,1"
             Padding="22,16">
       <Grid ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock Text="OfflinePDFImageConverter"
-                     FontSize="24"
-                     FontWeight="SemiBold" />
-          <TextBlock Text="PDFと画像の変換、PDFの結合・分割をインターネットなしで行います。"
-                     Foreground="#5B6472"
-                     Margin="0,4,0,0" />
-        </StackPanel>
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalAlignment="Center">
+          <Border Width="56" Height="56" VerticalAlignment="Center">
+            <Image Source="/Assets/AppIcon.png"
+                   Width="56"
+                   Height="56"
+                   Stretch="Uniform" />
+          </Border>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock Text="OfflinePDFImageConverter"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="PDFと画像の変換、PDFの結合・分割をインターネットなしで行います。"
+                       Foreground="#5B6472"
+                       Margin="0,4,0,0" />
+          </StackPanel>
+        </Grid>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12">
           <Button x:Name="PdfModeButton"
                   Classes="mode active"
