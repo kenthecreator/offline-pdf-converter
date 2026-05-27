@@ -51,7 +51,7 @@
             BorderThickness="0,0,0,1"
             Padding="22,16">
       <Grid ColumnDefinitions="*,Auto">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14" VerticalAlignment="Center" Margin="0,0,16,0">
           <Border Width="56" Height="56" VerticalAlignment="Center">
             <Image Source="/Assets/AppIcon.png"
                    Width="56"
