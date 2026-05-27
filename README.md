@@ -72,3 +72,5 @@ dist/win-x64-single-offlinepdf/OfflinePDFImageConverter.exe
 ## ライセンス
 
 使用ライブラリとライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にまとめています。
+
+アプリアイコン画像（`src/OfflinePDFImageConverter/Assets/AppIcon.png` および `AppIcon.ico`）の著作権は GitHub ユーザー `kenthecreator` に帰属します。ソースコード本体のMITライセンスとは別の権利表示として扱ってください。

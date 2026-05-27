@@ -2,6 +2,12 @@
 
 このアプリはAdobe AcrobatなどAdobe製品には依存しません。PDFレンダリングにはPDFium系ライブラリを使用します。
 
+## アプリアイコン
+
+| 対象 | 権利者 | 備考 |
+| --- | --- | --- |
+| `src/OfflinePDFImageConverter/Assets/AppIcon.png` / `AppIcon.ico` | GitHub user `kenthecreator` | アプリアイコン画像の著作権は `kenthecreator` に帰属します。 |
+
 ## 直接利用している主なパッケージ
 
 | ライブラリ | バージョン | 用途 | ライセンス | URL |
