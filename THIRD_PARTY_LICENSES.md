@@ -6,7 +6,7 @@
 
 | 対象 | 権利者 | 備考 |
 | --- | --- | --- |
-| `src/OfflinePDFImageConverter/Assets/AppIcon.png` / `AppIcon.ico` | GitHub user `kenthecreator` | アプリアイコン画像の著作権は `kenthecreator` に帰属します。 |
+| `src/OfflinePDFConverter/Assets/AppIcon.png` / `AppIcon.ico` | GitHub user `kenthecreator` | アプリアイコン画像の著作権は `kenthecreator` に帰属します。 |
 
 ## 直接利用している主なパッケージ
 

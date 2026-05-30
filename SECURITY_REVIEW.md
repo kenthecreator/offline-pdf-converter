@@ -1,11 +1,11 @@
-# OfflinePDFImageConverter 安全性確認メモ
+# Offline PDF Converter 安全性確認メモ
 
 作成日: 2026-05-24
 
 ## 確認対象
 
 ```text
-dist/release/OfflinePDFImageConverter.exe
+dist/Offline PDF Converter-v2.0.0-Windows-x64/Offline PDF Converter.exe
 ```
 
 ファイル種別:
@@ -17,7 +17,7 @@ PE32+ executable (GUI) x86-64, for MS Windows
 SHA-256:
 
 ```text
-07d88fa47256b615c580cbf0738a271ef0497fea615d585dde9269506f251485
+09e338fa3467428cc5a2dc97d88bb30b1595d0d3f613eef259010668fea56ee6
 ```
 
 ## アプリの性質
@@ -88,7 +88,7 @@ SHA-256:
 
 ## 推奨する確認手順
 
-1. `OfflinePDFImageConverter.exe` のSHA-256をこのメモと照合する。
+1. `Offline PDF Converter.exe` のSHA-256をこのメモと照合する。
 2. Windows上でMicrosoft Defenderのファイルスキャンを実行する。
 3. 必要に応じてウイルス対策ソフトやEDRで検査する。
 4. 必要に応じてソースコード、ライセンス表、SHA-256を確認する。
@@ -97,8 +97,8 @@ SHA-256:
 ## 配布対象
 
 ```text
-dist/release/
-  OfflinePDFImageConverter.exe
+dist/Offline PDF Converter-v2.0.0-Windows-x64/
+  Offline PDF Converter.exe
   README.md
   MANUAL.md
   THIRD_PARTY_LICENSES.md

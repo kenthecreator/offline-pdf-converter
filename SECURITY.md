@@ -1,6 +1,6 @@
 # Security Policy
 
-OfflinePDFImageConverter is a local desktop application. It does not require
+Offline PDF Converter is a local desktop application. It does not require
 network access for PDF or image processing.
 
 ## Reporting a Vulnerability

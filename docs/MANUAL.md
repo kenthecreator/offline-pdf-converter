@@ -2,7 +2,7 @@
 
 ## 起動
 
-`OfflinePDFImageConverter.exe` をダブルクリックします。インターネット接続は不要です。
+`Offline PDF Converter.exe` をダブルクリックします。インターネット接続は不要です。
 
 ## PDFを画像に変換
 

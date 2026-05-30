@@ -1,0 +1,757 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OfflinePDFConverter.Views.MainWindow"
+        Title="Offline PDF Converter"
+        Width="1120"
+        Height="760"
+        MinWidth="1040"
+        MinHeight="760"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
+        UseLayoutRounding="True"
+        DragDrop.AllowDrop="True">
+  <Window.Resources>
+    <LinearGradientBrush x:Key="GlassShellBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#6034373D" Offset="0" />
+      <GradientStop Color="#4624262C" Offset="0.5" />
+      <GradientStop Color="#36202227" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassPanelBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#742A2D33" Offset="0" />
+      <GradientStop Color="#561A1C22" Offset="0.46" />
+      <GradientStop Color="#681F2630" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassCardBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#802E3036" Offset="0" />
+      <GradientStop Color="#6622262D" Offset="0.55" />
+      <GradientStop Color="#5A191C23" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassButtonBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#7A3A3C43" Offset="0" />
+      <GradientStop Color="#56272A31" Offset="0.58" />
+      <GradientStop Color="#44202128" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassAccentBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#FF66C7FF" Offset="0" />
+      <GradientStop Color="#E6258DFF" Offset="0.55" />
+      <GradientStop Color="#C90E5FE3" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GlassDarkPillBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#8A3B414B" Offset="0" />
+      <GradientStop Color="#66262A32" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="AppBackgroundBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#101113" Offset="0" />
+      <GradientStop Color="#15171A" Offset="0.48" />
+      <GradientStop Color="#0B0C0E" Offset="1" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F1F3F6" />
+    <SolidColorBrush x:Key="TextStrongBrush" Color="#F4F5F7" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#A9AFB8" />
+    <SolidColorBrush x:Key="TextSubtleBrush" Color="#8D949E" />
+    <SolidColorBrush x:Key="FieldBackgroundBrush" Color="#70282B32" />
+    <SolidColorBrush x:Key="FieldBorderBrush" Color="#35FFFFFF" />
+    <SolidColorBrush x:Key="PanelBorderBrush" Color="#30FFFFFF" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#28FFFFFF" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#36FFFFFF" />
+    <SolidColorBrush x:Key="ModeButtonBorderBrush" Color="#3EFFFFFF" />
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="#8BE9FFFF" />
+    <SolidColorBrush x:Key="ThemeTrackBrush" Color="#D8DDE7F0" />
+    <SolidColorBrush x:Key="ThemeThumbBrush" Color="#050505" />
+    <SolidColorBrush x:Key="ThemeIconBrush" Color="#FFFFFF" />
+  </Window.Resources>
+  <Window.Styles>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="18" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Background" Value="{DynamicResource GlassButtonBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.mode">
+      <Setter Property="MinWidth" Value="190" />
+      <Setter Property="MinHeight" Value="58" />
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="Padding" Value="22,10" />
+      <Setter Property="Background" Value="{DynamicResource GlassButtonBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ModeButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.mode.active">
+      <Setter Property="Background" Value="{DynamicResource GlassAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource GlassAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="25" />
+      <Setter Property="MinHeight" Value="58" />
+      <Setter Property="Padding" Value="28,10" />
+      <Setter Property="CornerRadius" Value="24" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.small-action">
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="Background" Value="{DynamicResource GlassButtonBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.direction-toggle">
+      <Setter Property="MinWidth" Value="100" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="CornerRadius" Value="18" />
+      <Setter Property="Background" Value="{DynamicResource GlassDarkPillBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.direction-toggle.active">
+      <Setter Property="Background" Value="{DynamicResource GlassAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.preview-toggle">
+      <Setter Property="MinWidth" Value="78" />
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{DynamicResource GlassButtonBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.preview-toggle.active">
+      <Setter Property="Background" Value="{DynamicResource GlassAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.theme-toggle">
+      <Setter Property="Width" Value="86" />
+      <Setter Property="Height" Value="42" />
+      <Setter Property="CornerRadius" Value="21" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="{DynamicResource GlassDarkPillBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource FieldBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource FieldBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="{DynamicResource GlassCardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="18" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource AppBackgroundBrush}">
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="34,24,34,14">
+      <Image x:Name="AppHeaderIcon"
+             Source="/Assets/AppIconLight.png"
+             Width="84"
+             Height="84"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             RenderOptions.BitmapInterpolationMode="HighQuality"
+             Stretch="Uniform" />
+
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,24,0">
+        <TextBlock Text="Offline PDF Converter"
+                   FontSize="28"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource TextStrongBrush}" />
+        <TextBlock Text="PDFと画像の変換、PDFの結合・分割をインターネットなしで行います。"
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   FontSize="13"
+                   Margin="1,5,0,0" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+        <Border x:Name="ThemeToggleSwitch"
+                Width="86"
+                Height="42"
+                CornerRadius="21"
+                Background="{DynamicResource ThemeTrackBrush}"
+                BorderBrush="{DynamicResource ButtonBorderBrush}"
+                BorderThickness="1"
+                PointerPressed="OnThemeSwitchPointerPressed">
+          <Grid Margin="4">
+            <Border x:Name="ThemeToggleThumb"
+                    Width="34"
+                    Height="34"
+                    CornerRadius="17"
+                    Background="{DynamicResource ThemeThumbBrush}"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center">
+              <Border.Transitions>
+                <Transitions>
+                  <ThicknessTransition Property="Margin"
+                                       Duration="0:0:0.18" />
+                </Transitions>
+              </Border.Transitions>
+              <TextBlock x:Name="ThemeToggleIcon"
+                         Text="☀"
+                         FontSize="17"
+                         Foreground="{DynamicResource ThemeIconBrush}"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Border>
+          </Grid>
+        </Border>
+        <Button x:Name="PdfToolsModeButton"
+                Classes="mode active"
+                Content="PDF編集"
+                Click="OnPdfToolsModeClick" />
+        <Button x:Name="PdfModeButton"
+                Classes="mode"
+                Content="PDF ↔ 画像"
+                Click="OnPdfModeClick" />
+      </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="1" Margin="34,0,34,16">
+      <Grid x:Name="PdfPanel" ColumnDefinitions="*,240" ColumnSpacing="22" IsVisible="False">
+        <Border Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="24">
+          <Grid RowDefinitions="Auto,*" RowSpacing="16">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                <TextBlock Text="変換方向"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <Button x:Name="PdfToImageDirectionButton"
+                        Classes="direction-toggle active"
+                        Content="PDF → 画像"
+                        Click="OnPdfToImageDirectionClick" />
+                <Button x:Name="ImageToPdfDirectionButton"
+                        Classes="direction-toggle"
+                        Content="画像 → PDF"
+                        Click="OnImageToPdfDirectionClick" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Background="{DynamicResource GlassCardBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="22"
+                    Padding="16">
+              <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="PDFファイル"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="small-action" Content="追加" Click="OnAddPdfFilesClick" />
+                    <Button Classes="small-action" Content="削除" Click="OnRemovePdfFilesClick" />
+                    <Button Classes="small-action" Content="すべて削除" Click="OnClearPdfFilesClick" />
+                  </StackPanel>
+                </Grid>
+
+                <ListBox x:Name="PdfFilesList"
+                         Grid.Row="1"
+                         SelectionMode="Multiple">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="10,7">
+                        <TextBlock Text="{Binding DisplayName}"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Folder}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="2"
+                           Text="＋  「追加」ボタンをクリックするか、PDFファイルをドロップ"
+                           Foreground="{DynamicResource TextSubtleBrush}"
+                           FontSize="15"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="1"
+                Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="14"
+                ClipToBounds="True">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="14">
+              <TextBlock Text="出力設定"
+                         FontSize="22"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Center" />
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="画像形式" HorizontalAlignment="Center" />
+                  <ComboBox x:Name="PdfFormatCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="PNG" />
+                    <ComboBoxItem Content="JPEG" />
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="解像度" HorizontalAlignment="Center" />
+                  <ComboBox x:Name="PdfDpiCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="普通" />
+                    <ComboBoxItem Content="高画質" />
+                    <ComboBoxItem Content="超高画質" />
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
+                  <TextBox x:Name="PdfOutputFolderTextBox" Watermark="保存先フォルダ" />
+                  <Button Classes="small-action" Content="選択" Click="OnSelectPdfOutputFolderClick" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+
+      <Grid x:Name="ImagePanel" ColumnDefinitions="*,240" ColumnSpacing="22" IsVisible="False">
+        <Border Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="24">
+          <Grid RowDefinitions="Auto,*" RowSpacing="16">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                <TextBlock Text="変換方向"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <Button x:Name="PdfToImageDirectionButtonInImagePanel"
+                        Classes="direction-toggle"
+                        Content="PDF → 画像"
+                        Click="OnPdfToImageDirectionClick" />
+                <Button x:Name="ImageToPdfDirectionButtonInImagePanel"
+                        Classes="direction-toggle active"
+                        Content="画像 → PDF"
+                        Click="OnImageToPdfDirectionClick" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Background="{DynamicResource GlassCardBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="22"
+                    Padding="16">
+              <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="画像ファイル"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="small-action" Content="追加" Click="OnAddImageFilesClick" />
+                    <Button Classes="small-action" Content="削除" Click="OnRemoveImageFilesClick" />
+                    <Button Classes="small-action" Content="すべて削除" Click="OnClearImageFilesClick" />
+                  </StackPanel>
+                </Grid>
+
+                <ListBox x:Name="ImageFilesList"
+                         Grid.Row="1"
+                         SelectionMode="Multiple">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="10,7">
+                        <TextBlock Text="{Binding DisplayName}"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Folder}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                  <Button Classes="small-action" Content="上へ" Click="OnMoveImageUpClick" />
+                  <Button Classes="small-action" Content="下へ" Click="OnMoveImageDownClick" />
+                  <TextBlock Text="＋  画像ファイルをドロップ"
+                             Foreground="{DynamicResource TextSubtleBrush}"
+                             FontSize="15"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center"
+                             Margin="10,0,0,0" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="1"
+                Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="14"
+                ClipToBounds="True">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="14">
+              <TextBlock Text="PDF設定"
+                         FontSize="22"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Center" />
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="ページサイズ" HorizontalAlignment="Center" />
+                  <ComboBox x:Name="ImagePageModeCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="A4縦" />
+                    <ComboBoxItem Content="A4横" />
+                    <ComboBoxItem Content="画像サイズに合わせる" />
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <CheckBox x:Name="ImageMarginCheckBox"
+                          Content="余白あり"
+                          IsChecked="True"
+                          HorizontalAlignment="Center" />
+              </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="出力PDF" HorizontalAlignment="Center" />
+                  <TextBox x:Name="ImageOutputPdfTextBox" Watermark="保存先とPDF名" />
+                  <Button Classes="small-action" Content="選択" Click="OnSelectImageOutputPdfClick" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+
+      <Grid x:Name="PdfToolsPanel" ColumnDefinitions="*,240" ColumnSpacing="22" IsVisible="True">
+        <Border Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="22">
+          <Grid RowDefinitions="Auto,116,Auto,Auto,*" RowSpacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="PDFファイル"
+                           FontSize="22"
+                           FontWeight="Bold" />
+                <TextBlock Text="結合する順番で並べます。分割やページ削除にも使います。"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           Margin="0,4,0,0" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Classes="small-action" Content="追加" Click="OnAddPdfFilesClick" />
+                <Button Classes="small-action" Content="削除" Click="OnRemovePdfFilesClick" />
+                <Button Classes="small-action" Content="すべて削除" Click="OnClearPdfFilesClick" />
+              </StackPanel>
+            </Grid>
+
+            <ListBox x:Name="PdfToolFilesList"
+                     Grid.Row="1"
+                     SelectionMode="Multiple">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="10,7">
+                    <TextBlock Text="{Binding DisplayName}"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Folder}"
+                               FontSize="12"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+              <Button Classes="small-action" Content="上へ" Click="OnMovePdfUpClick" />
+              <Button Classes="small-action" Content="下へ" Click="OnMovePdfDownClick" />
+              <TextBlock Text="PDFをドロップして追加できます。"
+                         Foreground="{DynamicResource TextMutedBrush}"
+                         VerticalAlignment="Center"
+                         Margin="8,0,0,0" />
+            </StackPanel>
+
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,8,0,0">
+              <StackPanel>
+                <TextBlock Text="ページプレビュー"
+                           FontSize="18"
+                           FontWeight="Bold" />
+                <TextBlock x:Name="PdfPreviewHelpText"
+                           Text="PDFを追加すると、ページの見た目を確認できます。"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontSize="12"
+                           Margin="0,3,0,0" />
+              </StackPanel>
+              <Button x:Name="PdfPreviewIconButton"
+                      Grid.Column="1"
+                      Classes="preview-toggle active"
+                      Content="アイコン"
+                      VerticalAlignment="Bottom"
+                      Click="OnPdfPreviewIconClick" />
+              <Button x:Name="PdfPreviewListButton"
+                      Grid.Column="2"
+                      Classes="preview-toggle"
+                      Content="リスト"
+                      Margin="8,0,0,0"
+                      VerticalAlignment="Bottom"
+                      Click="OnPdfPreviewListClick" />
+              <Button Grid.Column="3"
+                      Classes="small-action"
+                      Content="更新"
+                      Margin="8,0,0,0"
+                      VerticalAlignment="Bottom"
+                      Click="OnRefreshPdfPreviewClick" />
+            </Grid>
+
+            <Border Grid.Row="4"
+                    Background="{DynamicResource GlassCardBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="18"
+                    ClipToBounds="True">
+              <Grid>
+                <ScrollViewer x:Name="PdfPagePreviewThumbnailScroll"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl x:Name="PdfPagePreviewThumbnailItems">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Width="150"
+                                MinHeight="210"
+                                Background="{DynamicResource GlassCardBrush}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Margin="8"
+                                Padding="8">
+                          <StackPanel Spacing="6">
+                            <Image Source="{Binding Thumbnail}"
+                                   Width="126"
+                                   Height="150"
+                                   Stretch="Uniform" />
+                            <TextBlock Text="{Binding PageLabel}"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <CheckBox Content="削除"
+                                      IsVisible="{Binding IsDeleteSelectionVisible}"
+                                      IsChecked="{Binding IsMarkedForDelete}"
+                                      Checked="OnPdfPreviewDeleteSelectionChanged"
+                                      Unchecked="OnPdfPreviewDeleteSelectionChanged" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <ScrollViewer x:Name="PdfPagePreviewListScroll"
+                              IsVisible="False"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl x:Name="PdfPagePreviewListItems">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*,Auto"
+                              Margin="12,9">
+                          <TextBlock Grid.Column="0"
+                                     Text="{Binding PageLabel}"
+                                     Width="72"
+                                     FontWeight="SemiBold"
+                                     VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1"
+                                      VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding PdfPath}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <CheckBox Grid.Column="2"
+                                    Content="削除"
+                                    IsVisible="{Binding IsDeleteSelectionVisible}"
+                                    IsChecked="{Binding IsMarkedForDelete}"
+                                    VerticalAlignment="Center"
+                                    Checked="OnPdfPreviewDeleteSelectionChanged"
+                                    Unchecked="OnPdfPreviewDeleteSelectionChanged" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="1"
+                Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="28"
+                Padding="16"
+                ClipToBounds="True">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="14">
+              <TextBlock Text="PDF編集"
+                         FontSize="22"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Center" />
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="操作" HorizontalAlignment="Center" />
+                  <ComboBox x:Name="PdfToolOperationCombo"
+                            SelectedIndex="0"
+                            SelectionChanged="OnPdfToolOperationChanged">
+                    <ComboBoxItem Content="複数PDFを結合" />
+                    <ComboBoxItem Content="1ページずつ分割" />
+                    <ComboBoxItem Content="選択ページを削除" />
+                  </ComboBox>
+                </StackPanel>
+              </Border>
+
+              <StackPanel x:Name="PdfToolOutputPdfPanel">
+                <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock x:Name="PdfToolOutputPdfLabel"
+                               Classes="label"
+                               Text="出力PDF"
+                               HorizontalAlignment="Center" />
+                    <TextBox x:Name="PdfToolOutputPdfTextBox" Watermark="保存先とPDF名" />
+                    <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputPdfClick" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="PdfToolOutputFolderPanel" IsVisible="False">
+                <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
+                    <TextBox x:Name="PdfToolOutputFolderTextBox" Watermark="保存先フォルダ" />
+                    <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputFolderClick" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="PdfDeletePagesPanel" IsVisible="False">
+                <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="削除するページ" HorizontalAlignment="Center" />
+                    <TextBox x:Name="PdfDeletePagesTextBox" Watermark="例: 1,3,5-7" />
+                    <TextBlock Text="ページ番号はPDFの先頭を1ページ目として指定します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,240" Margin="34,0,34,24" ColumnSpacing="22">
+      <StackPanel Spacing="10" VerticalAlignment="Center">
+        <ProgressBar x:Name="MainProgressBar"
+                     Minimum="0"
+                     Maximum="100"
+                     Height="22"
+                     CornerRadius="12" />
+        <TextBlock x:Name="StatusText"
+                   Text=""
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   FontSize="15"
+                   IsVisible="False" />
+      </StackPanel>
+
+      <Grid Grid.Column="1">
+        <Button x:Name="StartPdfButton"
+                Classes="primary"
+                Content="開始"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                IsVisible="False"
+                Click="OnStartPdfConversionClick" />
+        <Button x:Name="StartImageButton"
+                Classes="primary"
+                Content="開始"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                IsVisible="False"
+                Click="OnStartImageConversionClick" />
+        <Button x:Name="StartPdfToolButton"
+                Classes="primary"
+                Content="開始"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                Click="OnStartPdfToolClick" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

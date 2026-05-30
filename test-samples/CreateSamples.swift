@@ -1,7 +1,7 @@
 import AppKit
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let input = root.appendingPathComponent("offline-pdf-image-converter/test-samples/input")
+let input = root.appendingPathComponent("offline-pdf-converter/test-samples/input")
 try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
 
 func drawImage(size: NSSize, title: String, color: NSColor, path: URL, type: NSBitmapImageRep.FileType) throws {

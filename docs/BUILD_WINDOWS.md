@@ -10,7 +10,7 @@
 ## 依存パッケージの復元
 
 ```bash
-cd offline-pdf-image-converter
+cd offline-pdf-converter
 dotnet restore
 ```
 
@@ -19,13 +19,13 @@ dotnet restore
 対応する開発環境ではUIの起動確認もできます。
 
 ```bash
-dotnet run --project src/OfflinePDFImageConverter/OfflinePDFImageConverter.csproj
+dotnet run --project "src/OfflinePDFConverter/OfflinePDFConverter.csproj"
 ```
 
 ## Windows x64単体exeの発行
 
 ```bash
-dotnet publish src/OfflinePDFImageConverter/OfflinePDFImageConverter.csproj \
+dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj" \
   -c Release \
   -r win-x64 \
   --self-contained true \
@@ -33,13 +33,13 @@ dotnet publish src/OfflinePDFImageConverter/OfflinePDFImageConverter.csproj \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true \
   -p:PublishTrimmed=false \
-  -o dist/win-x64-single
+  -o dist/win-x64-single-offline-pdf-converter
 ```
 
 出力ファイル:
 
 ```text
-dist/win-x64-single-offlinepdf/OfflinePDFImageConverter.exe
+dist/win-x64-single-offline-pdf-converter/Offline PDF Converter.exe
 ```
 
 この `.exe` は.NET Runtimeと必要なネイティブライブラリを含む自己完結形式です。起動時にネイティブライブラリが一時フォルダへ展開されるため、利用環境で一時フォルダへの書き込みが禁止されている場合は、単体exeではなくフォルダ配布方式に切り替えてください。
@@ -49,7 +49,7 @@ dist/win-x64-single-offlinepdf/OfflinePDFImageConverter.exe
 厳しいセキュリティ設定で単体exeが起動しない場合の代替です。
 
 ```bash
-dotnet publish src/OfflinePDFImageConverter/OfflinePDFImageConverter.csproj \
+dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj" \
   -c Release \
   -r win-x64 \
   --self-contained true \
