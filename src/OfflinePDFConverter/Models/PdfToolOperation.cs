@@ -4,5 +4,6 @@ public enum PdfToolOperation
 {
     Merge,
     Split,
-    DeletePages
+    DeletePages,
+    SimpleEdit
 }

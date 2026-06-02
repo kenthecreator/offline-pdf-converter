@@ -55,8 +55,9 @@ public sealed class PdfToImageService : IPdfToImageService
         var createdFiles = 0;
         progress.Report(new ConversionProgress(0, totalPages, "変換を開始しています..."));
 
-        foreach (var pdfPath in request.PdfFiles)
+        for (var pdfFileIndex = 0; pdfFileIndex < request.PdfFiles.Count; pdfFileIndex++)
         {
+            var pdfPath = request.PdfFiles[pdfFileIndex];
             cancellationToken.ThrowIfCancellationRequested();
             if (!pageCounts.TryGetValue(pdfPath, out var pageCount))
             {
@@ -66,7 +67,7 @@ public sealed class PdfToImageService : IPdfToImageService
             try
             {
                 var digits = Math.Max(3, pageCount.ToString().Length);
-                var baseName = FileNameHelper.SafeBaseName(pdfPath);
+                var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
                 var extension = request.OutputFormat == PdfImageFormat.Png ? "png" : "jpg";
                 var format = request.OutputFormat == PdfImageFormat.Png
                     ? SKEncodedImageFormat.Png
@@ -144,6 +145,15 @@ public sealed class PdfToImageService : IPdfToImageService
                 throw new ArgumentException("PDFファイルだけを選択してください。");
             }
         }
+    }
+
+    private static string GetOutputBaseName(string requestedBaseName, string pdfPath, int pdfCount, int pdfIndex)
+    {
+        var baseName = string.IsNullOrWhiteSpace(requestedBaseName)
+            ? FileNameHelper.SafeBaseName(pdfPath)
+            : FileNameHelper.SafeBaseName(requestedBaseName);
+
+        return pdfCount <= 1 ? baseName : $"{baseName}_pdf{pdfIndex + 1:D3}";
     }
 }
 

@@ -18,4 +18,9 @@ public interface IPdfDocumentService
         PdfDeletePagesRequest request,
         IProgress<ConversionProgress> progress,
         CancellationToken cancellationToken);
+
+    Task<ConversionResult> SimpleEditAsync(
+        PdfSimpleEditRequest request,
+        IProgress<ConversionProgress> progress,
+        CancellationToken cancellationToken);
 }

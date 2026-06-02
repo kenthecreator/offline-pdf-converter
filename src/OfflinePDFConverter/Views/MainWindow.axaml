@@ -352,6 +352,17 @@
                   <Button Classes="small-action" Content="選択" Click="OnSelectPdfOutputFolderClick" />
                 </StackPanel>
               </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" />
+                  <TextBox x:Name="PdfOutputBaseNameTextBox" Watermark="例: output" />
+                  <TextBlock Text="複数ページは _page001 を付けて保存します。"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             FontSize="12"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
             </StackPanel>
           </ScrollViewer>
         </Border>
@@ -468,6 +479,8 @@
                   <TextBlock Classes="label" Text="出力PDF" HorizontalAlignment="Center" />
                   <TextBox x:Name="ImageOutputPdfTextBox" Watermark="保存先とPDF名" />
                   <Button Classes="small-action" Content="選択" Click="OnSelectImageOutputPdfClick" />
+                  <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                  <TextBox x:Name="ImageOutputBaseNameTextBox" Watermark="例: converted_images" />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -584,10 +597,21 @@
                                 Margin="8"
                                 Padding="8">
                           <StackPanel Spacing="6">
-                            <Image Source="{Binding Thumbnail}"
-                                   Width="126"
-                                   Height="150"
-                                   Stretch="Uniform" />
+                            <Canvas Width="126" Height="150">
+                              <Image Source="{Binding Thumbnail}"
+                                     Width="126"
+                                     Height="150"
+                                     Stretch="Uniform"
+                                     PointerPressed="OnPdfPreviewImagePointerPressed" />
+                              <Ellipse Width="12"
+                                       Height="12"
+                                       Fill="#E6258DFF"
+                                       Stroke="White"
+                                       StrokeThickness="2"
+                                       IsVisible="{Binding HasEditMarker}"
+                                       Canvas.Left="{Binding EditMarkerLeft}"
+                                       Canvas.Top="{Binding EditMarkerTop}" />
+                            </Canvas>
                             <TextBlock Text="{Binding PageLabel}"
                                        FontWeight="SemiBold"
                                        HorizontalAlignment="Center" />
@@ -671,6 +695,7 @@
                     <ComboBoxItem Content="複数PDFを結合" />
                     <ComboBoxItem Content="1ページずつ分割" />
                     <ComboBoxItem Content="選択ページを削除" />
+                    <ComboBoxItem Content="テキスト追加" />
                   </ComboBox>
                 </StackPanel>
               </Border>
@@ -684,6 +709,8 @@
                                HorizontalAlignment="Center" />
                     <TextBox x:Name="PdfToolOutputPdfTextBox" Watermark="保存先とPDF名" />
                     <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputPdfClick" />
+                    <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBox x:Name="PdfToolOutputPdfBaseNameTextBox" Watermark="例: output" />
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -694,6 +721,12 @@
                     <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
                     <TextBox x:Name="PdfToolOutputFolderTextBox" Watermark="保存先フォルダ" />
                     <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputFolderClick" />
+                    <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBox x:Name="PdfToolOutputBaseNameTextBox" Watermark="例: split" />
+                    <TextBlock Text="分割PDFは _page001 を付けて保存します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
                   </StackPanel>
                 </Border>
               </StackPanel>
@@ -704,6 +737,22 @@
                     <TextBlock Classes="label" Text="削除するページ" HorizontalAlignment="Center" />
                     <TextBox x:Name="PdfDeletePagesTextBox" Watermark="例: 1,3,5-7" />
                     <TextBlock Text="ページ番号はPDFの先頭を1ページ目として指定します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel x:Name="PdfSimpleEditPanel" IsVisible="False">
+                <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="テキスト追加" HorizontalAlignment="Center" />
+                    <TextBlock Text="ページ上をクリックすると拡大編集できます。完了後、開始でまとめて書き出します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="テキストボックスの追加・移動・サイズ変更は拡大プレビュー上で行います。"
                                Foreground="{DynamicResource TextMutedBrush}"
                                FontSize="12"
                                TextWrapping="Wrap" />

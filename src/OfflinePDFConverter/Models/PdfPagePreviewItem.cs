@@ -1,20 +1,35 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Avalonia.Media.Imaging;
 
 namespace OfflinePDFConverter.Models;
 
-public sealed class PdfPagePreviewItem
+public sealed class PdfPagePreviewItem : INotifyPropertyChanged
 {
     public PdfPagePreviewItem(
         string pdfPath,
         int pageNumber,
         Bitmap thumbnail,
+        double pageWidthPoints,
+        double pageHeightPoints,
+        byte[] bgraPixels,
         bool isDeleteSelectionVisible)
     {
         PdfPath = pdfPath;
         PageNumber = pageNumber;
         Thumbnail = thumbnail;
+        PageWidthPoints = pageWidthPoints;
+        PageHeightPoints = pageHeightPoints;
+        BgraPixels = bgraPixels;
         IsDeleteSelectionVisible = isDeleteSelectionVisible;
     }
+
+    private bool _hasEditMarker;
+    private double _editMarkerLeft;
+    private double _editMarkerTop;
+    private bool _isMarkedForDelete;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string PdfPath { get; }
 
@@ -22,11 +37,54 @@ public sealed class PdfPagePreviewItem
 
     public Bitmap Thumbnail { get; }
 
+    public double PageWidthPoints { get; }
+
+    public double PageHeightPoints { get; }
+
+    public int ThumbnailPixelWidth => Thumbnail.PixelSize.Width;
+
+    public int ThumbnailPixelHeight => Thumbnail.PixelSize.Height;
+
+    public byte[] BgraPixels { get; }
+
     public bool IsDeleteSelectionVisible { get; }
 
-    public bool IsMarkedForDelete { get; set; }
+    public bool IsMarkedForDelete
+    {
+        get => _isMarkedForDelete;
+        set => SetField(ref _isMarkedForDelete, value);
+    }
+
+    public bool HasEditMarker
+    {
+        get => _hasEditMarker;
+        set => SetField(ref _hasEditMarker, value);
+    }
+
+    public double EditMarkerLeft
+    {
+        get => _editMarkerLeft;
+        set => SetField(ref _editMarkerLeft, value);
+    }
+
+    public double EditMarkerTop
+    {
+        get => _editMarkerTop;
+        set => SetField(ref _editMarkerTop, value);
+    }
 
     public string Title => $"{Path.GetFileName(PdfPath)}";
 
     public string PageLabel => $"{PageNumber}ページ";
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
