@@ -1,0 +1,98 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Artifact version label, for example v2.1.0"
+        required: true
+        default: "v2.1.0"
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows x64 ZIP
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore "Offline PDF Converter.sln"
+
+      - name: Publish Windows x64 single EXE
+        shell: pwsh
+        run: >
+          dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj"
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:PublishTrimmed=false
+          -o "artifacts/publish"
+
+      - name: Package release files
+        id: package
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          }
+
+          $packageDir = "artifacts/package"
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+
+          $exe = Get-ChildItem "artifacts/publish" -Filter "*.exe" | Select-Object -First 1
+          if (-not $exe) {
+            throw "Published EXE was not found."
+          }
+
+          Copy-Item $exe.FullName "$packageDir/Offline PDF Converter.exe"
+          Copy-Item "README.md" "$packageDir/README.md"
+          Copy-Item "docs/MANUAL.md" "$packageDir/MANUAL.md"
+          Copy-Item "SECURITY_REVIEW.md" "$packageDir/SECURITY_REVIEW.md"
+          Copy-Item "THIRD_PARTY_LICENSES.md" "$packageDir/THIRD_PARTY_LICENSES.md"
+
+          $zipName = "Offline PDF Converter-$version-Windows-x64.zip"
+          $zipPath = "artifacts/$zipName"
+          Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
+
+          $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          "$hash  $zipName" | Out-File -FilePath "$zipPath.sha256.txt" -Encoding ascii
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+          "sha_path=$zipPath.sha256.txt" >> $env:GITHUB_OUTPUT
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Offline PDF Converter Windows x64
+          path: |
+            ${{ steps.package.outputs.zip_path }}
+            ${{ steps.package.outputs.sha_path }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: docs/RELEASE_DETAILS_v2.1.0.md
+          files: |
+            ${{ steps.package.outputs.zip_path }}
+            ${{ steps.package.outputs.sha_path }}
