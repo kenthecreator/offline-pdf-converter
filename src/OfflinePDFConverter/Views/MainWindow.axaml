@@ -639,7 +639,8 @@
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <Grid ColumnDefinitions="Auto,*,Auto"
-                              Margin="12,9">
+                              Margin="12,9"
+                              PointerPressed="OnPdfPreviewListItemPointerPressed">
                           <TextBlock Grid.Column="0"
                                      Text="{Binding PageLabel}"
                                      Width="72"
@@ -695,7 +696,7 @@
                     <ComboBoxItem Content="複数PDFを結合" />
                     <ComboBoxItem Content="1ページずつ分割" />
                     <ComboBoxItem Content="選択ページを削除" />
-                    <ComboBoxItem Content="テキスト追加" />
+                    <ComboBoxItem Content="文字・テキストを追加" />
                   </ComboBox>
                 </StackPanel>
               </Border>
@@ -747,7 +748,7 @@
               <StackPanel x:Name="PdfSimpleEditPanel" IsVisible="False">
                 <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                   <StackPanel Spacing="8">
-                    <TextBlock Classes="label" Text="テキスト追加" HorizontalAlignment="Center" />
+                    <TextBlock Classes="label" Text="文字・テキストを追加" HorizontalAlignment="Center" />
                     <TextBlock Text="ページ上をクリックすると拡大編集できます。完了後、開始でまとめて書き出します。"
                                Foreground="{DynamicResource TextMutedBrush}"
                                FontSize="12"

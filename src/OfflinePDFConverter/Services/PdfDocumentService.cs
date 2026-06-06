@@ -221,7 +221,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
         ValidatePdfFiles(request.PdfFiles);
         if (request.PdfFiles.Count != 1)
         {
-            throw new ArgumentException("テキスト追加ではPDFを1つだけ選択してください。");
+            throw new ArgumentException("文字・テキスト追加ではPDFを1つだけ選択してください。");
         }
 
         var outputPath = EnsurePdfExtension(request.OutputPdfPath);
@@ -233,9 +233,9 @@ public sealed class PdfDocumentService : IPdfDocumentService
         EnsureOutputDoesNotOverwriteSource(outputPath, request.PdfFiles);
         CreateOutputDirectory(outputPath);
 
-        if (request.Edits.Count == 0)
+        if (request.Edits.Count == 0 && request.Shapes.Count == 0)
         {
-            throw new ArgumentException("追加するテキストボックスを1つ以上指定してください。");
+            throw new ArgumentException("追加するテキストボックスまたは図形を1つ以上指定してください。");
         }
 
         foreach (var edit in request.Edits)
@@ -256,9 +256,37 @@ public sealed class PdfDocumentService : IPdfDocumentService
             }
         }
 
+        foreach (var shape in request.Shapes)
+        {
+            if (shape.PageNumber <= 0)
+            {
+                throw new ArgumentException("図形を追加するページ番号を1以上で入力してください。");
+            }
+
+            if (shape.ShapeType is "Line" or "HorizontalLine")
+            {
+                if (Math.Abs(shape.Width) < 0.01 && Math.Abs(shape.Height) < 0.01)
+                {
+                    throw new ArgumentException("線の始点と終点は別の位置にしてください。");
+                }
+            }
+            else if (shape.Width <= 0 || shape.Height <= 0)
+            {
+                throw new ArgumentException("図形の幅と高さは1以上で入力してください。");
+            }
+
+            if (shape.StrokeThickness < 0)
+            {
+                throw new ArgumentException("境界線の太さは0以上で入力してください。");
+            }
+        }
+
         var pdfPath = request.PdfFiles[0];
         using var document = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Modify);
-        var maxPage = request.Edits.Max(edit => edit.PageNumber);
+        var maxPage = request.Edits
+            .Select(edit => edit.PageNumber)
+            .Concat(request.Shapes.Select(shape => shape.PageNumber))
+            .Max();
         if (maxPage > document.PageCount)
         {
             throw new ArgumentException($"編集するページ番号は1から{document.PageCount}の範囲で入力してください。");
@@ -276,12 +304,20 @@ public sealed class PdfDocumentService : IPdfDocumentService
             var pageEdits = request.Edits
                 .Where(edit => edit.PageNumber == pageNumber)
                 .ToList();
-            if (pageEdits.Count > 0)
+            var pageShapes = request.Shapes
+                .Where(shape => shape.PageNumber == pageNumber)
+                .ToList();
+            if (pageEdits.Count > 0 || pageShapes.Count > 0)
             {
                 using var graphics = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
+                foreach (var shape in pageShapes)
+                {
+                    DrawShape(graphics, shape);
+                }
+
                 foreach (var edit in pageEdits)
                 {
-                    if (edit.AddWhiteBox)
+                    if (edit.AddWhiteBox && !IsNoColor(edit.BackgroundColorHex))
                     {
                         graphics.DrawRectangle(
                             new XSolidBrush(ToPdfColor(edit.BackgroundColorHex)),
@@ -291,15 +327,26 @@ public sealed class PdfDocumentService : IPdfDocumentService
                             edit.Height);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(edit.Text))
+                    if (!string.IsNullOrWhiteSpace(edit.Text) && !IsNoColor(edit.TextColorHex))
                     {
                         var fontOptions = new XPdfFontOptions(PdfFontEncoding.Unicode, PdfFontEmbedding.EmbedCompleteFontFile);
+                        var fontStyle = XFontStyleEx.Regular;
+                        if (edit.IsBold)
+                        {
+                            fontStyle |= XFontStyleEx.Bold;
+                        }
+
+                        if (edit.IsUnderline)
+                        {
+                            fontStyle |= XFontStyleEx.Underline;
+                        }
+
                         var font = new XFont(
                             string.IsNullOrWhiteSpace(edit.FontFamily)
                                 ? "OfflinePDFConverterGothic"
                                 : edit.FontFamily,
                             edit.FontSize,
-                            XFontStyleEx.Regular,
+                            fontStyle,
                             fontOptions);
                         var format = new XStringFormat
                         {
@@ -331,6 +378,90 @@ public sealed class PdfDocumentService : IPdfDocumentService
         return new ConversionResult(1, Array.Empty<string>());
     }
 
+    private static void DrawShape(XGraphics graphics, PdfShapeEditItem shape)
+    {
+        var hasFill = !IsNoColor(shape.FillColorHex);
+        var hasStroke = !IsNoColor(shape.StrokeColorHex) && shape.StrokeThickness > 0;
+        var brush = hasFill ? new XSolidBrush(ToPdfColor(shape.FillColorHex)) : null;
+        var pen = hasStroke ? new XPen(ToPdfColor(shape.StrokeColorHex), shape.StrokeThickness) : null;
+        var state = graphics.Save();
+        var centerX = shape.X + shape.Width / 2;
+        var centerY = shape.Y + shape.Height / 2;
+        if (Math.Abs(shape.RotationDegrees) > 0.01)
+        {
+            graphics.TranslateTransform(centerX, centerY);
+            graphics.RotateTransform(shape.RotationDegrees);
+            graphics.TranslateTransform(-centerX, -centerY);
+        }
+
+        switch (shape.ShapeType)
+        {
+            case "Ellipse":
+                if (pen != null && brush != null)
+                {
+                    graphics.DrawEllipse(pen, brush, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+                else if (brush != null)
+                {
+                    graphics.DrawEllipse(brush, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+                else if (pen != null)
+                {
+                    graphics.DrawEllipse(pen, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+
+                break;
+            case "RoundedRectangle":
+                var radius = Math.Clamp(shape.CornerRadius, 0, Math.Min(shape.Width, shape.Height) / 2);
+                var diameter = radius * 2;
+                if (pen != null && brush != null)
+                {
+                    graphics.DrawRoundedRectangle(pen, brush, shape.X, shape.Y, shape.Width, shape.Height, diameter, diameter);
+                }
+                else if (brush != null)
+                {
+                    graphics.DrawRoundedRectangle(brush, shape.X, shape.Y, shape.Width, shape.Height, diameter, diameter);
+                }
+                else if (pen != null)
+                {
+                    graphics.DrawRoundedRectangle(pen, shape.X, shape.Y, shape.Width, shape.Height, diameter, diameter);
+                }
+
+                break;
+            case "Line":
+                if (pen != null)
+                {
+                    graphics.DrawLine(pen, shape.X, shape.Y, shape.X + shape.Width, shape.Y + shape.Height);
+                }
+
+                break;
+            case "HorizontalLine":
+                if (pen != null)
+                {
+                    graphics.DrawLine(pen, shape.X, shape.Y, shape.X + shape.Width, shape.Y + shape.Height);
+                }
+
+                break;
+            default:
+                if (pen != null && brush != null)
+                {
+                    graphics.DrawRectangle(pen, brush, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+                else if (brush != null)
+                {
+                    graphics.DrawRectangle(brush, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+                else if (pen != null)
+                {
+                    graphics.DrawRectangle(pen, shape.X, shape.Y, shape.Width, shape.Height);
+                }
+
+                break;
+        }
+
+        graphics.Restore(state);
+    }
+
     private static XColor ToPdfColor(string colorHex)
     {
         if (colorHex.Length == 7
@@ -343,6 +474,13 @@ public sealed class PdfDocumentService : IPdfDocumentService
         }
 
         return XColors.White;
+    }
+
+    private static bool IsNoColor(string? colorHex)
+    {
+        return string.Equals(colorHex?.Trim(), "None", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(colorHex?.Trim(), "Transparent", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(colorHex?.Trim(), "なし", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int GetPageCount(string pdfPath)
