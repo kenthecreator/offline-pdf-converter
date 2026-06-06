@@ -62,7 +62,7 @@ v2.1.0以降のPDF編集機能を拡張したリリースです。
 ### SHA-256
 
 ```text
-324df8bb21e92c92acd9ce559c81925d8f685c12f936e0505b557e38b71fbc41  Offline PDF Converter-v2.2.0-Windows-x64.zip
+2d2dfdaf348f3ac0c29a1915b44ea57542cb8e83b03948eff6ed3507434a8887  Offline PDF Converter-v2.2.0-Windows-x64.zip
 ```
 
 ### 補足
