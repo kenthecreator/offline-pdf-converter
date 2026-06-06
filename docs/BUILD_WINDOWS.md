@@ -65,4 +65,6 @@ dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj" \
 2. PDFをPNG/JPEGへ変換できる。
 3. 複数ページPDFで `元PDF名_page001.png` のように出力される。
 4. 複数画像を1つのPDFへ変換できる。
-5. `THIRD_PARTY_LICENSES.md` を配布物に同梱する。
+5. PDFの結合、1ページずつ分割、選択ページ削除ができる。
+6. PDF上に文字・テキスト、図形を追加して書き出せる。
+7. `THIRD_PARTY_LICENSES.md` を配布物に同梱する。

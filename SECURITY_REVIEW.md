@@ -1,11 +1,13 @@
 # Offline PDF Converter 安全性確認メモ
 
 作成日: 2026-05-24
+更新日: 2026-06-06
 
 ## 確認対象
 
 ```text
-dist/Offline PDF Converter-v2.0.0-Windows-x64/Offline PDF Converter.exe
+GitHub Release v2.2.0
+Offline PDF Converter-v2.2.0-Windows-x64.zip
 ```
 
 ファイル種別:
@@ -17,12 +19,12 @@ PE32+ executable (GUI) x86-64, for MS Windows
 SHA-256:
 
 ```text
-09e338fa3467428cc5a2dc97d88bb30b1595d0d3f613eef259010668fea56ee6
+2d2dfdaf348f3ac0c29a1915b44ea57542cb8e83b03948eff6ed3507434a8887
 ```
 
 ## アプリの性質
 
-- PDFとJPEG/PNG画像を相互変換し、PDFの結合・分割・指定ページ削除・ページプレビュー表示と表示切り替えを行うローカルGUIアプリです。
+- PDFとJPEG/PNG画像を相互変換し、PDFの結合・分割・指定ページ削除・ページプレビュー表示・文字/テキスト追加・図形追加を行うローカルGUIアプリです。
 - インストーラーではありません。
 - 管理者権限は不要です。
 - Adobe Acrobat、Adobeライセンス、Poppler、Python、PowerShell、バッチファイルには依存しません。
@@ -53,6 +55,7 @@ SHA-256:
 - ユーザーが選んだ複数PDFを読み込み、結合後のPDFを書き出す
 - ユーザーが選んだPDFを1ページずつ別PDFとして書き出す
 - ユーザーが指定したページを除いた新しいPDFを書き出す
+- ユーザーが指定したPDFページへテキストボックスや図形を重ねた新しいPDFを書き出す
 - PDF/画像変換に必要な一時ファイルまたはネイティブライブラリを一時フォルダへ展開する可能性がある
 
 元ファイルの削除、任意のファイル削除、レジストリ変更、サービス登録、スタートアップ登録は実装していません。
@@ -88,7 +91,7 @@ SHA-256:
 
 ## 推奨する確認手順
 
-1. `Offline PDF Converter.exe` のSHA-256をこのメモと照合する。
+1. GitHub Releaseに添付されたZIPまたは `Offline PDF Converter.exe` のSHA-256を公開値と照合する。
 2. Windows上でMicrosoft Defenderのファイルスキャンを実行する。
 3. 必要に応じてウイルス対策ソフトやEDRで検査する。
 4. 必要に応じてソースコード、ライセンス表、SHA-256を確認する。
@@ -97,7 +100,8 @@ SHA-256:
 ## 配布対象
 
 ```text
-dist/Offline PDF Converter-v2.0.0-Windows-x64/
+Offline PDF Converter-v2.2.0-Windows-x64.zip
+  Offline PDF Converter/
   Offline PDF Converter.exe
   README.md
   MANUAL.md
