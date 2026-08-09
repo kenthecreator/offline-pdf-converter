@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OfflinePDFConverter</AssemblyName>
     <RootNamespace>OfflinePDFConverter</RootNamespace>
-    <Product>Offline PDF Converter</Product>
+    <Product>Offline PDF Converter(v2.2.0)</Product>
     <Version>2.2.0</Version>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OfflinePDFConverter.Views.MainWindow"
-        Title="Offline PDF Converter"
+        Title="Offline PDF Converter(v2.2.0)"
         Width="1120"
         Height="760"
         MinWidth="1040"
@@ -166,6 +166,20 @@
       <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
+    <Style Selector="TextBox.pdf-inline-editor">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="TextBox.pdf-inline-editor:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="TextBox.pdf-inline-editor:focus">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
     <Style Selector="ListBox">
       <Setter Property="Background" Value="{DynamicResource GlassCardBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
@@ -186,7 +200,7 @@
              Stretch="Uniform" />
 
       <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,24,0">
-        <TextBlock Text="Offline PDF Converter"
+        <TextBlock Text="Offline PDF Converter(v2.2.0)"
                    FontSize="28"
                    FontWeight="Bold"
                    Foreground="{DynamicResource TextStrongBrush}" />

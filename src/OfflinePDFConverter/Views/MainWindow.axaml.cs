@@ -2265,6 +2265,7 @@ public partial class MainWindow : Window
                         Padding = new Thickness(3, 1, 12, 8),
                         MinHeight = 0
                     };
+                    inlineTextBox.Classes.Add("pdf-inline-editor");
                     inlineTextBox.AddHandler(
                         PointerPressedEvent,
                         (_, e) =>
