@@ -13,7 +13,8 @@ public sealed class PdfPagePreviewItem : INotifyPropertyChanged
         double pageWidthPoints,
         double pageHeightPoints,
         byte[] bgraPixels,
-        bool isDeleteSelectionVisible)
+        bool isPageSelectionVisible,
+        string selectionLabel)
     {
         PdfPath = pdfPath;
         PageNumber = pageNumber;
@@ -21,13 +22,14 @@ public sealed class PdfPagePreviewItem : INotifyPropertyChanged
         PageWidthPoints = pageWidthPoints;
         PageHeightPoints = pageHeightPoints;
         BgraPixels = bgraPixels;
-        IsDeleteSelectionVisible = isDeleteSelectionVisible;
+        IsPageSelectionVisible = isPageSelectionVisible;
+        SelectionLabel = selectionLabel;
     }
 
     private bool _hasEditMarker;
     private double _editMarkerLeft;
     private double _editMarkerTop;
-    private bool _isMarkedForDelete;
+    private bool _isPageSelected;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -47,12 +49,14 @@ public sealed class PdfPagePreviewItem : INotifyPropertyChanged
 
     public byte[] BgraPixels { get; }
 
-    public bool IsDeleteSelectionVisible { get; }
+    public bool IsPageSelectionVisible { get; }
 
-    public bool IsMarkedForDelete
+    public string SelectionLabel { get; }
+
+    public bool IsPageSelected
     {
-        get => _isMarkedForDelete;
-        set => SetField(ref _isMarkedForDelete, value);
+        get => _isPageSelected;
+        set => SetField(ref _isPageSelected, value);
     }
 
     public bool HasEditMarker

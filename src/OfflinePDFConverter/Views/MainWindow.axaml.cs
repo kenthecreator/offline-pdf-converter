@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -12,6 +15,7 @@ using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using OfflinePDFConverter.Models;
 using OfflinePDFConverter.Services;
 using PDFtoImage;
@@ -23,6 +27,12 @@ namespace OfflinePDFConverter.Views;
 
 public partial class MainWindow : Window
 {
+    private const double ModeDragMaximum = 210;
+    private const double DirectionDragMaximum = 127;
+    private const double PreviewViewDragMaximum = 76;
+    private const double ThemeDragMaximum = 30;
+    private const double DragActivationDistance = 4;
+
     private static readonly FilePickerFileType PdfFileType = new("PDFファイル")
     {
         Patterns = new[] { "*.pdf" },
@@ -44,19 +54,46 @@ public partial class MainWindow : Window
     private readonly IImageToPdfService _imageToPdfService = new ImageToPdfService();
     private readonly IPdfDocumentService _pdfDocumentService = new PdfDocumentService();
     private Image _appHeaderIcon = null!;
+    private Grid _themeTransitionRoot = null!;
+    private Border _modeSelectorSwitch = null!;
+    private Border _themeToggleSwitch = null!;
     private Border _themeToggleThumb = null!;
     private TextBlock _themeToggleIcon = null!;
-    private Button _pdfModeButton = null!;
-    private Button _pdfToolsModeButton = null!;
-    private Button _pdfToImageDirectionButton = null!;
-    private Button _imageToPdfDirectionButton = null!;
-    private Button _pdfToImageDirectionButtonInImagePanel = null!;
-    private Button _imageToPdfDirectionButtonInImagePanel = null!;
+    private TranslateTransform _themeToggleTransform = null!;
+    private RadioButton _pdfModeButton = null!;
+    private RadioButton _pdfToolsModeButton = null!;
+    private TextBlock _pdfModeLabel = null!;
+    private TextBlock _pdfToolsModeLabel = null!;
+    private TranslateTransform _modeSelectionTransform = null!;
+    private Transitions? _modeSelectionTransitions;
+    private Transitions? _themeToggleTransitions;
+    private bool _modeDragActive;
+    private bool _modeDragMoved;
+    private double _modeDragStartPointerX;
+    private double _modeDragStartTransformX;
+    private bool _themeDragActive;
+    private bool _themeDragMoved;
+    private double _themeDragStartPointerX;
+    private double _themeDragStartTransformX;
+    private Grid _directionSelectorHost = null!;
+    private Border _directionSelectorSwitch = null!;
+    private RadioButton _pdfToImageDirectionButton = null!;
+    private RadioButton _imageToPdfDirectionButton = null!;
+    private TextBlock _pdfToImageDirectionLabel = null!;
+    private TextBlock _imageToPdfDirectionLabel = null!;
+    private TranslateTransform _directionSelectionTransform = null!;
+    private Transitions? _directionSelectionTransitions;
+    private bool _directionDragActive;
+    private bool _directionDragMoved;
+    private double _directionDragStartPointerX;
+    private double _directionDragStartTransformX;
     private Grid _pdfPanel = null!;
     private Grid _imagePanel = null!;
     private Grid _pdfToolsPanel = null!;
     private ListBox _pdfFilesList = null!;
     private ListBox _pdfToolFilesList = null!;
+    private TextBlock _pdfFilesEmptyHint = null!;
+    private TextBlock _pdfToolFilesEmptyHint = null!;
     private ScrollViewer _pdfPagePreviewThumbnailScroll = null!;
     private ScrollViewer _pdfPagePreviewListScroll = null!;
     private ItemsControl _pdfPagePreviewThumbnailItems = null!;
@@ -67,13 +104,24 @@ public partial class MainWindow : Window
     private ComboBox _imagePageModeCombo = null!;
     private CheckBox _imageMarginCheckBox = null!;
     private ComboBox _pdfToolOperationCombo = null!;
-    private Button _pdfPreviewIconButton = null!;
-    private Button _pdfPreviewListButton = null!;
+    private Border _pdfPreviewSelectorSwitch = null!;
+    private RadioButton _pdfPreviewIconButton = null!;
+    private RadioButton _pdfPreviewListButton = null!;
+    private TextBlock _pdfPreviewIconLabel = null!;
+    private TextBlock _pdfPreviewListLabel = null!;
+    private TranslateTransform _pdfPreviewSelectionTransform = null!;
+    private Transitions? _pdfPreviewSelectionTransitions;
+    private bool _pdfPreviewDragActive;
+    private bool _pdfPreviewDragMoved;
+    private double _pdfPreviewDragStartPointerX;
+    private double _pdfPreviewDragStartTransformX;
     private StackPanel _pdfToolOutputPdfPanel = null!;
     private StackPanel _pdfToolOutputFolderPanel = null!;
-    private StackPanel _pdfDeletePagesPanel = null!;
+    private StackPanel _pdfPageSelectionPanel = null!;
     private StackPanel _pdfSimpleEditPanel = null!;
     private TextBlock _pdfToolOutputPdfLabel = null!;
+    private TextBlock _pdfPageSelectionLabel = null!;
+    private TextBlock _pdfPageSelectionHelpText = null!;
     private TextBox _pdfOutputFolderTextBox = null!;
     private TextBox _pdfOutputBaseNameTextBox = null!;
     private TextBox _imageOutputPdfTextBox = null!;
@@ -82,7 +130,7 @@ public partial class MainWindow : Window
     private TextBox _pdfToolOutputPdfBaseNameTextBox = null!;
     private TextBox _pdfToolOutputFolderTextBox = null!;
     private TextBox _pdfToolOutputBaseNameTextBox = null!;
-    private TextBox _pdfDeletePagesTextBox = null!;
+    private TextBox _pdfPageSelectionTextBox = null!;
     private TextBlock _pdfPreviewHelpText = null!;
     private Button _startPdfButton = null!;
     private Button _startImageButton = null!;
@@ -94,6 +142,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _previewCts;
     private bool _isPdfPreviewListView;
     private bool _isDarkTheme;
+    private bool _themeTransitionActive;
+    private bool _reduceMotion;
     private readonly Bitmap _lightHeaderIcon;
     private readonly Bitmap _darkHeaderIcon;
 
@@ -102,11 +152,14 @@ public partial class MainWindow : Window
         InitializeComponent();
         _lightHeaderIcon = LoadAssetBitmap("avares://OfflinePDFConverter/Assets/AppIconLight.png");
         _darkHeaderIcon = LoadAssetBitmap("avares://OfflinePDFConverter/Assets/AppIconDark.png");
+        _reduceMotion = ShouldReduceMotion();
         BindControls();
         ApplyTheme(isDarkTheme: false);
 
         _pdfFilesList.ItemsSource = _pdfFiles;
         _pdfToolFilesList.ItemsSource = _pdfFiles;
+        _pdfFiles.CollectionChanged += (_, _) => UpdatePdfFileEmptyHints();
+        UpdatePdfFileEmptyHints();
         _pdfPagePreviewThumbnailItems.ItemsSource = _pdfPagePreviews;
         _pdfPagePreviewListItems.ItemsSource = _pdfPagePreviews;
         _imageFilesList.ItemsSource = _imageFiles;
@@ -130,19 +183,37 @@ public partial class MainWindow : Window
     private void BindControls()
     {
         _appHeaderIcon = Required<Image>("AppHeaderIcon");
+        _themeTransitionRoot = Required<Grid>("ThemeTransitionRoot");
+        _modeSelectorSwitch = Required<Border>("ModeSelectorSwitch");
+        _themeToggleSwitch = Required<Border>("ThemeToggleSwitch");
         _themeToggleThumb = Required<Border>("ThemeToggleThumb");
         _themeToggleIcon = Required<TextBlock>("ThemeToggleIcon");
-        _pdfModeButton = Required<Button>("PdfModeButton");
-        _pdfToolsModeButton = Required<Button>("PdfToolsModeButton");
-        _pdfToImageDirectionButton = Required<Button>("PdfToImageDirectionButton");
-        _imageToPdfDirectionButton = Required<Button>("ImageToPdfDirectionButton");
-        _pdfToImageDirectionButtonInImagePanel = Required<Button>("PdfToImageDirectionButtonInImagePanel");
-        _imageToPdfDirectionButtonInImagePanel = Required<Button>("ImageToPdfDirectionButtonInImagePanel");
+        _themeToggleTransform = _themeToggleThumb.RenderTransform as TranslateTransform
+            ?? throw new InvalidOperationException("テーマ切替インジケーターの移動設定が見つかりません。");
+        _pdfModeButton = Required<RadioButton>("PdfModeButton");
+        _pdfToolsModeButton = Required<RadioButton>("PdfToolsModeButton");
+        _pdfModeLabel = Required<TextBlock>("PdfModeLabel");
+        _pdfToolsModeLabel = Required<TextBlock>("PdfToolsModeLabel");
+        _modeSelectionTransform = Required<Border>("ModeSelectionPill").RenderTransform as TranslateTransform
+            ?? throw new InvalidOperationException("モード選択インジケーターの移動設定が見つかりません。");
+        _modeSelectionTransitions = _modeSelectionTransform.Transitions;
+        _themeToggleTransitions = _themeToggleTransform.Transitions;
+        _directionSelectorHost = Required<Grid>("DirectionSelectorHost");
+        _directionSelectorSwitch = Required<Border>("DirectionSelectorSwitch");
+        _pdfToImageDirectionButton = Required<RadioButton>("PdfToImageDirectionButton");
+        _imageToPdfDirectionButton = Required<RadioButton>("ImageToPdfDirectionButton");
+        _pdfToImageDirectionLabel = Required<TextBlock>("PdfToImageDirectionLabel");
+        _imageToPdfDirectionLabel = Required<TextBlock>("ImageToPdfDirectionLabel");
+        _directionSelectionTransform = Required<Border>("DirectionSelectionPill").RenderTransform as TranslateTransform
+            ?? throw new InvalidOperationException("変換方向インジケーターの移動設定が見つかりません。");
+        _directionSelectionTransitions = _directionSelectionTransform.Transitions;
         _pdfPanel = Required<Grid>("PdfPanel");
         _imagePanel = Required<Grid>("ImagePanel");
         _pdfToolsPanel = Required<Grid>("PdfToolsPanel");
         _pdfFilesList = Required<ListBox>("PdfFilesList");
         _pdfToolFilesList = Required<ListBox>("PdfToolFilesList");
+        _pdfFilesEmptyHint = Required<TextBlock>("PdfFilesEmptyHint");
+        _pdfToolFilesEmptyHint = Required<TextBlock>("PdfToolFilesEmptyHint");
         _pdfPagePreviewThumbnailScroll = Required<ScrollViewer>("PdfPagePreviewThumbnailScroll");
         _pdfPagePreviewListScroll = Required<ScrollViewer>("PdfPagePreviewListScroll");
         _pdfPagePreviewThumbnailItems = Required<ItemsControl>("PdfPagePreviewThumbnailItems");
@@ -153,13 +224,21 @@ public partial class MainWindow : Window
         _imagePageModeCombo = Required<ComboBox>("ImagePageModeCombo");
         _imageMarginCheckBox = Required<CheckBox>("ImageMarginCheckBox");
         _pdfToolOperationCombo = Required<ComboBox>("PdfToolOperationCombo");
-        _pdfPreviewIconButton = Required<Button>("PdfPreviewIconButton");
-        _pdfPreviewListButton = Required<Button>("PdfPreviewListButton");
+        _pdfPreviewSelectorSwitch = Required<Border>("PdfPreviewSelectorSwitch");
+        _pdfPreviewIconButton = Required<RadioButton>("PdfPreviewIconButton");
+        _pdfPreviewListButton = Required<RadioButton>("PdfPreviewListButton");
+        _pdfPreviewIconLabel = Required<TextBlock>("PdfPreviewIconLabel");
+        _pdfPreviewListLabel = Required<TextBlock>("PdfPreviewListLabel");
+        _pdfPreviewSelectionTransform = Required<Border>("PdfPreviewSelectionPill").RenderTransform as TranslateTransform
+            ?? throw new InvalidOperationException("ページプレビュー表示インジケーターの移動設定が見つかりません。");
+        _pdfPreviewSelectionTransitions = _pdfPreviewSelectionTransform.Transitions;
         _pdfToolOutputPdfPanel = Required<StackPanel>("PdfToolOutputPdfPanel");
         _pdfToolOutputFolderPanel = Required<StackPanel>("PdfToolOutputFolderPanel");
-        _pdfDeletePagesPanel = Required<StackPanel>("PdfDeletePagesPanel");
+        _pdfPageSelectionPanel = Required<StackPanel>("PdfPageSelectionPanel");
         _pdfSimpleEditPanel = Required<StackPanel>("PdfSimpleEditPanel");
         _pdfToolOutputPdfLabel = Required<TextBlock>("PdfToolOutputPdfLabel");
+        _pdfPageSelectionLabel = Required<TextBlock>("PdfPageSelectionLabel");
+        _pdfPageSelectionHelpText = Required<TextBlock>("PdfPageSelectionHelpText");
         _pdfOutputFolderTextBox = Required<TextBox>("PdfOutputFolderTextBox");
         _pdfOutputBaseNameTextBox = Required<TextBox>("PdfOutputBaseNameTextBox");
         _imageOutputPdfTextBox = Required<TextBox>("ImageOutputPdfTextBox");
@@ -168,13 +247,80 @@ public partial class MainWindow : Window
         _pdfToolOutputPdfBaseNameTextBox = Required<TextBox>("PdfToolOutputPdfBaseNameTextBox");
         _pdfToolOutputFolderTextBox = Required<TextBox>("PdfToolOutputFolderTextBox");
         _pdfToolOutputBaseNameTextBox = Required<TextBox>("PdfToolOutputBaseNameTextBox");
-        _pdfDeletePagesTextBox = Required<TextBox>("PdfDeletePagesTextBox");
+        _pdfPageSelectionTextBox = Required<TextBox>("PdfPageSelectionTextBox");
         _pdfPreviewHelpText = Required<TextBlock>("PdfPreviewHelpText");
         _startPdfButton = Required<Button>("StartPdfButton");
         _startImageButton = Required<Button>("StartImageButton");
         _startPdfToolButton = Required<Button>("StartPdfToolButton");
         _mainProgressBar = Required<ProgressBar>("MainProgressBar");
         _statusText = Required<TextBlock>("StatusText");
+
+        _modeSelectorSwitch.AddHandler(
+            PointerPressedEvent,
+            OnModeSelectorPointerPressed,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        _modeSelectorSwitch.PointerMoved += OnModeSelectorPointerMoved;
+        _modeSelectorSwitch.PointerReleased += OnModeSelectorPointerReleased;
+        _modeSelectorSwitch.PointerCaptureLost += OnModeSelectorPointerCaptureLost;
+
+        _themeToggleSwitch.AddHandler(
+            PointerPressedEvent,
+            OnThemeSwitchPointerPressed,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        _themeToggleSwitch.PointerMoved += OnThemeSwitchPointerMoved;
+        _themeToggleSwitch.PointerReleased += OnThemeSwitchPointerReleased;
+        _themeToggleSwitch.PointerCaptureLost += OnThemeSwitchPointerCaptureLost;
+
+        _directionSelectorSwitch.AddHandler(
+            PointerPressedEvent,
+            OnDirectionSelectorPointerPressed,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        _directionSelectorSwitch.PointerMoved += OnDirectionSelectorPointerMoved;
+        _directionSelectorSwitch.PointerReleased += OnDirectionSelectorPointerReleased;
+        _directionSelectorSwitch.PointerCaptureLost += OnDirectionSelectorPointerCaptureLost;
+
+        _pdfPreviewSelectorSwitch.AddHandler(
+            PointerPressedEvent,
+            OnPdfPreviewSelectorPointerPressed,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        _pdfPreviewSelectorSwitch.AddHandler(
+            KeyDownEvent,
+            OnPdfPreviewSelectorKeyDown,
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
+        _pdfPreviewSelectorSwitch.PointerMoved += OnPdfPreviewSelectorPointerMoved;
+        _pdfPreviewSelectorSwitch.PointerReleased += OnPdfPreviewSelectorPointerReleased;
+        _pdfPreviewSelectorSwitch.PointerCaptureLost += OnPdfPreviewSelectorPointerCaptureLost;
+
+        if (_reduceMotion)
+        {
+            foreach (var animatable in this.GetVisualDescendants().OfType<Animatable>())
+            {
+                animatable.Transitions = null;
+            }
+
+            _modeSelectionTransform.Transitions = null;
+            _pdfModeLabel.Transitions = null;
+            _pdfToolsModeLabel.Transitions = null;
+            _themeToggleTransform.Transitions = null;
+            _themeToggleSwitch.Transitions = null;
+            _themeToggleThumb.Transitions = null;
+            _themeToggleIcon.Transitions = null;
+            _directionSelectionTransform.Transitions = null;
+            _pdfToImageDirectionLabel.Transitions = null;
+            _imageToPdfDirectionLabel.Transitions = null;
+            _pdfPreviewSelectionTransform.Transitions = null;
+            _pdfPreviewIconLabel.Transitions = null;
+            _pdfPreviewListLabel.Transitions = null;
+            _modeSelectionTransitions = null;
+            _directionSelectionTransitions = null;
+            _pdfPreviewSelectionTransitions = null;
+            _themeToggleTransitions = null;
+        }
     }
 
     private T Required<T>(string name)
@@ -209,9 +355,298 @@ public partial class MainWindow : Window
         SetMode(ConversionMode.PdfTools);
     }
 
+    private void OnModeSelectorKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Left:
+            case Key.Up:
+            case Key.Home:
+                SetMode(ConversionMode.PdfTools);
+                _pdfToolsModeButton.Focus();
+                e.Handled = true;
+                break;
+            case Key.Right:
+            case Key.Down:
+            case Key.End:
+                SetMode(ConversionMode.PdfToImage);
+                _pdfModeButton.Focus();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnModeSelectorPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(_modeSelectorSwitch).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _modeDragActive = true;
+        _modeDragMoved = false;
+        _modeDragStartPointerX = e.GetPosition(_modeSelectorSwitch).X;
+        _modeDragStartTransformX = _modeSelectionTransform.X;
+        _modeSelectionTransform.Transitions = null;
+        e.Pointer.Capture(_modeSelectorSwitch);
+        e.Handled = true;
+    }
+
+    private void OnModeSelectorPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_modeDragActive)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(_modeSelectorSwitch).X - _modeDragStartPointerX;
+        _modeDragMoved |= Math.Abs(delta) >= DragActivationDistance;
+        _modeSelectionTransform.X = Math.Clamp(
+            _modeDragStartTransformX + delta,
+            0,
+            ModeDragMaximum);
+        e.Handled = true;
+    }
+
+    private void OnModeSelectorPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_modeDragActive)
+        {
+            return;
+        }
+
+        var releaseX = e.GetPosition(_modeSelectorSwitch).X;
+        var targetPdfTools = _modeDragMoved
+            ? _modeSelectionTransform.X < ModeDragMaximum / 2
+            : releaseX < _modeSelectorSwitch.Bounds.Width / 2;
+        FinishModeDrag(targetPdfTools);
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnModeSelectorPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_modeDragActive)
+        {
+            FinishModeDrag(_modeSelectionTransform.X < ModeDragMaximum / 2);
+        }
+    }
+
+    private void FinishModeDrag(bool selectPdfTools)
+    {
+        _modeDragActive = false;
+        _modeSelectionTransform.Transitions = _modeSelectionTransitions;
+        SetMode(selectPdfTools ? ConversionMode.PdfTools : ConversionMode.PdfToImage);
+        (selectPdfTools ? _pdfToolsModeButton : _pdfModeButton).Focus();
+    }
+
+    private void OnDirectionSelectorKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Left:
+            case Key.Up:
+            case Key.Home:
+                SetMode(ConversionMode.PdfToImage);
+                _pdfToImageDirectionButton.Focus();
+                e.Handled = true;
+                break;
+            case Key.Right:
+            case Key.Down:
+            case Key.End:
+                SetMode(ConversionMode.ImageToPdf);
+                _imageToPdfDirectionButton.Focus();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnDirectionSelectorPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(_directionSelectorSwitch).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _directionDragActive = true;
+        _directionDragMoved = false;
+        _directionDragStartPointerX = e.GetPosition(_directionSelectorSwitch).X;
+        _directionDragStartTransformX = _directionSelectionTransform.X;
+        _directionSelectionTransform.Transitions = null;
+        e.Pointer.Capture(_directionSelectorSwitch);
+        e.Handled = true;
+    }
+
+    private void OnDirectionSelectorPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_directionDragActive)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(_directionSelectorSwitch).X - _directionDragStartPointerX;
+        _directionDragMoved |= Math.Abs(delta) >= DragActivationDistance;
+        _directionSelectionTransform.X = Math.Clamp(
+            _directionDragStartTransformX + delta,
+            0,
+            DirectionDragMaximum);
+        e.Handled = true;
+    }
+
+    private void OnDirectionSelectorPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_directionDragActive)
+        {
+            return;
+        }
+
+        var releaseX = e.GetPosition(_directionSelectorSwitch).X;
+        var targetPdfToImage = _directionDragMoved
+            ? _directionSelectionTransform.X < DirectionDragMaximum / 2
+            : releaseX < _directionSelectorSwitch.Bounds.Width / 2;
+        FinishDirectionDrag(targetPdfToImage);
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnDirectionSelectorPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_directionDragActive)
+        {
+            FinishDirectionDrag(_directionSelectionTransform.X < DirectionDragMaximum / 2);
+        }
+    }
+
+    private void FinishDirectionDrag(bool selectPdfToImage)
+    {
+        _directionDragActive = false;
+        _directionSelectionTransform.Transitions = _directionSelectionTransitions;
+        SetMode(selectPdfToImage ? ConversionMode.PdfToImage : ConversionMode.ImageToPdf);
+        (selectPdfToImage ? _pdfToImageDirectionButton : _imageToPdfDirectionButton).Focus();
+    }
+
     private void OnThemeSwitchPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        ApplyTheme(!_isDarkTheme);
+        if (!e.GetCurrentPoint(_themeToggleSwitch).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _themeDragActive = true;
+        _themeDragMoved = false;
+        _themeDragStartPointerX = e.GetPosition(_themeToggleSwitch).X;
+        _themeDragStartTransformX = _themeToggleTransform.X;
+        _themeToggleTransform.Transitions = null;
+        e.Pointer.Capture(_themeToggleSwitch);
+        e.Handled = true;
+    }
+
+    private void OnThemeSwitchPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_themeDragActive)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(_themeToggleSwitch).X - _themeDragStartPointerX;
+        _themeDragMoved |= Math.Abs(delta) >= DragActivationDistance;
+        _themeToggleTransform.X = Math.Clamp(
+            _themeDragStartTransformX + delta,
+            0,
+            ThemeDragMaximum);
+        e.Handled = true;
+    }
+
+    private void OnThemeSwitchPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_themeDragActive)
+        {
+            return;
+        }
+
+        var targetDarkTheme = _themeDragMoved
+            ? _themeToggleTransform.X >= ThemeDragMaximum / 2
+            : !_isDarkTheme;
+        FinishThemeDrag(targetDarkTheme);
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnThemeSwitchPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_themeDragActive)
+        {
+            FinishThemeDrag(_themeToggleTransform.X >= ThemeDragMaximum / 2);
+        }
+    }
+
+    private void FinishThemeDrag(bool useDarkTheme)
+    {
+        _themeDragActive = false;
+        _themeToggleTransform.Transitions = _themeToggleTransitions;
+        if (_reduceMotion)
+        {
+            ApplyTheme(useDarkTheme);
+            return;
+        }
+
+        _ = ApplyThemeWithUnifiedFadeAsync(useDarkTheme);
+    }
+
+    private async Task ApplyThemeWithUnifiedFadeAsync(bool isDarkTheme)
+    {
+        if (_themeTransitionActive)
+        {
+            return;
+        }
+
+        _themeTransitionActive = true;
+        var restoreThemeSwitchEnabled = _themeToggleSwitch.IsEnabled;
+        _themeToggleSwitch.IsEnabled = false;
+        _isDarkTheme = isDarkTheme;
+        _themeToggleTransform.X = isDarkTheme ? ThemeDragMaximum : 0;
+
+        var suppressedBrushTransitions = new List<(Animatable Target, Transitions Transitions)>();
+        try
+        {
+            _themeTransitionRoot.Opacity = 0.82;
+            await Task.Delay(95);
+
+            foreach (var target in this.GetVisualDescendants().OfType<Animatable>())
+            {
+                if (target.Transitions is not { } transitions
+                    || !transitions.Any(transition => transition is BrushTransition))
+                {
+                    continue;
+                }
+
+                suppressedBrushTransitions.Add((target, transitions));
+                target.Transitions = null;
+            }
+
+            ApplyTheme(isDarkTheme);
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+            foreach (var (target, transitions) in suppressedBrushTransitions)
+            {
+                target.Transitions = transitions;
+            }
+            suppressedBrushTransitions.Clear();
+
+            _themeTransitionRoot.Opacity = 1;
+            await Task.Delay(95);
+        }
+        finally
+        {
+            foreach (var (target, transitions) in suppressedBrushTransitions)
+            {
+                target.Transitions = transitions;
+            }
+
+            _themeTransitionRoot.Opacity = 1;
+            _themeToggleSwitch.IsEnabled = restoreThemeSwitchEnabled;
+            _themeTransitionActive = false;
+        }
     }
 
     private void ApplyTheme(bool isDarkTheme)
@@ -222,44 +657,37 @@ public partial class MainWindow : Window
             Application.Current.RequestedThemeVariant = isDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
         }
 
-        Resources["GlassShellBrush"] = isDarkTheme
-            ? Gradient(("#6034373D", 0), ("#4624262C", 0.5), ("#36202227", 1))
-            : Gradient(("#F9FFFFFF", 0), ("#DDF7FAFF", 0.5), ("#CCEAF1FF", 1));
-        Resources["GlassPanelBrush"] = isDarkTheme
-            ? Gradient(("#742A2D33", 0), ("#561A1C22", 0.46), ("#681F2630", 1))
-            : Gradient(("#EAF7FAFF", 0), ("#D8FFFFFF", 0.46), ("#CFEAF3FF", 1));
-        Resources["GlassCardBrush"] = isDarkTheme
-            ? Gradient(("#802E3036", 0), ("#6622262D", 0.55), ("#5A191C23", 1))
-            : Gradient(("#F2FFFFFF", 0), ("#E4F5F8FC", 0.55), ("#D8EEF4FA", 1));
-        Resources["GlassButtonBrush"] = isDarkTheme
-            ? Gradient(("#7A3A3C43", 0), ("#56272A31", 0.58), ("#44202128", 1))
-            : Gradient(("#F4FFFFFF", 0), ("#DDE9EEF5", 0.58), ("#CCDDE6F1", 1));
-        Resources["GlassAccentBrush"] = isDarkTheme
-            ? Gradient(("#FF66C7FF", 0), ("#E6258DFF", 0.55), ("#C90E5FE3", 1))
-            : Gradient(("#FF4CC3FF", 0), ("#EA1F91F2", 0.55), ("#D4116ED5", 1));
-        Resources["GlassDarkPillBrush"] = isDarkTheme
-            ? Gradient(("#8A3B414B", 0), ("#66262A32", 1))
-            : Gradient(("#FFEFF4FA", 0), ("#D8DDE7F0", 1));
-        Resources["AppBackgroundBrush"] = isDarkTheme
-            ? Gradient(("#101113", 0), ("#15171A", 0.48), ("#0B0C0E", 1))
-            : Gradient(("#F8FBFF", 0), ("#EEF4FA", 0.48), ("#E5EDF5", 1));
+        Resources["GlassShellBrush"] = Brush(isDarkTheme ? "#46282828" : "#DDF5F5F5");
+        Resources["GlassPanelBrush"] = Brush(isDarkTheme ? "#56202020" : "#D8FFFFFF");
+        Resources["GlassCardBrush"] = Brush(isDarkTheme ? "#66282828" : "#E4F7F7F7");
+        Resources["GlassButtonBrush"] = Brush(isDarkTheme ? "#562E2E2E" : "#DDEDEDED");
+        Resources["GlassAccentBrush"] = Brush(isDarkTheme ? "#E5E5E5" : "#2C2C2C");
+        Resources["GlassDarkPillBrush"] = Brush(isDarkTheme ? "#73383838" : "#ECE7E7E7");
+        Resources["AppBackgroundBrush"] = Brush(isDarkTheme ? "#191919" : "#F2F2F2");
 
-        Resources["TextPrimaryBrush"] = Brush(isDarkTheme ? "#F1F3F6" : "#18202B");
-        Resources["TextStrongBrush"] = Brush(isDarkTheme ? "#F4F5F7" : "#0F1722");
-        Resources["TextMutedBrush"] = Brush(isDarkTheme ? "#A9AFB8" : "#516071");
-        Resources["TextSubtleBrush"] = Brush(isDarkTheme ? "#8D949E" : "#6E7B8D");
-        Resources["FieldBackgroundBrush"] = Brush(isDarkTheme ? "#70282B32" : "#EFFFFFFF");
-        Resources["FieldBorderBrush"] = Brush(isDarkTheme ? "#35FFFFFF" : "#668596A8");
-        Resources["PanelBorderBrush"] = Brush(isDarkTheme ? "#30FFFFFF" : "#668B9AAA");
-        Resources["CardBorderBrush"] = Brush(isDarkTheme ? "#28FFFFFF" : "#557F90A4");
-        Resources["ButtonBorderBrush"] = Brush(isDarkTheme ? "#36FFFFFF" : "#667C8EA1");
-        Resources["ModeButtonBorderBrush"] = Brush(isDarkTheme ? "#3EFFFFFF" : "#6C798B9D");
-        Resources["AccentBorderBrush"] = Brush(isDarkTheme ? "#8BE9FFFF" : "#9047BFFF");
-        Resources["ThemeTrackBrush"] = Brush(isDarkTheme ? "#D8DDE7F0" : "#A05A5D62");
+        Resources["TextPrimaryBrush"] = Brush(isDarkTheme ? "#F2F2F2" : "#202020");
+        Resources["TextStrongBrush"] = Brush(isDarkTheme ? "#F6F6F6" : "#141414");
+        Resources["TextMutedBrush"] = Brush(isDarkTheme ? "#B0B0B0" : "#606060");
+        Resources["TextSubtleBrush"] = Brush(isDarkTheme ? "#929292" : "#7A7A7A");
+        Resources["FieldBackgroundBrush"] = Brush(isDarkTheme ? "#702D2D2D" : "#EFFFFFFF");
+        Resources["FieldBorderBrush"] = Brush(isDarkTheme ? "#35FFFFFF" : "#66969696");
+        Resources["PanelBorderBrush"] = Brush(isDarkTheme ? "#30FFFFFF" : "#66999999");
+        Resources["CardBorderBrush"] = Brush(isDarkTheme ? "#28FFFFFF" : "#558F8F8F");
+        Resources["ButtonBorderBrush"] = Brush(isDarkTheme ? "#36FFFFFF" : "#66898989");
+        Resources["ModeButtonBorderBrush"] = Brush(isDarkTheme ? "#3EFFFFFF" : "#6C868686");
+        Resources["AccentBorderBrush"] = Brush(isDarkTheme ? "#F5F5F5" : "#5C5C5C");
+        Resources["AccentTextBrush"] = Brush(isDarkTheme ? "#121212" : "#FFFFFF");
+        Resources["ThemeTrackBrush"] = Brush(isDarkTheme ? "#D8E2E2E2" : "#A0606060");
         Resources["ThemeThumbBrush"] = Brush(isDarkTheme ? "#050505" : "#FFFFFF");
         Resources["ThemeIconBrush"] = Brush(isDarkTheme ? "#FFFFFF" : "#050505");
+        Resources["ModeTrackBrush"] = Brush(isDarkTheme ? "#373737" : "#D0D0D0");
+        Resources["ModeTrackBorderBrush"] = Brush(isDarkTheme ? "#28FFFFFF" : "#16000000");
+        Resources["ModePillBrush"] = Brush(isDarkTheme ? "#5A5A5A" : "#FCFCFC");
+        Resources["ModePillBorderBrush"] = Brush(isDarkTheme ? "#38FFFFFF" : "#26000000");
+        Resources["ModeSelectedTextBrush"] = Brush(isDarkTheme ? "#FFFFFF" : "#080808");
+        Resources["ModeUnselectedTextBrush"] = Brush(isDarkTheme ? "#BDBDBD" : "#585858");
 
-        _themeToggleThumb.Margin = new Thickness(isDarkTheme ? 44 : 0, 0, 0, 0);
+        _themeToggleTransform.X = isDarkTheme ? ThemeDragMaximum : 0;
         _themeToggleIcon.Text = isDarkTheme ? "☾" : "☀";
         _appHeaderIcon.Source = isDarkTheme ? _darkHeaderIcon : _lightHeaderIcon;
     }
@@ -274,39 +702,24 @@ public partial class MainWindow : Window
         return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(color));
     }
 
-    private static Avalonia.Media.LinearGradientBrush Gradient(params (string Color, double Offset)[] stops)
-    {
-        var brush = new Avalonia.Media.LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative)
-        };
-
-        foreach (var (color, offset) in stops)
-        {
-            brush.GradientStops.Add(new Avalonia.Media.GradientStop(
-                Avalonia.Media.Color.Parse(color),
-                offset));
-        }
-
-        return brush;
-    }
-
     private void SetMode(ConversionMode mode)
     {
         _mode = mode;
         _pdfPanel.IsVisible = mode == ConversionMode.PdfToImage;
         _imagePanel.IsVisible = mode == ConversionMode.ImageToPdf;
         _pdfToolsPanel.IsVisible = mode == ConversionMode.PdfTools;
+        _directionSelectorHost.IsVisible = mode != ConversionMode.PdfTools;
         _startPdfButton.IsVisible = mode == ConversionMode.PdfToImage;
         _startImageButton.IsVisible = mode == ConversionMode.ImageToPdf;
         _startPdfToolButton.IsVisible = mode == ConversionMode.PdfTools;
-        SetClass(_pdfModeButton, "active", mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf);
-        SetClass(_pdfToolsModeButton, "active", mode == ConversionMode.PdfTools);
-        SetClass(_pdfToImageDirectionButton, "active", mode == ConversionMode.PdfToImage);
-        SetClass(_imageToPdfDirectionButton, "active", mode == ConversionMode.ImageToPdf);
-        SetClass(_pdfToImageDirectionButtonInImagePanel, "active", mode == ConversionMode.PdfToImage);
-        SetClass(_imageToPdfDirectionButtonInImagePanel, "active", mode == ConversionMode.ImageToPdf);
+        var isPdfToolsMode = mode == ConversionMode.PdfTools;
+        _pdfToolsModeButton.IsChecked = isPdfToolsMode;
+        _pdfModeButton.IsChecked = !isPdfToolsMode;
+        _modeSelectionTransform.X = isPdfToolsMode ? 0 : ModeDragMaximum;
+        var isPdfToImage = mode != ConversionMode.ImageToPdf;
+        _pdfToImageDirectionButton.IsChecked = isPdfToImage;
+        _imageToPdfDirectionButton.IsChecked = !isPdfToImage;
+        _directionSelectionTransform.X = isPdfToImage ? 0 : DirectionDragMaximum;
         SetStatus(null);
 
         if (mode == ConversionMode.PdfTools)
@@ -315,20 +728,79 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void SetClass(Control control, string className, bool enabled)
+    private void UpdatePdfFileEmptyHints()
     {
-        if (enabled)
+        var showHint = _pdfFiles.Count == 0;
+        _pdfFilesEmptyHint.IsVisible = showHint;
+        _pdfToolFilesEmptyHint.IsVisible = showHint;
+    }
+
+    private static bool ShouldReduceMotion()
+    {
+        var environmentOverride = Environment.GetEnvironmentVariable("OFFLINE_PDF_CONVERTER_REDUCE_MOTION");
+        if (!string.IsNullOrWhiteSpace(environmentOverride))
         {
-            if (!control.Classes.Contains(className))
+            return environmentOverride.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || environmentOverride.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || environmentOverride.Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            return !SystemParametersInfo(
+                SpiGetClientAreaAnimation,
+                0,
+                out var animationsEnabled,
+                0)
+                || !animationsEnabled;
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            try
             {
-                control.Classes.Add(className);
+                using var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "/usr/bin/defaults",
+                    ArgumentList =
+                    {
+                        "read",
+                        "com.apple.universalaccess",
+                        "reduceMotion"
+                    },
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+
+                if (process is null)
+                {
+                    return false;
+                }
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(250);
+                return process.ExitCode == 0 && output.Trim() == "1";
+            }
+            catch
+            {
+                return false;
             }
         }
-        else
-        {
-            control.Classes.Remove(className);
-        }
+
+        return false;
     }
+
+    private const uint SpiGetClientAreaAnimation = 0x1042;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SystemParametersInfo(
+        uint action,
+        uint parameter,
+        [MarshalAs(UnmanagedType.Bool)] out bool value,
+        uint update);
 
     private async void OnAddPdfFilesClick(object? sender, RoutedEventArgs e)
     {
@@ -392,8 +864,13 @@ public partial class MainWindow : Window
     private async void OnSelectPdfToolOutputPdfClick(object? sender, RoutedEventArgs e)
     {
         var operation = GetPdfToolOperation();
-        var suggestedName = operation == PdfToolOperation.DeletePages ? "deleted_pages.pdf" : "merged.pdf";
-        var title = operation == PdfToolOperation.DeletePages ? "ページ削除後のPDFを保存" : "結合後のPDFを保存";
+        var (suggestedName, title) = operation switch
+        {
+            PdfToolOperation.DeletePages => ("deleted_pages.pdf", "ページ削除後のPDFを保存"),
+            PdfToolOperation.ExtractPages => ("extracted_pages.pdf", "選択ページのPDFを保存"),
+            PdfToolOperation.SimpleEdit => ("edited.pdf", "編集後のPDFを保存"),
+            _ => ("merged.pdf", "結合後のPDFを保存")
+        };
 
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -481,43 +958,126 @@ public partial class MainWindow : Window
         RefreshPdfToolPreview();
     }
 
-    private void OnRefreshPdfPreviewClick(object? sender, RoutedEventArgs e)
-    {
-        RefreshPdfToolPreview();
-    }
-
     private void OnPdfPreviewIconClick(object? sender, RoutedEventArgs e)
     {
-        _isPdfPreviewListView = false;
-        UpdatePdfPreviewDisplay();
+        SetPdfPreviewDisplay(useListView: false);
     }
 
     private void OnPdfPreviewListClick(object? sender, RoutedEventArgs e)
     {
-        _isPdfPreviewListView = true;
-        UpdatePdfPreviewDisplay();
+        SetPdfPreviewDisplay(useListView: true);
     }
 
-    private void OnPdfPreviewDeleteSelectionChanged(object? sender, RoutedEventArgs e)
+    private void OnPdfPreviewSelectorKeyDown(object? sender, KeyEventArgs e)
     {
-        if (GetPdfToolOperation() != PdfToolOperation.DeletePages)
+        switch (e.Key)
+        {
+            case Key.Left:
+            case Key.Up:
+            case Key.Home:
+                SetPdfPreviewDisplay(useListView: false);
+                e.Handled = true;
+                break;
+            case Key.Right:
+            case Key.Down:
+            case Key.End:
+                SetPdfPreviewDisplay(useListView: true);
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void OnPdfPreviewSelectorPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(_pdfPreviewSelectorSwitch).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _pdfPreviewDragActive = true;
+        _pdfPreviewDragMoved = false;
+        _pdfPreviewDragStartPointerX = e.GetPosition(_pdfPreviewSelectorSwitch).X;
+        _pdfPreviewDragStartTransformX = _pdfPreviewSelectionTransform.X;
+        _pdfPreviewSelectionTransform.Transitions = null;
+        e.Pointer.Capture(_pdfPreviewSelectorSwitch);
+        e.Handled = true;
+    }
+
+    private void OnPdfPreviewSelectorPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_pdfPreviewDragActive)
+        {
+            return;
+        }
+
+        var delta = e.GetPosition(_pdfPreviewSelectorSwitch).X - _pdfPreviewDragStartPointerX;
+        _pdfPreviewDragMoved |= Math.Abs(delta) >= DragActivationDistance;
+        _pdfPreviewSelectionTransform.X = Math.Clamp(
+            _pdfPreviewDragStartTransformX + delta,
+            0,
+            PreviewViewDragMaximum);
+        e.Handled = true;
+    }
+
+    private void OnPdfPreviewSelectorPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_pdfPreviewDragActive)
+        {
+            return;
+        }
+
+        var releaseX = e.GetPosition(_pdfPreviewSelectorSwitch).X;
+        var useListView = _pdfPreviewDragMoved
+            ? _pdfPreviewSelectionTransform.X >= PreviewViewDragMaximum / 2
+            : releaseX >= _pdfPreviewSelectorSwitch.Bounds.Width / 2;
+        FinishPdfPreviewDrag(useListView);
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnPdfPreviewSelectorPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_pdfPreviewDragActive)
+        {
+            FinishPdfPreviewDrag(_pdfPreviewSelectionTransform.X >= PreviewViewDragMaximum / 2);
+        }
+    }
+
+    private void FinishPdfPreviewDrag(bool useListView)
+    {
+        _pdfPreviewDragActive = false;
+        _pdfPreviewSelectionTransform.Transitions = _pdfPreviewSelectionTransitions;
+        SetPdfPreviewDisplay(useListView);
+    }
+
+    private void SetPdfPreviewDisplay(bool useListView)
+    {
+        _isPdfPreviewListView = useListView;
+        UpdatePdfPreviewDisplay();
+        (useListView ? _pdfPreviewListButton : _pdfPreviewIconButton).Focus();
+    }
+
+    private void OnPdfPreviewPageSelectionChanged(object? sender, RoutedEventArgs e)
+    {
+        var operation = GetPdfToolOperation();
+        if (operation is not (PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages))
         {
             return;
         }
 
         if (sender is CheckBox { DataContext: PdfPagePreviewItem item } checkBox)
         {
-            item.IsMarkedForDelete = checkBox.IsChecked == true;
+            item.IsPageSelected = checkBox.IsChecked == true;
         }
 
         var pages = _pdfPagePreviews
-            .Where(item => item.IsMarkedForDelete)
+            .Where(item => item.IsPageSelected)
             .Select(item => item.PageNumber)
             .Distinct()
             .Order()
             .ToList();
 
-        _pdfDeletePagesTextBox.Text = FormatPageRanges(pages);
+        _pdfPageSelectionTextBox.Text = FormatPageRanges(pages);
     }
 
     private void OnPdfPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -594,6 +1154,9 @@ public partial class MainWindow : Window
             case PdfToolOperation.DeletePages:
                 await StartDeletePdfPagesAsync();
                 break;
+            case PdfToolOperation.ExtractPages:
+                await StartExtractPdfPagesAsync();
+                break;
             case PdfToolOperation.SimpleEdit:
                 await StartSimpleEditPdfAsync();
                 break;
@@ -637,12 +1200,29 @@ public partial class MainWindow : Window
 
         var request = new PdfDeletePagesRequest(
             _pdfFiles.Select(item => item.Path).ToList(),
-            _pdfDeletePagesTextBox.Text?.Trim() ?? string.Empty,
+            _pdfPageSelectionTextBox.Text?.Trim() ?? string.Empty,
             outputPdfPath);
 
         await RunConversionAsync(
             (progress, token) => _pdfDocumentService.DeletePagesAsync(request, progress, token),
             "指定ページを削除したPDFを作成しました。");
+    }
+
+    private async Task StartExtractPdfPagesAsync()
+    {
+        var outputPdfPath = BuildOutputPdfPath(
+            _pdfToolOutputPdfTextBox.Text?.Trim() ?? string.Empty,
+            _pdfToolOutputPdfBaseNameTextBox.Text?.Trim() ?? string.Empty);
+        _pdfToolOutputPdfTextBox.Text = outputPdfPath;
+
+        var request = new PdfExtractPagesRequest(
+            _pdfFiles.Select(item => item.Path).ToList(),
+            _pdfPageSelectionTextBox.Text?.Trim() ?? string.Empty,
+            outputPdfPath);
+
+        await RunConversionAsync(
+            (progress, token) => _pdfDocumentService.ExtractPagesAsync(request, progress, token),
+            "選択ページを1つのPDFとして出力しました。");
     }
 
     private async Task StartSimpleEditPdfAsync()
@@ -796,23 +1376,32 @@ public partial class MainWindow : Window
         double startCornerRadius = 0;
         double startRotationDegrees = 0;
         var dialogBackground = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#101113"))
-            : new SolidColorBrush(Color.Parse("#EEF4FA"));
+            ? new SolidColorBrush(Color.Parse("#191919"))
+            : new SolidColorBrush(Color.Parse("#F2F2F2"));
         var panelBackground = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#1D2026"))
-            : new SolidColorBrush(Color.Parse("#F8FBFF"));
+            ? new SolidColorBrush(Color.Parse("#222222"))
+            : new SolidColorBrush(Color.Parse("#FAFAFA"));
         var dialogTextBrush = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#F1F3F6"))
-            : new SolidColorBrush(Color.Parse("#18202B"));
+            ? new SolidColorBrush(Color.Parse("#F2F2F2"))
+            : new SolidColorBrush(Color.Parse("#202020"));
         var dialogMutedBrush = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#B8C0CB"))
-            : new SolidColorBrush(Color.Parse("#516071"));
+            ? new SolidColorBrush(Color.Parse("#B8B8B8"))
+            : new SolidColorBrush(Color.Parse("#606060"));
         IBrush dialogFieldBrush = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#2A2D33"))
+            ? new SolidColorBrush(Color.Parse("#2D2D2D"))
             : Brushes.White;
         var dialogFieldBorderBrush = _isDarkTheme
-            ? new SolidColorBrush(Color.Parse("#56606C"))
-            : new SolidColorBrush(Color.Parse("#B8C4D2"));
+            ? new SolidColorBrush(Color.Parse("#606060"))
+            : new SolidColorBrush(Color.Parse("#BEBEBE"));
+        var actionBackgroundBrush = _isDarkTheme
+            ? new SolidColorBrush(Color.Parse("#E5E5E5"))
+            : new SolidColorBrush(Color.Parse("#2C2C2C"));
+        IBrush actionForegroundBrush = _isDarkTheme
+            ? new SolidColorBrush(Color.Parse("#121212"))
+            : Brushes.White;
+        var actionBorderBrush = _isDarkTheme
+            ? new SolidColorBrush(Color.Parse("#F5F5F5"))
+            : new SolidColorBrush(Color.Parse("#5C5C5C"));
 
         var canvas = new Canvas
         {
@@ -845,7 +1434,7 @@ public partial class MainWindow : Window
             Height = 30,
             CornerRadius = new CornerRadius(8),
             Background = Brushes.Transparent,
-            BorderBrush = new SolidColorBrush(Color.Parse("#8B9AAA")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#999999")),
             BorderThickness = new Thickness(1)
         };
         var installedFontFamilies = GetInstalledFontFamilyNames();
@@ -896,7 +1485,7 @@ public partial class MainWindow : Window
             Height = 32,
             CornerRadius = new CornerRadius(8),
             Background = Brushes.Transparent,
-            BorderBrush = new SolidColorBrush(Color.Parse("#8B9AAA")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#999999")),
             BorderThickness = new Thickness(1)
         };
         var shapeFillColorBox = CreateEditTextBox("None");
@@ -937,13 +1526,13 @@ public partial class MainWindow : Window
                         Width = 34,
                         Height = 34,
                         CornerRadius = new CornerRadius(17),
-                        Background = Brushes.White,
+                        Background = actionForegroundBrush,
                         Child = new TextBlock
                         {
                             Text = "+",
                             FontSize = 29,
                             FontWeight = FontWeight.SemiBold,
-                            Foreground = new SolidColorBrush(Color.Parse("#238CF5")),
+                            Foreground = actionBackgroundBrush,
                             HorizontalAlignment = HorizontalAlignment.Center,
                             VerticalAlignment = VerticalAlignment.Center,
                             Margin = new Thickness(0, -4, 0, 0)
@@ -954,7 +1543,7 @@ public partial class MainWindow : Window
                         Text = "テキストボックスを追加",
                         FontSize = 15,
                         FontWeight = FontWeight.Bold,
-                        Foreground = Brushes.White,
+                        Foreground = actionForegroundBrush,
                         TextTrimming = TextTrimming.None,
                         VerticalAlignment = VerticalAlignment.Center,
                         [Grid.ColumnProperty] = 1
@@ -963,10 +1552,10 @@ public partial class MainWindow : Window
             },
             MinHeight = 52,
             Padding = new Thickness(12, 8),
-            CornerRadius = new CornerRadius(26),
-            Background = new SolidColorBrush(Color.Parse("#4AA3F5")),
-            Foreground = Brushes.White,
-            BorderBrush = new SolidColorBrush(Color.Parse("#69B8FF")),
+            CornerRadius = new CornerRadius(999),
+            Background = actionBackgroundBrush,
+            Foreground = actionForegroundBrush,
+            BorderBrush = actionBorderBrush,
             BorderThickness = new Thickness(1),
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
@@ -989,7 +1578,7 @@ public partial class MainWindow : Window
                 Height = height,
                 CornerRadius = new CornerRadius(8),
                 Background = fallback,
-                BorderBrush = new SolidColorBrush(Color.Parse("#8B9AAA")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#999999")),
                 BorderThickness = new Thickness(1)
             };
         }
@@ -1821,7 +2410,7 @@ public partial class MainWindow : Window
                             Width = 9,
                             Height = 9,
                             Background = Brushes.White,
-                            BorderBrush = new SolidColorBrush(Color.Parse("#111827")),
+                            BorderBrush = new SolidColorBrush(Color.Parse("#181818")),
                             BorderThickness = new Thickness(1),
                             Cursor = new Cursor(StandardCursorType.SizeAll),
                             IsVisible = selectedShape == shape
@@ -1864,7 +2453,7 @@ public partial class MainWindow : Window
                             Height = 24,
                             CornerRadius = new CornerRadius(12),
                             Background = Brushes.White,
-                            BorderBrush = new SolidColorBrush(Color.Parse("#667085")),
+                            BorderBrush = new SolidColorBrush(Color.Parse("#707070")),
                             BorderThickness = new Thickness(1),
                             Cursor = new Cursor(StandardCursorType.Hand),
                             IsVisible = selectedShape == shape,
@@ -1873,7 +2462,7 @@ public partial class MainWindow : Window
                                 Text = "↻",
                                 FontSize = 16,
                                 FontWeight = FontWeight.Bold,
-                                Foreground = new SolidColorBrush(Color.Parse("#667085")),
+                                Foreground = new SolidColorBrush(Color.Parse("#707070")),
                                 HorizontalAlignment = HorizontalAlignment.Center,
                                 VerticalAlignment = VerticalAlignment.Center
                             }
@@ -1908,9 +2497,9 @@ public partial class MainWindow : Window
                         FontSize = 12,
                         Padding = new Thickness(8, 3),
                         MinHeight = 24,
-                        Background = new SolidColorBrush(Color.Parse("#D92D20")),
-                        Foreground = Brushes.White,
-                        BorderBrush = new SolidColorBrush(Color.Parse("#FCA5A5")),
+                        Background = actionBackgroundBrush,
+                        Foreground = actionForegroundBrush,
+                        BorderBrush = actionBorderBrush,
                         IsVisible = selectedShape == shape
                     };
                     lineDeleteButton.Click += (_, e) =>
@@ -2002,7 +2591,7 @@ public partial class MainWindow : Window
                         Width = 8,
                         Height = 8,
                         Background = Brushes.White,
-                        BorderBrush = new SolidColorBrush(Color.Parse("#111827")),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#181818")),
                         BorderThickness = new Thickness(1),
                         HorizontalAlignment = horizontal,
                         VerticalAlignment = vertical,
@@ -2042,7 +2631,7 @@ public partial class MainWindow : Window
                         Height = 24,
                         CornerRadius = new CornerRadius(12),
                         Background = Brushes.White,
-                        BorderBrush = new SolidColorBrush(Color.Parse("#667085")),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#707070")),
                         BorderThickness = new Thickness(1),
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Top,
@@ -2054,7 +2643,7 @@ public partial class MainWindow : Window
                             Text = "↻",
                             FontSize = 16,
                             FontWeight = FontWeight.Bold,
-                            Foreground = new SolidColorBrush(Color.Parse("#667085")),
+                            Foreground = new SolidColorBrush(Color.Parse("#707070")),
                             HorizontalAlignment = HorizontalAlignment.Center,
                             VerticalAlignment = VerticalAlignment.Center
                         }
@@ -2094,8 +2683,8 @@ public partial class MainWindow : Window
                         Width = 14,
                         Height = 14,
                         CornerRadius = new CornerRadius(7),
-                        Background = new SolidColorBrush(Color.Parse("#FFD60A")),
-                        BorderBrush = new SolidColorBrush(Color.Parse("#B7791F")),
+                        Background = new SolidColorBrush(Color.Parse("#C8C8C8")),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#707070")),
                         BorderThickness = new Thickness(1),
                         HorizontalAlignment = HorizontalAlignment.Left,
                         VerticalAlignment = VerticalAlignment.Top,
@@ -2128,7 +2717,7 @@ public partial class MainWindow : Window
                     {
                         Padding = new Thickness(8, 4),
                         CornerRadius = new CornerRadius(5),
-                        Background = new SolidColorBrush(Color.Parse("#1F2937")),
+                        Background = new SolidColorBrush(Color.Parse("#292929")),
                         HorizontalAlignment = HorizontalAlignment.Left,
                         VerticalAlignment = VerticalAlignment.Top,
                         Margin = new Thickness(Math.Max(0, handleLeft + 10), -34, 0, 0),
@@ -2158,9 +2747,9 @@ public partial class MainWindow : Window
                     FontSize = 12,
                     Padding = new Thickness(8, 3),
                     MinHeight = 24,
-                    Background = new SolidColorBrush(Color.Parse("#D92D20")),
-                    Foreground = Brushes.White,
-                    BorderBrush = new SolidColorBrush(Color.Parse("#FCA5A5")),
+                    Background = actionBackgroundBrush,
+                    Foreground = actionForegroundBrush,
+                    BorderBrush = actionBorderBrush,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     VerticalAlignment = VerticalAlignment.Top,
                     IsVisible = selectedShape == shape
@@ -2177,7 +2766,7 @@ public partial class MainWindow : Window
                     Height = Math.Max(16, height),
                     Background = Brushes.Transparent,
                     BorderBrush = selectedShape == shape
-                        ? new SolidColorBrush(Color.Parse("#0E5FE3"))
+                        ? new SolidColorBrush(Color.Parse("#202020"))
                         : Brushes.Transparent,
                     BorderThickness = selectedShape == shape ? new Thickness(2) : new Thickness(0),
                     Cursor = new Cursor(StandardCursorType.SizeAll),
@@ -2333,7 +2922,7 @@ public partial class MainWindow : Window
                         Width = 8,
                         Height = 8,
                         Background = Brushes.White,
-                        BorderBrush = new SolidColorBrush(Color.Parse("#111827")),
+                        BorderBrush = new SolidColorBrush(Color.Parse("#181818")),
                         BorderThickness = new Thickness(1),
                         HorizontalAlignment = horizontal,
                         VerticalAlignment = vertical,
@@ -2375,9 +2964,9 @@ public partial class MainWindow : Window
                     FontSize = 12,
                     Padding = new Thickness(8, 3),
                     MinHeight = 24,
-                    Background = new SolidColorBrush(Color.Parse("#D92D20")),
-                    Foreground = Brushes.White,
-                    BorderBrush = new SolidColorBrush(Color.Parse("#FCA5A5")),
+                    Background = actionBackgroundBrush,
+                    Foreground = actionForegroundBrush,
+                    BorderBrush = actionBorderBrush,
                     IsVisible = selectedEdit == edit
                 };
                 inlineDeleteButton.AddHandler(
@@ -2405,8 +2994,8 @@ public partial class MainWindow : Window
                         ? new SolidColorBrush(bgColor)
                         : Brushes.Transparent,
                     BorderBrush = selectedEdit == edit
-                        ? new SolidColorBrush(Color.Parse("#0E5FE3"))
-                        : new SolidColorBrush(Color.Parse("#258DFF")),
+                        ? new SolidColorBrush(Color.Parse("#202020"))
+                        : new SolidColorBrush(Color.Parse("#707070")),
                     BorderThickness = selectedEdit == edit ? new Thickness(2) : new Thickness(1),
                     Cursor = new Cursor(StandardCursorType.SizeAll),
                     Child = new Grid
@@ -2772,7 +3361,7 @@ public partial class MainWindow : Window
             FontWeight = FontWeight.Bold,
             MinHeight = 66,
             Padding = new Thickness(24, 12),
-            CornerRadius = new CornerRadius(28),
+            CornerRadius = new CornerRadius(999),
             Margin = new Thickness(0, 12, 0, 0)
         };
         var textColorRow = new Grid
@@ -3065,9 +3654,9 @@ public partial class MainWindow : Window
                     MinHeight = 30,
                     Padding = new Thickness(0),
                     Margin = new Thickness(3),
-                    CornerRadius = new CornerRadius(8),
+                    CornerRadius = new CornerRadius(999),
                     Background = new SolidColorBrush(Color.Parse(hex)),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#8B9AAA")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#999999")),
                     BorderThickness = new Thickness(1)
                 };
                 swatch.Click += (_, _) =>
@@ -3103,7 +3692,7 @@ public partial class MainWindow : Window
                         {
                             StartPoint = new Point(4, 20),
                             EndPoint = new Point(20, 4),
-                            Stroke = new SolidColorBrush(Color.Parse("#FF3B30")),
+                            Stroke = new SolidColorBrush(Color.Parse("#555555")),
                             StrokeThickness = 3.5,
                             StrokeLineCap = PenLineCap.Round
                         }
@@ -3121,11 +3710,11 @@ public partial class MainWindow : Window
                     MinHeight = 30,
                     Padding = new Thickness(0),
                     Margin = new Thickness(3),
-                    CornerRadius = new CornerRadius(8),
+                    CornerRadius = new CornerRadius(999),
                     Background = Brushes.Transparent,
-                    BorderBrush = new SolidColorBrush(Color.Parse("#8B9AAA")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#999999")),
                     BorderThickness = new Thickness(1),
-                    Content = CreateNoColorIcon(new SolidColorBrush(Color.Parse("#111827")))
+                    Content = CreateNoColorIcon(new SolidColorBrush(Color.Parse("#181818")))
                 };
                 ToolTip.SetTip(noneButton, "色なし");
                 noneButton.Click += (_, _) =>
@@ -3202,10 +3791,13 @@ public partial class MainWindow : Window
         _startPdfToolButton.IsEnabled = !busy;
         _pdfModeButton.IsEnabled = !busy;
         _pdfToolsModeButton.IsEnabled = !busy;
+        _modeSelectorSwitch.IsEnabled = !busy;
         _pdfToImageDirectionButton.IsEnabled = !busy;
         _imageToPdfDirectionButton.IsEnabled = !busy;
-        _pdfToImageDirectionButtonInImagePanel.IsEnabled = !busy;
-        _imageToPdfDirectionButtonInImagePanel.IsEnabled = !busy;
+        _directionSelectorSwitch.IsEnabled = !busy;
+        _pdfPreviewIconButton.IsEnabled = !busy;
+        _pdfPreviewListButton.IsEnabled = !busy;
+        _pdfPreviewSelectorSwitch.IsEnabled = !busy;
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)
@@ -3400,6 +3992,12 @@ public partial class MainWindow : Window
             return PdfToolOperation.DeletePages;
         }
 
+        if (value.Contains("選択ページのみ出力", StringComparison.Ordinal)
+            || value.Contains("ページ抽出", StringComparison.Ordinal))
+        {
+            return PdfToolOperation.ExtractPages;
+        }
+
         if (value.Contains("文字・テキスト", StringComparison.Ordinal)
             || value.Contains("テキスト追加", StringComparison.Ordinal)
             || value.Contains("簡易編集", StringComparison.Ordinal)
@@ -3414,40 +4012,49 @@ public partial class MainWindow : Window
     private void UpdatePdfToolOperationUi()
     {
         var operation = GetPdfToolOperation();
-        _pdfToolOutputPdfPanel.IsVisible = operation is PdfToolOperation.Merge or PdfToolOperation.DeletePages or PdfToolOperation.SimpleEdit;
+        _pdfToolOutputPdfPanel.IsVisible = operation is PdfToolOperation.Merge
+            or PdfToolOperation.DeletePages
+            or PdfToolOperation.ExtractPages
+            or PdfToolOperation.SimpleEdit;
         _pdfToolOutputFolderPanel.IsVisible = operation == PdfToolOperation.Split;
-        _pdfDeletePagesPanel.IsVisible = operation == PdfToolOperation.DeletePages;
+        _pdfPageSelectionPanel.IsVisible = operation is PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages;
         _pdfSimpleEditPanel.IsVisible = operation == PdfToolOperation.SimpleEdit;
-        _pdfToolOutputPdfLabel.Text = operation == PdfToolOperation.DeletePages
-            ? "出力PDF"
-            : operation == PdfToolOperation.SimpleEdit
-                ? "編集後のPDF"
-            : "結合後のPDF";
+        _pdfToolOutputPdfLabel.Text = operation switch
+        {
+            PdfToolOperation.DeletePages => "削除後のPDF",
+            PdfToolOperation.ExtractPages => "選択ページのPDF",
+            PdfToolOperation.SimpleEdit => "編集後のPDF",
+            _ => "結合後のPDF"
+        };
+        _pdfPageSelectionLabel.Text = operation == PdfToolOperation.ExtractPages
+            ? "出力するページ"
+            : "削除するページ";
+        _pdfPageSelectionHelpText.Text = operation == PdfToolOperation.ExtractPages
+            ? "選択したページを元の順番で1つのPDFにまとめます。"
+            : "ページ番号はPDFの先頭を1ページ目として指定します。";
 
-        if (operation == PdfToolOperation.Merge
-            && (Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty) == "deleted_pages.pdf"
-                || Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty) == "edited.pdf"))
+        var defaultFileName = operation switch
+        {
+            PdfToolOperation.DeletePages => "deleted_pages.pdf",
+            PdfToolOperation.ExtractPages => "extracted_pages.pdf",
+            PdfToolOperation.SimpleEdit => "edited.pdf",
+            _ => "merged.pdf"
+        };
+        var currentFileName = Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty);
+        var knownDefaultNames = new[]
+        {
+            "merged.pdf",
+            "deleted_pages.pdf",
+            "extracted_pages.pdf",
+            "edited.pdf"
+        };
+        if (knownDefaultNames.Contains(currentFileName, StringComparer.OrdinalIgnoreCase)
+            && !string.Equals(currentFileName, defaultFileName, StringComparison.OrdinalIgnoreCase))
         {
             _pdfToolOutputPdfTextBox.Text = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                "merged.pdf");
-            _pdfToolOutputPdfBaseNameTextBox.Text = "merged";
-        }
-        else if (operation == PdfToolOperation.DeletePages
-                 && Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty) == "merged.pdf")
-        {
-            _pdfToolOutputPdfTextBox.Text = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                "deleted_pages.pdf");
-            _pdfToolOutputPdfBaseNameTextBox.Text = "deleted_pages";
-        }
-        else if (operation == PdfToolOperation.SimpleEdit
-                 && Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty) is "merged.pdf" or "deleted_pages.pdf")
-        {
-            _pdfToolOutputPdfTextBox.Text = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                "edited.pdf");
-            _pdfToolOutputPdfBaseNameTextBox.Text = "edited";
+                defaultFileName);
+            _pdfToolOutputPdfBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(defaultFileName);
         }
     }
 
@@ -3471,9 +4078,12 @@ public partial class MainWindow : Window
         }
 
         var operation = GetPdfToolOperation();
-        var isDeleteMode = operation == PdfToolOperation.DeletePages;
-        _pdfPreviewHelpText.Text = isDeleteMode
+        var isPageSelectionMode = operation is PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages;
+        var selectionLabel = operation == PdfToolOperation.ExtractPages ? "出力" : "削除";
+        _pdfPreviewHelpText.Text = operation == PdfToolOperation.DeletePages
             ? "削除したいページにチェックを入れると、ページ番号が自動入力されます。"
+            : operation == PdfToolOperation.ExtractPages
+                ? "出力したいページにチェックを入れると、ページ番号が自動入力されます。"
             : operation == PdfToolOperation.SimpleEdit
                 ? "編集したいページ上をクリックすると、右側に位置が自動入力されます。"
             : "結合や分割の前に、ページの見た目と順番を確認できます。";
@@ -3482,7 +4092,7 @@ public partial class MainWindow : Window
         {
             var pdfPaths = _pdfFiles.Select(item => item.Path).ToList();
             var previews = await Task.Run(
-                () => CreatePdfPagePreviews(pdfPaths, isDeleteMode, token),
+                () => CreatePdfPagePreviews(pdfPaths, isPageSelectionMode, selectionLabel, token),
                 token);
 
             if (token.IsCancellationRequested)
@@ -3509,13 +4119,15 @@ public partial class MainWindow : Window
     {
         _pdfPagePreviewThumbnailScroll.IsVisible = !_isPdfPreviewListView;
         _pdfPagePreviewListScroll.IsVisible = _isPdfPreviewListView;
-        SetClass(_pdfPreviewIconButton, "active", !_isPdfPreviewListView);
-        SetClass(_pdfPreviewListButton, "active", _isPdfPreviewListView);
+        _pdfPreviewIconButton.IsChecked = !_isPdfPreviewListView;
+        _pdfPreviewListButton.IsChecked = _isPdfPreviewListView;
+        _pdfPreviewSelectionTransform.X = _isPdfPreviewListView ? PreviewViewDragMaximum : 0;
     }
 
     private static List<PdfPagePreviewItem> CreatePdfPagePreviews(
         IReadOnlyList<string> pdfPaths,
-        bool isDeleteMode,
+        bool isPageSelectionMode,
+        string selectionLabel,
         CancellationToken cancellationToken)
     {
         var previews = new List<PdfPagePreviewItem>();
@@ -3544,7 +4156,8 @@ public partial class MainWindow : Window
                         bitmap.Width * 72.0 / options.Dpi,
                         bitmap.Height * 72.0 / options.Dpi,
                         CopyBgraPixels(bitmap),
-                        isDeleteMode));
+                        isPageSelectionMode,
+                        selectionLabel));
                 }
             }
         }
@@ -3847,8 +4460,8 @@ public partial class MainWindow : Window
         {
             Content = "OK",
             MinWidth = 90,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#70282B32")),
-            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F1F3F6")),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#702D2D2D")),
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F2F2F2")),
             BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#36FFFFFF")),
             HorizontalAlignment = HorizontalAlignment.Right,
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -3862,7 +4475,7 @@ public partial class MainWindow : Window
             Height = 360,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             CanResize = false,
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1A1C21")),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1D1D1D")),
             Content = new Grid
             {
                 Margin = new Avalonia.Thickness(20),
@@ -3875,7 +4488,7 @@ public partial class MainWindow : Window
                         Content = new TextBlock
                         {
                             Text = message,
-                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F1F3F6")),
+                            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#F2F2F2")),
                             TextWrapping = Avalonia.Media.TextWrapping.Wrap
                         }
                     },

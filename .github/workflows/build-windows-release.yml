@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Artifact version label, for example v2.2.0"
+        description: "Artifact version label, for example v3.0.0"
         required: true
-        default: "v2.2.0"
+        default: "v3.0.0"
       create_release:
         description: "Create or update a GitHub Release with the generated ZIP"
         required: true
