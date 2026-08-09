@@ -17,6 +17,7 @@ Models/
   PdfMergeRequest        PDF結合の入力条件
   PdfSplitRequest        PDF分割の入力条件
   PdfDeletePagesRequest  ページ削除の入力条件
+  PdfExtractPagesRequest 選択ページ出力の入力条件
   PdfSimpleEditRequest   テキストボックス/図形編集の入力条件
   PdfPagePreviewItem     ページプレビュー情報
   ConversionProgress     進捗通知
@@ -25,7 +26,7 @@ Models/
 Services/
   PdfToImageService      PDFium/PDFtoImageを使ったPDFレンダリング
   ImageToPdfService      PDFsharpを使ったPDF作成
-  PdfDocumentService     PDF結合、分割、ページ削除、文字/図形追加
+  PdfDocumentService     PDF結合、分割、ページ削除、選択ページ出力、文字/図形追加
   AppFontResolver        OS上のフォントをPDF出力へ解決
   FileNameHelper         出力ファイル名の衝突回避
   PageRangeParser        ページ範囲指定の解釈
@@ -42,7 +43,9 @@ PDFsharpで新規PDFを作り、選択された画像を順番に1ページず�
 
 ## PDF編集
 
-PDF編集はPDFsharpを中心に処理します。結合、1ページずつ分割、指定ページ削除、文字/テキスト追加、図形追加を `PdfDocumentService` に集約しています。
+PDF編集はPDFsharpを中心に処理します。結合、1ページずつ分割、指定ページ削除、選択ページのみの出力、文字/テキスト追加、図形追加を `PdfDocumentService` に集約しています。
+
+選択ページ出力では、ページプレビューのチェックまたは `1,3,5-7` 形式で対象を指定します。選択ページを元PDF内の昇順で1つのPDFへ追加するため、非連続ページも連続したページ構成で出力されます。
 
 文字/テキスト追加では、画面上の編集状態を `PdfSimpleEditRequest` にまとめ、書き出し時にPDF座標へ変換して反映します。テキストボックスは最前面レイヤーとして扱い、図形は四角形、角丸四角形、丸、線を扱います。
 

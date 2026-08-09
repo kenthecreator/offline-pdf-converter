@@ -32,6 +32,14 @@ public sealed class PdfDocumentService : IPdfDocumentService
         return Task.Run(() => DeletePages(request, progress, cancellationToken), cancellationToken);
     }
 
+    public Task<ConversionResult> ExtractPagesAsync(
+        PdfExtractPagesRequest request,
+        IProgress<ConversionProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        return Task.Run(() => ExtractPages(request, progress, cancellationToken), cancellationToken);
+    }
+
     public Task<ConversionResult> SimpleEditAsync(
         PdfSimpleEditRequest request,
         IProgress<ConversionProgress> progress,
@@ -207,6 +215,58 @@ public sealed class PdfDocumentService : IPdfDocumentService
                 completed,
                 input.PageCount,
                 $"{pageNumber}/{input.PageCount}ページを確認しました"));
+        }
+
+        output.Save(outputPath);
+        return new ConversionResult(1, Array.Empty<string>());
+    }
+
+    private static ConversionResult ExtractPages(
+        PdfExtractPagesRequest request,
+        IProgress<ConversionProgress> progress,
+        CancellationToken cancellationToken)
+    {
+        ValidatePdfFiles(request.PdfFiles);
+        if (request.PdfFiles.Count != 1)
+        {
+            throw new ArgumentException("ページ抽出ではPDFを1つだけ選択してください。");
+        }
+
+        var outputPath = EnsurePdfExtension(request.OutputPdfPath);
+        if (string.IsNullOrWhiteSpace(outputPath))
+        {
+            throw new ArgumentException("選択ページの出力PDF名と保存先を指定してください。");
+        }
+
+        EnsureOutputDoesNotOverwriteSource(outputPath, request.PdfFiles);
+        CreateOutputDirectory(outputPath);
+
+        var pdfPath = request.PdfFiles[0];
+        using var input = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+        var pagesToExtract = PageRangeParser.Parse(
+            request.PagesToExtract,
+            input.PageCount,
+            "出力する");
+
+        if (pagesToExtract.Count == 0)
+        {
+            throw new ArgumentException("出力するページを入力してください。例: 1,3,5-7");
+        }
+
+        using var output = new PdfDocument();
+        output.Info.Title = Path.GetFileNameWithoutExtension(outputPath);
+        output.Info.Creator = "Offline PDF Converter";
+
+        var completed = 0;
+        foreach (var pageNumber in pagesToExtract)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            output.AddPage(input.Pages[pageNumber - 1]);
+            completed++;
+            progress.Report(new ConversionProgress(
+                completed,
+                pagesToExtract.Count,
+                $"{pageNumber}ページ目を出力PDFへ追加しました"));
         }
 
         output.Save(outputPath);

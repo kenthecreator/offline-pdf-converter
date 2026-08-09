@@ -19,6 +19,11 @@ public interface IPdfDocumentService
         IProgress<ConversionProgress> progress,
         CancellationToken cancellationToken);
 
+    Task<ConversionResult> ExtractPagesAsync(
+        PdfExtractPagesRequest request,
+        IProgress<ConversionProgress> progress,
+        CancellationToken cancellationToken);
+
     Task<ConversionResult> SimpleEditAsync(
         PdfSimpleEditRequest request,
         IProgress<ConversionProgress> progress,
