@@ -32,3 +32,28 @@ Offline PDF Converter/
 ```
 
 通常は単体exe方式を優先してください。
+
+## macOS版の配布
+
+macOS版のアイコンは、`.app/Contents/Resources/AppIcon.icns` を配置し、
+`Info.plist` の `CFBundleIconFile` から参照します。Finderの「情報を見る」経由で
+カスタムアイコンを貼り付ける方法は使用しません。この方法で付く
+`com.apple.FinderInfo` やリソースフォークは、署名後のアプリをmacOSが
+不正な付加データ付きと判定する原因になります。
+
+配布前は、不要な拡張属性を除去してからアプリ全体を署名し、厳格な検証を行います。
+
+```bash
+xattr -cr "Offline PDF Converter (v3.1.0).app"
+codesign --force --deep --sign - --timestamp=none \
+  "Offline PDF Converter (v3.1.0).app"
+codesign --verify --deep --strict \
+  "Offline PDF Converter (v3.1.0).app"
+```
+
+上記の `-` はad-hoc署名です。署名整合性は確認できますが、初回起動時の
+Gatekeeper警告はなくなりません。一般利用者が警告なしで起動できる配布物には、
+Apple Developer ProgramのDeveloper ID証明書による署名とAppleの公証が必要です。
+
+ZIP作成後は、ZIPから別フォルダへ展開した `.app` に対しても同じ
+`codesign --verify --deep --strict` を実行し、SHA-256チェックサムを公開します。
