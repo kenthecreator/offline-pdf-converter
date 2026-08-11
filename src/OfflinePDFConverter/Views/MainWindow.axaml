@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OfflinePDFConverter.Views.MainWindow"
-        Title="Offline PDF Converter (v3.0.0)"
+        Title="Offline PDF Converter (v3.1.0)"
         Width="1120"
         Height="760"
         MinWidth="1040"
@@ -33,44 +33,27 @@
     <SolidColorBrush x:Key="ThemeTrackBrush" Color="#A0606060" />
     <SolidColorBrush x:Key="ThemeThumbBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="ThemeIconBrush" Color="#050505" />
-    <SolidColorBrush x:Key="ModeTrackBrush" Color="#D0D0D0" />
-    <SolidColorBrush x:Key="ModeTrackBorderBrush" Color="#16000000" />
-    <SolidColorBrush x:Key="ModePillBrush" Color="#FCFCFC" />
-    <SolidColorBrush x:Key="ModePillBorderBrush" Color="#26000000" />
-    <SolidColorBrush x:Key="ModeSelectedTextBrush" Color="#080808" />
-    <SolidColorBrush x:Key="ModeUnselectedTextBrush" Color="#585858" />
+    <SolidColorBrush x:Key="ModeTrackBrush" Color="#08000000" />
+    <SolidColorBrush x:Key="ModeTrackBorderBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="ModePillBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ModePillBorderBrush" Color="#1A000000" />
+    <SolidColorBrush x:Key="ModeSelectedTextBrush" Color="#0D0D0D" />
+    <SolidColorBrush x:Key="ModeUnselectedTextBrush" Color="#5D5D5D" />
+    <SolidColorBrush x:Key="ComboMenuBackgroundBrush" Color="#F2F2F2" />
+    <SolidColorBrush x:Key="ComboMenuBorderBrush" Color="#38000000" />
+    <SolidColorBrush x:Key="ComboMenuHoverBrush" Color="#12000000" />
+    <SolidColorBrush x:Key="ComboMenuSelectedBrush" Color="#D8D8D8" />
+    <SolidColorBrush x:Key="ComboMenuSelectedTextBrush" Color="#111111" />
+    <SolidColorBrush x:Key="PdfDpiTrackBrush" Color="#10000000" />
+    <SolidColorBrush x:Key="PdfDpiThumbBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="PdfDpiThumbBorderBrush" Color="#42000000" />
   </Window.Resources>
   <Window.Styles>
-    <Style Selector="Grid">
-      <Setter Property="Transitions">
-        <Transitions>
-          <BrushTransition Property="Background" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
-        </Transitions>
-      </Setter>
-    </Style>
-    <Style Selector="Border">
-      <Setter Property="Transitions">
-        <Transitions>
-          <BrushTransition Property="Background" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
-          <BrushTransition Property="BorderBrush" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
-        </Transitions>
-      </Setter>
-    </Style>
     <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <BrushTransition Property="Foreground" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
-        </Transitions>
-      </Setter>
     </Style>
     <Style Selector="CheckBox">
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <BrushTransition Property="Foreground" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
-        </Transitions>
-      </Setter>
     </Style>
     <Style Selector="Button">
       <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -91,9 +74,9 @@
     </Style>
     <Style Selector="RadioButton.mode-segment">
       <Setter Property="Width" Value="216" />
-      <Setter Property="Height" Value="64" />
+      <Setter Property="Height" Value="68" />
       <Setter Property="FontSize" Value="23" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Padding" Value="22,10" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource ModeUnselectedTextBrush}" />
@@ -121,8 +104,8 @@
       <Setter Property="Transitions">
         <Transitions>
           <BrushTransition Property="Foreground"
-                           Duration="0:0:0.19"
-                           Easing="0.16,0.84,0.32,1" />
+                           Duration="0:0:0.15"
+                           Easing="0.4,0,0.2,1" />
         </Transitions>
       </Setter>
     </Style>
@@ -162,9 +145,9 @@
     </Style>
     <Style Selector="RadioButton.direction-segment">
       <Setter Property="Width" Value="133" />
-      <Setter Property="Height" Value="42" />
+      <Setter Property="Height" Value="46" />
       <Setter Property="FontSize" Value="14" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Padding" Value="12,7" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource ModeUnselectedTextBrush}" />
@@ -191,7 +174,7 @@
       <Setter Property="Foreground" Value="{DynamicResource ModeUnselectedTextBrush}" />
       <Setter Property="Transitions">
         <Transitions>
-          <BrushTransition Property="Foreground" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
+          <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.4,0,0.2,1" />
         </Transitions>
       </Setter>
     </Style>
@@ -206,9 +189,9 @@
     </Style>
     <Style Selector="RadioButton.preview-segment">
       <Setter Property="Width" Value="80" />
-      <Setter Property="Height" Value="34" />
+      <Setter Property="Height" Value="38" />
       <Setter Property="FontSize" Value="14" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Padding" Value="10,6" />
       <Setter Property="CornerRadius" Value="999" />
       <Setter Property="Background" Value="Transparent" />
@@ -235,7 +218,7 @@
       <Setter Property="Foreground" Value="{DynamicResource ModeUnselectedTextBrush}" />
       <Setter Property="Transitions">
         <Transitions>
-          <BrushTransition Property="Foreground" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
+          <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.4,0,0.2,1" />
         </Transitions>
       </Setter>
     </Style>
@@ -248,6 +231,21 @@
     <Style Selector="RadioButton.preview-segment:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
     </Style>
+    <Style Selector="TextBlock.theme-segment-label">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource ModeUnselectedTextBrush}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Foreground"
+                           Duration="0:0:0.15"
+                           Easing="0.4,0,0.2,1" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="TextBlock.theme-segment-label.selected">
+      <Setter Property="Foreground" Value="{DynamicResource ModeSelectedTextBrush}" />
+    </Style>
     <Style Selector="Button.theme-toggle">
       <Setter Property="Width" Value="86" />
       <Setter Property="Height" Value="42" />
@@ -259,14 +257,35 @@
       <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
+    <Style Selector="Border.resolution-tick">
+      <Setter Property="Width" Value="4" />
+      <Setter Property="Height" Value="4" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Background" Value="{DynamicResource ModeUnselectedTextBrush}" />
+      <Setter Property="Opacity" Value="0.5" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background"
+                           Duration="0:0:0.3"
+                           Easing="0.23,1,0.32,1" />
+          <DoubleTransition Property="Opacity"
+                            Duration="0:0:0.2"
+                            Easing="0.23,1,0.32,1" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.resolution-tick.selected">
+      <Setter Property="Background" Value="{DynamicResource AccentTextBrush}" />
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
     <Style Selector="TextBlock.label">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Margin" Value="0,0,0,6" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
     <Style Selector="ComboBox">
-      <Setter Property="MinHeight" Value="38" />
-      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinHeight" Value="42" />
+      <Setter Property="CornerRadius" Value="13" />
       <Setter Property="Background" Value="{DynamicResource FieldBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -277,6 +296,47 @@
           <BrushTransition Property="BorderBrush" Duration="0:0:0.19" Easing="0.16,0.84,0.32,1" />
         </Transitions>
       </Setter>
+    </Style>
+    <Style Selector="ComboBox:dropdownopen /template/ Border#PopupBorder">
+      <Setter Property="Background" Value="{DynamicResource ComboMenuBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ComboMenuBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="20" />
+      <Setter Property="Padding" Value="5,7" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="BoxShadow" Value="0 10 28 0 #45000000, 0 1 3 0 #26000000" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="ComboBoxItem">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="Margin" Value="2,2" />
+      <Setter Property="Padding" Value="16,9" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ComboBoxItem /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource ComboMenuHoverBrush}" />
+      <Setter Property="TextBlock.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource ComboMenuSelectedBrush}" />
+      <Setter Property="TextBlock.Foreground" Value="{DynamicResource ComboMenuSelectedTextBrush}" />
+    </Style>
+    <Style Selector="ComboBoxItem:selected:pointerover /template/ ContentPresenter">
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="{DynamicResource ComboMenuSelectedBrush}" />
+      <Setter Property="TextBlock.Foreground" Value="{DynamicResource ComboMenuSelectedTextBrush}" />
     </Style>
     <Style Selector="TextBox">
       <Setter Property="MinHeight" Value="38" />
@@ -330,16 +390,10 @@
     </Style>
   </Window.Styles>
 
-  <Grid x:Name="ThemeTransitionRoot"
-        RowDefinitions="Auto,*,Auto"
-        Background="{DynamicResource AppBackgroundBrush}">
-    <Grid.Transitions>
-      <Transitions>
-        <DoubleTransition Property="Opacity"
-                          Duration="0:0:0.095"
-                          Easing="0.16,0.84,0.32,1" />
-      </Transitions>
-    </Grid.Transitions>
+  <Grid Background="{DynamicResource AppBackgroundBrush}">
+    <Grid x:Name="ThemeTransitionRoot"
+          RowDefinitions="Auto,*,Auto"
+          Background="{DynamicResource AppBackgroundBrush}">
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="34,24,34,14">
       <Image x:Name="AppHeaderIcon"
              Source="/Assets/AppIconLight.png"
@@ -350,43 +404,59 @@
              RenderOptions.BitmapInterpolationMode="HighQuality"
              Stretch="Uniform" />
 
-      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,24,0">
+      <Viewbox x:Name="AppHeaderTitleViewbox"
+               Grid.Column="1"
+               Margin="16,0,24,0"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Center"
+               Stretch="Uniform"
+               StretchDirection="DownOnly">
         <TextBlock FontSize="28"
-                   Foreground="{DynamicResource TextStrongBrush}"><Run Text="Offline PDF Converter" FontWeight="Bold" /><Run Text=" (v3.0.0)" FontWeight="Normal" /></TextBlock>
-      </StackPanel>
+                   HorizontalAlignment="Left"
+                   TextAlignment="Left"
+                   Foreground="{DynamicResource TextStrongBrush}"><Run Text="Offline PDF Converter" FontWeight="Bold" /><Run Text=" (v3.1.0)" FontWeight="Normal" /></TextBlock>
+      </Viewbox>
 
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
         <Border x:Name="ModeSelectorSwitch"
                 Width="436"
                 Height="68"
-                Padding="2"
                 CornerRadius="34"
-                Background="{DynamicResource ModeTrackBrush}"
-                BorderBrush="{DynamicResource ModeTrackBorderBrush}"
-                BorderThickness="1"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
                 Cursor="Hand"
                 AutomationProperties.Name="表示モード"
                 AutomationProperties.HelpText="クリックまたは左右へドラッグして表示モードを切り替えます"
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnModeSelectorKeyDown">
-          <Grid Width="432" Height="64" ColumnDefinitions="216,216">
-            <Border x:Name="ModeSelectionPill"
-                    Width="222"
+          <Grid Width="432" Height="68" ColumnDefinitions="216,216">
+            <Border Grid.ColumnSpan="2"
                     Height="64"
-                    HorizontalAlignment="Left"
+                    Margin="1,0"
                     CornerRadius="32"
+                    Background="{DynamicResource ModeTrackBrush}"
+                    BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                    BorderThickness="0"
+                    IsHitTestVisible="False" />
+            <Border x:Name="ModeSelectionPill"
+                    Width="225"
+                    Height="69"
+                    Margin="-0.5,0,0,0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="34.5"
                     Background="{DynamicResource ModePillBrush}"
                     BorderBrush="{DynamicResource ModePillBorderBrush}"
                     BorderThickness="1"
-                    BoxShadow="0 1 6 0 #10000000"
+                    BoxShadow="0 1 6 0 #0D000000"
                     IsHitTestVisible="False">
               <Border.RenderTransform>
                 <TranslateTransform X="0">
                   <TranslateTransform.Transitions>
                     <Transitions>
                       <DoubleTransition Property="X"
-                                        Duration="0:0:0.19"
-                                        Easing="0.16,0.84,0.32,1" />
+                                        Duration="0:0:0.5"
+                                        Easing="0.18,0.89,0.22,1.04" />
                     </Transitions>
                   </TranslateTransform.Transitions>
                 </TranslateTransform>
@@ -401,7 +471,11 @@
                          AutomationProperties.Name="PDF編集"
                          AutomationProperties.HelpText="PDFの結合、分割、ページ編集を表示します"
                          Click="OnPdfToolsModeClick">
-              <TextBlock x:Name="PdfToolsModeLabel" Text="PDF編集" />
+              <TextBlock x:Name="PdfToolsModeLabel" Text="PDF編集">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="4" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
             </RadioButton>
             <RadioButton x:Name="PdfModeButton"
                          Grid.Column="1"
@@ -410,71 +484,82 @@
                          AutomationProperties.Name="PDFと画像"
                          AutomationProperties.HelpText="PDFと画像の相互変換を表示します"
                          Click="OnPdfModeClick">
-              <TextBlock x:Name="PdfModeLabel" Text="PDF ↔ 画像" />
+              <TextBlock x:Name="PdfModeLabel" Text="PDF ↔ 画像">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="-4" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
             </RadioButton>
           </Grid>
         </Border>
         <Border x:Name="ThemeToggleSwitch"
-                Width="60"
-                Height="30"
-                CornerRadius="15"
-                Background="{DynamicResource ThemeTrackBrush}"
-                BorderBrush="{DynamicResource ButtonBorderBrush}"
-                BorderThickness="1"
+                Width="82"
+                Height="36"
+                CornerRadius="18"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
                 Cursor="Hand"
+                Focusable="True"
                 AutomationProperties.Name="テーマ切替"
-                AutomationProperties.HelpText="クリックまたは左右へドラッグしてテーマを切り替えます">
-          <Border.Transitions>
-            <Transitions>
-              <BrushTransition Property="Background"
-                               Duration="0:0:0.19"
-                               Easing="0.16,0.84,0.32,1" />
-              <BrushTransition Property="BorderBrush"
-                               Duration="0:0:0.19"
-                               Easing="0.16,0.84,0.32,1" />
-            </Transitions>
-          </Border.Transitions>
-          <Grid Margin="3">
+                AutomationProperties.HelpText="左でライト、右でダークを選びます。クリック、ドラッグ、左右キーで切り替えられます"
+                KeyDown="OnThemeSelectorKeyDown">
+          <Grid Width="82" Height="36" ColumnDefinitions="41,41">
+            <Border Grid.ColumnSpan="2"
+                    Height="34"
+                    Margin="1,0"
+                    CornerRadius="17"
+                    Background="{DynamicResource ModeTrackBrush}"
+                    BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                    BorderThickness="0"
+                    IsHitTestVisible="False" />
             <Border x:Name="ThemeToggleThumb"
-                    Width="24"
-                    Height="24"
-                    CornerRadius="12"
-                    Background="{DynamicResource ThemeThumbBrush}"
+                    Width="50"
+                    Height="37"
+                    Margin="-0.5,0,0,0"
+                    CornerRadius="18.5"
+                    Background="{DynamicResource ModePillBrush}"
+                    BorderBrush="{DynamicResource ModePillBorderBrush}"
+                    BorderThickness="1"
+                    BoxShadow="0 1 6 0 #0D000000"
                     HorizontalAlignment="Left"
-                    VerticalAlignment="Center">
-              <Border.Transitions>
-                <Transitions>
-                  <BrushTransition Property="Background"
-                                   Duration="0:0:0.19"
-                                   Easing="0.16,0.84,0.32,1" />
-                </Transitions>
-              </Border.Transitions>
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False">
               <Border.RenderTransform>
                 <TranslateTransform X="0">
                   <TranslateTransform.Transitions>
                     <Transitions>
                       <DoubleTransition Property="X"
-                                        Duration="0:0:0.19"
-                                        Easing="0.16,0.84,0.32,1" />
+                                        Duration="0:0:0.5"
+                                        Easing="0.18,0.89,0.22,1.04" />
                     </Transitions>
                   </TranslateTransform.Transitions>
                 </TranslateTransform>
               </Border.RenderTransform>
-              <TextBlock x:Name="ThemeToggleIcon"
-                         Text="☀"
-                         FontSize="14"
-                         Foreground="{DynamicResource ThemeIconBrush}"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center">
-                <TextBlock.Transitions>
-                  <Transitions>
-                    <BrushTransition Property="Foreground"
-                                     Duration="0:0:0.19"
-                                     Easing="0.16,0.84,0.32,1" />
-                  </Transitions>
-                </TextBlock.Transitions>
-              </TextBlock>
             </Border>
+
+            <TextBlock x:Name="ThemeLightLabel"
+                       Grid.Column="0"
+                       Classes="theme-segment-label selected"
+                       Text="☀"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False">
+              <TextBlock.RenderTransform>
+                <TranslateTransform X="4" />
+              </TextBlock.RenderTransform>
+            </TextBlock>
+            <TextBlock x:Name="ThemeDarkLabel"
+                       Grid.Column="1"
+                       Classes="theme-segment-label"
+                       Text="☾"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsHitTestVisible="False">
+              <TextBlock.RenderTransform>
+                <TranslateTransform X="-4" />
+              </TextBlock.RenderTransform>
+            </TextBlock>
           </Grid>
         </Border>
       </StackPanel>
@@ -561,13 +646,99 @@
               </Border>
 
               <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
+                <StackPanel Spacing="9">
                   <TextBlock Classes="label" Text="解像度" HorizontalAlignment="Center" />
-                  <ComboBox x:Name="PdfDpiCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
-                    <ComboBoxItem Content="普通" />
-                    <ComboBoxItem Content="高画質" />
-                    <ComboBoxItem Content="超高画質" />
-                  </ComboBox>
+                  <Border x:Name="PdfDpiSliderSwitch"
+                          Width="212"
+                          Height="32"
+                          HorizontalAlignment="Center"
+                          Background="Transparent"
+                          Focusable="True"
+                          Cursor="Hand"
+                          AutomationProperties.Name="解像度"
+                          AutomationProperties.HelpText="左右キーまたはドラッグで、普通、高画質、超高画質から選択します">
+                    <Grid x:Name="PdfDpiSliderRoot"
+                          Width="196"
+                          Height="28"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center">
+                      <Border x:Name="PdfDpiTrack"
+                              Width="196"
+                              Height="24"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              CornerRadius="12"
+                              Background="{DynamicResource PdfDpiTrackBrush}"
+                              BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                              BorderThickness="1"
+                              ClipToBounds="True">
+                        <Border x:Name="PdfDpiRange"
+                                Width="14"
+                                Height="24"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                CornerRadius="12,0,0,12"
+                                Background="{DynamicResource GlassAccentBrush}">
+                          <Border.Transitions>
+                            <Transitions>
+                              <DoubleTransition Property="Width"
+                                                Duration="0:0:0.3"
+                                                Easing="0.23,1,0.32,1" />
+                            </Transitions>
+                          </Border.Transitions>
+                        </Border>
+                      </Border>
+
+                      <Border x:Name="PdfDpiTickNormal"
+                              Classes="resolution-tick selected"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"
+                              Margin="11,0,0,0"
+                              IsHitTestVisible="False" />
+                      <Border x:Name="PdfDpiTickHigh"
+                              Classes="resolution-tick"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              IsHitTestVisible="False" />
+                      <Border x:Name="PdfDpiTickUltra"
+                              Classes="resolution-tick"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              Margin="0,0,11,0"
+                              IsHitTestVisible="False" />
+
+                      <Border x:Name="PdfDpiThumb"
+                              Width="30"
+                              Height="30"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"
+                              CornerRadius="15"
+                              Background="{DynamicResource PdfDpiThumbBrush}"
+                              BorderBrush="{DynamicResource PdfDpiThumbBorderBrush}"
+                              BorderThickness="1"
+                              BoxShadow="0 2 8 0 #38000000, 0 0 2 0 #26000000"
+                              IsHitTestVisible="False">
+                        <Border.RenderTransform>
+                          <TranslateTransform X="0">
+                            <TranslateTransform.Transitions>
+                              <Transitions>
+                                <DoubleTransition Property="X"
+                                                  Duration="0:0:0.3"
+                                                  Easing="0.23,1,0.32,1" />
+                              </Transitions>
+                            </TranslateTransform.Transitions>
+                          </TranslateTransform>
+                        </Border.RenderTransform>
+                      </Border>
+                    </Grid>
+                  </Border>
+
+                  <TextBlock x:Name="PdfDpiCurrentHint"
+                             Text="普通 · 200 dpi"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             FontSize="13"
+                             FontWeight="SemiBold"
+                             HorizontalAlignment="Center" />
                 </StackPanel>
               </Border>
 
@@ -640,7 +811,7 @@
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                   <Button Classes="small-action" Content="上へ" Click="OnMoveImageUpClick" />
                   <Button Classes="small-action" Content="下へ" Click="OnMoveImageDownClick" />
-                  <TextBlock Text="＋  「追加」ボタンをクリックするか、画像ファイルをドロップ"
+                  <TextBlock Text="「追加」ボタンをクリックするか、画像ファイルをドロップ"
                              Foreground="{DynamicResource TextSubtleBrush}"
                              FontSize="15"
                              FontWeight="SemiBold"
@@ -706,36 +877,44 @@
                 Width="270"
                 Height="46"
                 Margin="0,20,0,0"
-                Padding="2"
                 CornerRadius="23"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Top"
-                Background="{DynamicResource ModeTrackBrush}"
-                BorderBrush="{DynamicResource ModeTrackBorderBrush}"
-                BorderThickness="1"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
                 Cursor="Hand"
                 AutomationProperties.Name="変換方向"
                 AutomationProperties.HelpText="クリックまたは左右へドラッグして変換方向を切り替えます"
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnDirectionSelectorKeyDown">
-          <Grid Width="266" Height="42" ColumnDefinitions="133,133">
+          <Grid Width="266" Height="46" ColumnDefinitions="133,133">
+            <Border Grid.ColumnSpan="2"
+                    Height="43"
+                    Margin="1,0"
+                    CornerRadius="21.5"
+                    Background="{DynamicResource ModeTrackBrush}"
+                    BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                    BorderThickness="0"
+                    IsHitTestVisible="False" />
             <Border x:Name="DirectionSelectionPill"
-                    Width="139"
-                    Height="42"
+                    Width="142"
+                    Height="47"
+                    Margin="-0.5,0,0,0"
                     HorizontalAlignment="Left"
-                    CornerRadius="21"
+                    CornerRadius="23.5"
                     Background="{DynamicResource ModePillBrush}"
                     BorderBrush="{DynamicResource ModePillBorderBrush}"
                     BorderThickness="1"
-                    BoxShadow="0 1 6 0 #10000000"
+                    BoxShadow="0 1 6 0 #0D000000"
                     IsHitTestVisible="False">
               <Border.RenderTransform>
                 <TranslateTransform X="0">
                   <TranslateTransform.Transitions>
                     <Transitions>
                       <DoubleTransition Property="X"
-                                        Duration="0:0:0.19"
-                                        Easing="0.16,0.84,0.32,1" />
+                                        Duration="0:0:0.5"
+                                        Easing="0.18,0.89,0.22,1.04" />
                     </Transitions>
                   </TranslateTransform.Transitions>
                 </TranslateTransform>
@@ -750,7 +929,11 @@
                          AutomationProperties.Name="PDFから画像"
                          AutomationProperties.HelpText="PDFを画像へ変換する画面を表示します"
                          Click="OnPdfToImageDirectionClick">
-              <TextBlock x:Name="PdfToImageDirectionLabel" Text="PDF → 画像" />
+              <TextBlock x:Name="PdfToImageDirectionLabel" Text="PDF → 画像">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="4" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
             </RadioButton>
             <RadioButton x:Name="ImageToPdfDirectionButton"
                          Grid.Column="1"
@@ -759,7 +942,11 @@
                          AutomationProperties.Name="画像からPDF"
                          AutomationProperties.HelpText="画像をPDFへ変換する画面を表示します"
                          Click="OnImageToPdfDirectionClick">
-              <TextBlock x:Name="ImageToPdfDirectionLabel" Text="画像 → PDF" />
+              <TextBlock x:Name="ImageToPdfDirectionLabel" Text="画像 → PDF">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="-4" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
             </RadioButton>
           </Grid>
         </Border>
@@ -833,34 +1020,42 @@
                       Grid.Column="1"
                       Width="164"
                       Height="38"
-                      Padding="2"
                       CornerRadius="19"
                       VerticalAlignment="Bottom"
-                      Background="{DynamicResource ModeTrackBrush}"
-                      BorderBrush="{DynamicResource ModeTrackBorderBrush}"
-                      BorderThickness="1"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      BorderThickness="0"
                       Cursor="Hand"
                       AutomationProperties.Name="ページプレビューの表示形式"
                       AutomationProperties.HelpText="クリックまたは左右へドラッグして表示形式を切り替えます"
                       AutomationProperties.ControlTypeOverride="Group">
-                <Grid Width="160" Height="34" ColumnDefinitions="80,80">
+                <Grid Width="160" Height="38" ColumnDefinitions="80,80">
+                  <Border Grid.ColumnSpan="2"
+                          Height="36"
+                          Margin="1,0"
+                          CornerRadius="18"
+                          Background="{DynamicResource ModeTrackBrush}"
+                          BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                          BorderThickness="0"
+                          IsHitTestVisible="False" />
                   <Border x:Name="PdfPreviewSelectionPill"
-                          Width="84"
-                          Height="34"
+                          Width="89"
+                          Height="39"
+                          Margin="-0.5,0,0,0"
                           HorizontalAlignment="Left"
-                          CornerRadius="17"
+                          CornerRadius="19.5"
                           Background="{DynamicResource ModePillBrush}"
                           BorderBrush="{DynamicResource ModePillBorderBrush}"
                           BorderThickness="1"
-                          BoxShadow="0 1 6 0 #10000000"
+                          BoxShadow="0 1 6 0 #0D000000"
                           IsHitTestVisible="False">
                     <Border.RenderTransform>
                       <TranslateTransform X="0">
                         <TranslateTransform.Transitions>
                           <Transitions>
                             <DoubleTransition Property="X"
-                                              Duration="0:0:0.19"
-                                              Easing="0.16,0.84,0.32,1" />
+                                              Duration="0:0:0.5"
+                                              Easing="0.18,0.89,0.22,1.04" />
                           </Transitions>
                         </TranslateTransform.Transitions>
                       </TranslateTransform>
@@ -874,7 +1069,11 @@
                                IsChecked="True"
                                AutomationProperties.Name="アイコン表示"
                                Click="OnPdfPreviewIconClick">
-                    <TextBlock x:Name="PdfPreviewIconLabel" Text="アイコン" />
+                    <TextBlock x:Name="PdfPreviewIconLabel" Text="アイコン">
+                      <TextBlock.RenderTransform>
+                        <TranslateTransform X="4" />
+                      </TextBlock.RenderTransform>
+                    </TextBlock>
                   </RadioButton>
                   <RadioButton x:Name="PdfPreviewListButton"
                                Grid.Column="1"
@@ -882,7 +1081,11 @@
                                GroupName="PdfPreviewDisplay"
                                AutomationProperties.Name="リスト表示"
                                Click="OnPdfPreviewListClick">
-                    <TextBlock x:Name="PdfPreviewListLabel" Text="リスト" />
+                    <TextBlock x:Name="PdfPreviewListLabel" Text="リスト">
+                      <TextBlock.RenderTransform>
+                        <TranslateTransform X="-4" />
+                      </TextBlock.RenderTransform>
+                    </TextBlock>
                   </RadioButton>
                 </Grid>
               </Border>
@@ -1122,6 +1325,8 @@
                 VerticalAlignment="Top"
                 Click="OnStartPdfToolClick" />
       </Grid>
+    </Grid>
+
     </Grid>
   </Grid>
 </Window>

@@ -1,14 +1,14 @@
-name: Build Windows Release
+name: Build Windows and macOS Release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Artifact version label, for example v3.0.0"
+        description: "Artifact version label, for example v3.1.0"
         required: true
-        default: "v3.0.0"
+        default: "v3.1.0"
       create_release:
-        description: "Create or update a GitHub Release with the generated ZIP"
+        description: "Create or update a GitHub Release with the generated ZIPs"
         required: true
         default: true
         type: boolean
@@ -79,12 +79,10 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
           "$hash  $zipName" | Out-File -FilePath "$zipPath.sha256.txt" -Encoding ascii
 
-          "version=$version" >> $env:GITHUB_OUTPUT
           "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
           "sha_path=$zipPath.sha256.txt" >> $env:GITHUB_OUTPUT
-          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
 
-      - name: Upload build artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: Offline PDF Converter Windows x64
@@ -93,13 +91,151 @@ jobs:
             ${{ steps.package.outputs.sha_path }}
           if-no-files-found: error
 
-      - name: Publish GitHub Release
-        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.create_release)
-        uses: softprops/action-gh-release@v2
+  build-macos:
+    name: Build macOS Apple Silicon ZIP
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          tag_name: ${{ steps.package.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          body_path: docs/RELEASE_DETAILS_${{ steps.package.outputs.version }}.md
-          files: |
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore "Offline PDF Converter.sln"
+
+      - name: Publish macOS Apple Silicon
+        run: >
+          dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj"
+          -c Release
+          -r osx-arm64
+          --self-contained true
+          -p:PublishSingleFile=false
+          -p:PublishTrimmed=false
+          -o "artifacts/publish"
+
+      - name: Package and sign app bundle
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            version="${{ inputs.version }}"
+          fi
+
+          numeric_version="${version#v}"
+          app_name="Offline PDF Converter ($version)"
+          app_path="artifacts/package/$app_name.app"
+          contents="$app_path/Contents"
+          mkdir -p "$contents/MacOS" "$contents/Resources"
+          cp -R artifacts/publish/. "$contents/MacOS/"
+          chmod +x "$contents/MacOS/OfflinePDFConverter"
+
+          iconset="artifacts/AppIcon.iconset"
+          mkdir -p "$iconset"
+          sips -z 16 16 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_16x16.png" >/dev/null
+          sips -z 32 32 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_16x16@2x.png" >/dev/null
+          sips -z 32 32 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_32x32.png" >/dev/null
+          sips -z 64 64 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_32x32@2x.png" >/dev/null
+          sips -z 128 128 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_128x128.png" >/dev/null
+          sips -z 256 256 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_128x128@2x.png" >/dev/null
+          sips -z 256 256 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_256x256.png" >/dev/null
+          sips -z 512 512 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_256x256@2x.png" >/dev/null
+          sips -z 512 512 src/OfflinePDFConverter/Assets/AppIcon.png --out "$iconset/icon_512x512.png" >/dev/null
+          cp src/OfflinePDFConverter/Assets/AppIcon.png "$iconset/icon_512x512@2x.png"
+          iconutil -c icns "$iconset" -o "$contents/Resources/AppIcon.icns"
+          cp src/OfflinePDFConverter/Assets/AppIcon.png "$contents/Resources/AppIcon.png"
+
+          cat > "$contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDisplayName</key><string>$app_name</string>
+            <key>CFBundleName</key><string>$app_name</string>
+            <key>CFBundleExecutable</key><string>OfflinePDFConverter</string>
+            <key>CFBundleIdentifier</key><string>com.kenthecreator.offlinepdfconverter</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$numeric_version</string>
+            <key>CFBundleVersion</key><string>$numeric_version</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          xattr -cr "$app_path"
+          codesign --force --deep --sign - --timestamp=none "$app_path"
+          codesign --verify --deep --strict "$app_path"
+
+          cp README.md "artifacts/package/README.md"
+          cp docs/MANUAL.md "artifacts/package/MANUAL.md"
+          cp SECURITY_REVIEW.md "artifacts/package/SECURITY_REVIEW.md"
+          cp THIRD_PARTY_LICENSES.md "artifacts/package/THIRD_PARTY_LICENSES.md"
+
+          zip_name="Offline PDF Converter-$version-macOS-Apple-Silicon.zip"
+          zip_path="artifacts/$zip_name"
+          ditto -c -k --sequesterRsrc "artifacts/package" "$zip_path"
+          hash="$(shasum -a 256 "$zip_path" | awk '{print $1}')"
+          printf '%s  %s\n' "$hash" "$zip_name" > "$zip_path.sha256.txt"
+
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "sha_path=$zip_path.sha256.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Offline PDF Converter macOS Apple Silicon
+          path: |
             ${{ steps.package.outputs.zip_path }}
             ${{ steps.package.outputs.sha_path }}
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs:
+      - build-windows
+      - build-macos
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.create_release)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          version="${{ github.ref_name }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            version="${{ inputs.version }}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Offline PDF Converter Windows x64
+          path: artifacts/windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Offline PDF Converter macOS Apple Silicon
+          path: artifacts/macos
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          body_path: docs/RELEASE_DETAILS_${{ steps.version.outputs.value }}.md
+          files: |
+            artifacts/windows/*
+            artifacts/macos/*
