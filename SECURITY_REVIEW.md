@@ -6,7 +6,7 @@
 ## 確認対象
 
 ```text
-GitHub Release v2.2.0
+公式ダウンロードページ掲載版 v2.2.0
 Offline PDF Converter-v2.2.0-Windows-x64.zip
 ```
 
@@ -91,7 +91,7 @@ SHA-256:
 
 ## 推奨する確認手順
 
-1. GitHub Releaseに添付されたZIPまたは `Offline PDF Converter.exe` のSHA-256を公開値と照合する。
+1. 公式ダウンロードページのZIPまたは `Offline PDF Converter.exe` のSHA-256を公開値と照合する。
 2. Windows上でMicrosoft Defenderのファイルスキャンを実行する。
 3. 必要に応じてウイルス対策ソフトやEDRで検査する。
 4. 必要に応じてソースコード、ライセンス表、SHA-256を確認する。

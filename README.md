@@ -2,6 +2,10 @@
 
 完全オフライン動作を前提にした、Windows x64向けのPDF/画像変換・PDF編集デスクトップアプリです。Python、Poppler、Adobe製品、外部変換サービスを使わず、発行済みの `.exe` をダブルクリックして利用できます。
 
+## ダウンロード
+
+Windows版とmacOS版は、[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から取得できます。配布ZIPとSHA-256チェックサムのみを掲載しています。
+
 ## 技術構成の提案
 
 「完全オフライン」「追加ランタイムの事前インストール不要」「Adobe非依存」「PDF各ページの画像化」を満たすため、次の構成を採用しています。

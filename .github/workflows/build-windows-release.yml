@@ -1,4 +1,4 @@
-name: Build Windows and macOS Release
+name: Build Windows and macOS distribution packages
 
 on:
   workflow_dispatch:
@@ -7,17 +7,9 @@ on:
         description: "Artifact version label, for example v3.1.0"
         required: true
         default: "v3.1.0"
-      create_release:
-        description: "Create or update a GitHub Release with the generated ZIPs"
-        required: true
-        default: true
-        type: boolean
-  push:
-    tags:
-      - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-windows:
@@ -47,16 +39,16 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
           -p:PublishTrimmed=false
+          -p:ContinuousIntegrationBuild=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
           -o "artifacts/publish"
 
       - name: Package release files
         id: package
         shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}"
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $version = "${{ inputs.version }}"
-          }
+          $version = "${{ inputs.version }}"
 
           $packageDir = "artifacts/package"
           New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
@@ -115,6 +107,9 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=false
           -p:PublishTrimmed=false
+          -p:ContinuousIntegrationBuild=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
           -o "artifacts/publish"
 
       - name: Package and sign app bundle
@@ -122,10 +117,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="${{ github.ref_name }}"
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            version="${{ inputs.version }}"
-          fi
+          version="${{ inputs.version }}"
 
           numeric_version="${version#v}"
           app_name="Offline PDF Converter ($version)"
@@ -195,47 +187,3 @@ jobs:
             ${{ steps.package.outputs.zip_path }}
             ${{ steps.package.outputs.sha_path }}
           if-no-files-found: error
-
-  publish-release:
-    name: Publish GitHub Release
-    needs:
-      - build-windows
-      - build-macos
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.create_release)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Determine version
-        id: version
-        shell: bash
-        run: |
-          version="${{ github.ref_name }}"
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            version="${{ inputs.version }}"
-          fi
-          echo "value=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: Offline PDF Converter Windows x64
-          path: artifacts/windows
-
-      - name: Download macOS artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: Offline PDF Converter macOS Apple Silicon
-          path: artifacts/macos
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.value }}
-          target_commitish: ${{ github.sha }}
-          body_path: docs/RELEASE_DETAILS_${{ steps.version.outputs.value }}.md
-          files: |
-            artifacts/windows/*
-            artifacts/macos/*
