@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline PDF Converter Downloads</title>
+  <meta name="description" content="Offline PDF Converterの公式ダウンロードページ">
+  <style>
+    :root { color-scheme: light dark; --bg:#f3f3f1; --card:#fff; --text:#171717; --muted:#676767; --line:#d7d7d3; --button:#202020; --button-text:#fff; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#171717; --card:#232323; --text:#f3f3f3; --muted:#aaa; --line:#404040; --button:#f1f1f1; --button-text:#171717; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(820px,calc(100% - 32px)); margin:56px auto; }
+    header { margin-bottom:32px; }
+    h1 { margin:0 0 10px; font-size:clamp(28px,5vw,42px); letter-spacing:-.03em; }
+    p { color:var(--muted); line-height:1.7; }
+    .release { background:var(--card); border:1px solid var(--line); border-radius:24px; padding:24px; margin:18px 0; }
+    .release h2 { margin:0 0 18px; font-size:24px; }
+    .downloads { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+    .download { display:block; padding:16px 18px; border-radius:999px; background:var(--button); color:var(--button-text); text-align:center; text-decoration:none; font-weight:700; }
+    .checksum { display:block; margin-top:10px; color:var(--muted); text-align:center; font-size:13px; }
+    footer { margin-top:28px; font-size:14px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Offline PDF Converter</h1>
+    <p>Windows x64版とmacOS Apple Silicon版の公式配布ページです。ダウンロード後、必要に応じてSHA-256チェックサムを確認してください。</p>
+  </header>
+  <section class="release">
+    <h2>v3.1.0</h2>
+    <div class="downloads">
+      <div>
+        <a class="download" href="downloads/v3.1.0/Offline.PDF.Converter-v3.1.0-Windows-x64.zip">Windows x64</a>
+        <a class="checksum" href="downloads/v3.1.0/Offline.PDF.Converter-v3.1.0-Windows-x64.zip.sha256.txt">SHA-256</a>
+      </div>
+      <div>
+        <a class="download" href="downloads/v3.1.0/Offline.PDF.Converter-v3.1.0-macOS-Apple-Silicon.zip">macOS Apple Silicon</a>
+        <a class="checksum" href="downloads/v3.1.0/Offline.PDF.Converter-v3.1.0-macOS-Apple-Silicon.zip.sha256.txt">SHA-256</a>
+      </div>
+    </div>
+  </section>
+  <section class="release">
+    <h2>v3.0.0</h2>
+    <div class="downloads">
+      <div>
+        <a class="download" href="downloads/v3.0.0/Offline.PDF.Converter-v3.0.0-Windows-x64.zip">Windows x64</a>
+        <a class="checksum" href="downloads/v3.0.0/Offline.PDF.Converter-v3.0.0-Windows-x64.zip.sha256.txt">SHA-256</a>
+      </div>
+      <div>
+        <a class="download" href="downloads/v3.0.0/Offline.PDF.Converter-v3.0.0-macOS-Apple-Silicon.zip">macOS Apple Silicon</a>
+        <a class="checksum" href="downloads/v3.0.0/Offline.PDF.Converter-v3.0.0-macOS-Apple-Silicon.zip.sha256.txt">SHA-256</a>
+      </div>
+    </div>
+  </section>
+  <footer><p>macOS版はad-hoc署名です。Windows版は未署名のため、初回起動時にOSの警告が表示される場合があります。</p></footer>
+</main>
+</body>
+</html>
