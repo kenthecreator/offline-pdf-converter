@@ -12,3 +12,4 @@ test-samples/output/
 *.user
 *.suo
 *.tmp
+/*_OFFLINE_PDF_CONVERTER.md
