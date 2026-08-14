@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Offline PDF Converter Downloads</title>
   <meta name="description" content="Offline PDF Converterの公式ダウンロードページ">
+  <link rel="icon" type="image/png" href="app-icon.png">
   <style>
     :root { color-scheme: light dark; --bg:#f3f3f1; --card:#fff; --text:#171717; --muted:#676767; --line:#d7d7d3; --button:#202020; --button-text:#fff; }
     @media (prefers-color-scheme: dark) { :root { --bg:#171717; --card:#232323; --text:#f3f3f3; --muted:#aaa; --line:#404040; --button:#f1f1f1; --button-text:#171717; } }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     main { width:min(820px,calc(100% - 32px)); margin:56px auto; }
-    header { margin-bottom:32px; }
+    header { display:flex; align-items:flex-start; gap:20px; margin-bottom:32px; }
+    .app-icon { width:80px; height:80px; flex:0 0 auto; object-fit:contain; }
+    .header-copy { min-width:0; }
     h1 { margin:0 0 10px; font-size:clamp(28px,5vw,42px); letter-spacing:-.03em; }
     p { color:var(--muted); line-height:1.7; }
     .release { background:var(--card); border:1px solid var(--line); border-radius:24px; padding:24px; margin:18px 0; }
@@ -25,11 +28,14 @@
 <body>
 <main>
   <header>
-    <h1>Offline PDF Converter</h1>
-    <p>最新版 v3.1.0 のWindows x64版とmacOS Apple Silicon版を配布しています。ダウンロード後、必要に応じてSHA-256チェックサムを確認してください。</p>
+    <img class="app-icon" src="app-icon.png" alt="Offline PDF Converterのアプリアイコン">
+    <div class="header-copy">
+      <h1>Offline PDF Converter</h1>
+      <p>最新版 v3.1.0 のWindows x64版とmacOS Apple Silicon版を配布しています。ダウンロード後、必要に応じてSHA-256チェックサムを確認してください。</p>
+    </div>
   </header>
   <section class="release">
-    <h2>v3.1.0（最新版）</h2>
+    <h2>v3.1.0</h2>
     <div class="downloads">
       <div>
         <a class="download" href="downloads/v3.1.0/Offline.PDF.Converter-v3.1.0-Windows-x64.zip">Windows x64</a>
