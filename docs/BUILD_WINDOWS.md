@@ -1,3 +1,34 @@
+# v3.2.0 Windows単体exeの作成
+
+通常のビルドには.NET 8 SDKを使用します。内蔵OCRの構築済みアーカイブはリポジトリに含まれ、アプリ利用者が何かをインストールする必要はありません。
+
+```sh
+dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PublishProfile=WindowsSingleFile -o artifacts/windows-v3.2.0
+python3 scripts/verify-published-exe.py artifacts/windows-v3.2.0
+```
+
+出力フォルダの配布ファイルは `OfflinePDFConverter.exe` 一つです。ファイル名は配布時に変更できます。`WindowsSingleFile` プロファイルは自己完結、ネイティブライブラリ内包、不要なデバッグ情報の除外を行い、exe以外が残るとエラーにします。
+
+Windows上では以下の実行検証も行います。
+
+```powershell
+pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v3.2.0/OfflinePDFConverter.exe
+```
+
+## OCR本体を再構築する場合のみ
+
+開発環境にPython 3、CMake、Ninja、MinGW-w64のx86_64クロスコンパイラを用意します。今回の構築環境はmacOS arm64、MinGW-w64 14.0.0 / GCC 16.2.0です。
+
+```sh
+python3 scripts/prepare-ocr-sources.py
+bash scripts/build-windows-ocr.sh
+python3 scripts/package-windows-ocr.py
+```
+
+最初のスクリプトだけが開発用ソースを取得します。URLとSHA-256は `vendor/ocr-source-manifest.json` で固定されています。このスクリプトは配布exeから呼ばれません。構築時にWindows UTF-8マニフェストを追加し、静的リンク、PNG入力、HTTP機能なしで構築します。最後のスクリプトは依存先がWindows標準DLLだけであることを検査し、認識データ、ライセンス、由来情報を内蔵アーカイブにまとめます。
+
+## 旧版の開発手順（参考）
+
 # Windows用ビルド手順
 
 この手順は開発用のmacOSまたはWindows環境で実行します。

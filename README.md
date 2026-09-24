@@ -1,10 +1,19 @@
-# Offline PDF Converter
+# Offline PDF Converter v3.2.0
 
 完全オフライン動作を前提にした、Windows x64向けのPDF/画像変換・PDF編集デスクトップアプリです。Python、Poppler、Adobe製品、外部変換サービスを使わず、発行済みの `.exe` をダブルクリックして利用できます。
 
-## ダウンロード
+## 変更しない基本原則
 
-Windows版とmacOS版は、[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から取得できます。配布ZIPとSHA-256チェックサムのみを掲載しています。
+- 実行時のインターネット接続・外部送信・追加ダウンロードを必要としません。
+- 利用者による別ソフト・ランタイムの追加インストールを必要としません。
+- Windows版は配布するexe一つだけで、OCRを含む機能を使える構成です。
+- 内部の部品展開は自動で行い、利用者にエンジンの場所を設定させません。
+
+v3.2.0はWindows 10（1903以降）／11のx64版とmacOS Apple Silicon版を配布します。Windows版は実行時にユーザーの一時フォルダへの書き込みが必要です。内蔵OCRの部品は初回使用時に展開します。.NETのネイティブ部品も内部で展開されるため、「配布するファイルが一つ」と「実行中にファイルを一切作らない」は異なります。
+
+Mac版アプリのPDF・画像処理は自己完結しています。OCRには別途インストール済みのTesseract 5が必要です。アプリに含まれる日本語・英語の認識データを利用します。Mac版はad-hoc署名で、Appleの公証は未実施です。
+
+詳細と確認範囲は [v3.2.0リリース内容](docs/RELEASE_DETAILS_v3.2.0.md) を参照してください。
 
 ## 技術構成の提案
 
@@ -15,9 +24,12 @@ Windows版とmacOS版は、[公式ダウンロードページ](https://kenthecre
 | UI | .NET 8 / C# / Avalonia UI | クロスプラットフォーム開発とWindows x64の自己完結 `.exe` 発行に向いている。WPF風のXAMLで保守しやすい。 |
 | PDF → 画像 | PDFtoImage + PDFium + SkiaSharp | Adobe非依存。PDFiumで各ページをレンダリングし、PNG/JPEGへ保存できる。 |
 | 画像 → PDF | PDFsharp | MITライセンス。JPEG/PNGをPDFページへ配置する用途に向いている。 |
+| テキスト出力 | PdfPig | PDFに埋め込まれた文字情報を、全文・ページ単位・選択範囲からTXTへ保存する。 |
 | 配布 | self-contained single-file publish | .NET Runtimeや外部DLLを別途入れずに起動できる。 |
 
 WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフォーム開発とWindows用単体exe発行の扱いやすさを重視してAvaloniaを選んでいます。MuPDF系はAGPLまたは商用ライセンスの検討が必要になりやすいため、この実装では採用していません。
+
+改良版の保存・再実行・出力プリセット・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Windows版はOCR本体・日本語／英語の認識データもexeに内蔵し、追加インストールや実行時のダウンロードは不要です。
 
 ## 主な機能
 
@@ -25,6 +37,8 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 普通 / 高画質 / 超高画質の画質選択
 - 複数ページPDF対応
 - 複数PDFの一括変換
+- `1,3,5-7` 形式で変換ページを指定
+- パスワード付きPDFの読込（追加時にパスワード入力ポップアップを表示）
 - JPEG / PNG画像を1つのPDFに結合
 - A4縦、A4横、画像サイズに合わせる
 - 余白あり/なし
@@ -32,6 +46,8 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 複数ページPDFを1ページずつ別PDFに分割
 - 複数ページPDFから指定ページを削除して新しいPDFを作成
 - 複数ページPDFから選択ページだけを元の順番で1つのPDFとして出力
+- PDFに埋め込まれた文字情報をTXTへ出力（全文、選択ページ、プレビュー上でドラッグした選択範囲）
+- 選択範囲は「コピー」またはWindowsの`Ctrl+C`／Macの`⌘C`でコピー
 - PDF編集時のページプレビュー表示
 - ページプレビューのアイコン/リスト表示切り替え
 - プレビュー上で削除ページをチェック選択
@@ -43,7 +59,7 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 図形の移動、リサイズ、回転、コピー/貼り付け
 - 図形の塗り潰し色、境界線の色、境界線の太さ、色なし設定
 - PDF編集プレビューの拡大/縮小、Ctrl+マウスホイール、トラックパッドのピンチ操作
-- ライトモード/ダークモード切り替え
+- 起動時にデバイスのライト／ダークモードを判別して自動適用（起動後は手動切り替え可能）
 - ドラッグ＆ドロップ
 - 進捗バー、完了メッセージ、分かりやすいエラー表示
 
@@ -67,14 +83,8 @@ offline-pdf-converter/
 
 ```bash
 dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj" \
-  -c Release \
-  -r win-x64 \
-  --self-contained true \
-  -p:PublishSingleFile=true \
-  -p:IncludeNativeLibrariesForSelfExtract=true \
-  -p:EnableCompressionInSingleFile=true \
-  -p:PublishTrimmed=false \
-  -o dist/win-x64-single-offline-pdf-converter
+  -p:PublishProfile=WindowsSingleFile \
+  -o artifacts/windows-v3.2.0
 ```
 
 出力先:

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OfflinePDFConverter.Views.MainWindow"
-        Title="Offline PDF Converter (v3.1.0)"
+        Title="Offline PDF Converter (v3.2.0)"
         Width="1120"
         Height="760"
         MinWidth="1040"
@@ -414,7 +414,7 @@
         <TextBlock FontSize="28"
                    HorizontalAlignment="Left"
                    TextAlignment="Left"
-                   Foreground="{DynamicResource TextStrongBrush}"><Run Text="Offline PDF Converter" FontWeight="Bold" /><Run Text=" (v3.1.0)" FontWeight="Normal" /></TextBlock>
+                   Foreground="{DynamicResource TextStrongBrush}"><Run Text="Offline PDF Converter" FontWeight="Bold" /><Run Text=" (v3.2.0)" FontWeight="Normal" /></TextBlock>
       </Viewbox>
 
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -646,8 +646,26 @@
               </Border>
 
               <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="label" Text="変換するページ" HorizontalAlignment="Center" />
+                  <TextBox x:Name="PdfPageRangeTextBox" Watermark="空欄ですべて／例: 1,3,5-7" />
+                  <TextBlock Text="PDFの先頭を1ページ目として指定します。"
+                             Foreground="{DynamicResource TextMutedBrush}"
+                             FontSize="12"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="9">
-                  <TextBlock Classes="label" Text="解像度" HorizontalAlignment="Center" />
+                  <TextBlock Classes="label" Text="用途と画質" HorizontalAlignment="Center" />
+                  <ComboBox x:Name="OutputPresetCombo" PlaceholderText="用途を選択" SelectionChanged="OnOutputPresetChanged">
+                    <ComboBoxItem Content="印刷向け（PNG・300 dpi）" />
+                    <ComboBoxItem Content="メール添付向け（JPEG・200 dpi）" />
+                    <ComboBoxItem Content="細部を残す（PNG・600 dpi）" />
+                  </ComboBox>
+                  <TextBlock Text="JPEG品質（数値が高いほど高画質）" TextWrapping="Wrap" />
+                  <NumericUpDown x:Name="JpegQualityInput" Minimum="1" Maximum="100" Value="95" Increment="5" />
                   <Border x:Name="PdfDpiSliderSwitch"
                           Width="212"
                           Height="32"
@@ -752,7 +770,7 @@
 
               <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                 <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" />
+                  <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" />
                   <TextBox x:Name="PdfOutputBaseNameTextBox" Watermark="例: output" />
                   <TextBlock Text="複数ページは _page001 を付けて保存します。"
                              Foreground="{DynamicResource TextMutedBrush}"
@@ -760,6 +778,7 @@
                              TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
+
             </StackPanel>
           </ScrollViewer>
         </Border>
@@ -858,7 +877,7 @@
                   <TextBlock Classes="label" Text="出力PDF" HorizontalAlignment="Center" />
                   <TextBox x:Name="ImageOutputPdfTextBox" Watermark="保存先とPDF名" />
                   <Button Classes="small-action" Content="選択" Click="OnSelectImageOutputPdfClick" />
-                  <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                  <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" Margin="0,8,0,0" />
                   <TextBox x:Name="ImageOutputBaseNameTextBox" Watermark="例: converted_images" />
                 </StackPanel>
               </Border>
@@ -1219,6 +1238,7 @@
                     <ComboBoxItem Content="選択ページを削除" />
                     <ComboBoxItem Content="選択ページのみ出力" />
                     <ComboBoxItem Content="文字・テキストを追加" />
+                    <ComboBoxItem Content="テキスト出力" />
                   </ComboBox>
                 </StackPanel>
               </Border>
@@ -1232,7 +1252,7 @@
                                HorizontalAlignment="Center" />
                     <TextBox x:Name="PdfToolOutputPdfTextBox" Watermark="保存先とPDF名" />
                     <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputPdfClick" />
-                    <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" Margin="0,8,0,0" />
                     <TextBox x:Name="PdfToolOutputPdfBaseNameTextBox" Watermark="例: output" />
                   </StackPanel>
                 </Border>
@@ -1244,7 +1264,7 @@
                     <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
                     <TextBox x:Name="PdfToolOutputFolderTextBox" Watermark="保存先フォルダ" />
                     <Button Classes="small-action" Content="選択" Click="OnSelectPdfToolOutputFolderClick" />
-                    <TextBlock Classes="label" Text="書き出しファイル名" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" Margin="0,8,0,0" />
                     <TextBox x:Name="PdfToolOutputBaseNameTextBox" Watermark="例: split" />
                     <TextBlock Text="分割PDFは _page001 を付けて保存します。"
                                Foreground="{DynamicResource TextMutedBrush}"
@@ -1283,6 +1303,23 @@
                   </StackPanel>
                 </Border>
               </StackPanel>
+
+              <StackPanel x:Name="PdfTextOutputPanel" IsVisible="False">
+                <Border Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="テキスト出力範囲" HorizontalAlignment="Center" />
+                    <Button x:Name="OfflineOcrButton" Content="スキャンPDFを文字認識（OCR）" Click="OnOfflineOcrClick" />
+                    <TextBlock Text="ページ全体を出力する場合は、プレビュー下の「ページ全体」にチェックします。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="ページ内の一部だけを出力する場合は、プレビュー画像を開き、文字の上をなぞります。何も選択しない場合は全文を出力します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </Border>
@@ -1291,6 +1328,7 @@
 
     <Grid Grid.Row="2" ColumnDefinitions="*,240" Margin="34,0,34,24" ColumnSpacing="22">
       <StackPanel Spacing="10" VerticalAlignment="Center">
+        <Button x:Name="CancelConversionButton" Content="処理を中止" IsVisible="False" Click="OnCancelConversionClick" />
         <ProgressBar x:Name="MainProgressBar"
                      Minimum="0"
                      Maximum="100"

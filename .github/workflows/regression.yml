@@ -1,0 +1,26 @@
+name: Regression tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  regression:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run PDF and file safety regression tests
+        run: dotnet run --project tests/RegressionTests -c Release
+      - name: Publish Windows standalone executable
+        if: runner.os == 'Windows'
+        run: dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PublishProfile=WindowsSingleFile -o artifacts/standalone
+      - name: Verify standalone OCR without installed dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/standalone/OfflinePDFConverter.exe

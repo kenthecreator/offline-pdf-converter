@@ -5,4 +5,7 @@ public sealed record PdfToImageRequest(
     string OutputFolder,
     string OutputBaseName,
     PdfImageFormat OutputFormat,
-    int Dpi);
+    int Dpi,
+    string PagesToConvert,
+    IReadOnlyDictionary<string, string> Passwords,
+    int JpegQuality = 95);

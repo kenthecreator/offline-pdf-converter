@@ -25,7 +25,10 @@ public sealed class ImageToPdfService : IImageToPdfService
     {
         Validate(request);
 
-        var outputDirectory = Path.GetDirectoryName(request.OutputPdfPath);
+        var outputPdfPath = FileNameHelper.IncludeSourceNamesInPath(
+            request.OutputPdfPath,
+            request.ImageFiles);
+        var outputDirectory = Path.GetDirectoryName(outputPdfPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
             Directory.CreateDirectory(outputDirectory);
@@ -35,7 +38,7 @@ public sealed class ImageToPdfService : IImageToPdfService
         var errors = new List<string>();
 
         using var document = new PdfDocument();
-        document.Info.Title = Path.GetFileNameWithoutExtension(request.OutputPdfPath);
+        document.Info.Title = Path.GetFileNameWithoutExtension(outputPdfPath);
         document.Info.Creator = "Offline PDF Converter";
 
         for (var i = 0; i < request.ImageFiles.Count; i++)
@@ -43,6 +46,7 @@ public sealed class ImageToPdfService : IImageToPdfService
             cancellationToken.ThrowIfCancellationRequested();
             var imagePath = request.ImageFiles[i];
 
+            var pageCountBefore = document.PageCount;
             try
             {
                 using var image = XImage.FromFile(imagePath);
@@ -64,6 +68,7 @@ public sealed class ImageToPdfService : IImageToPdfService
             }
             catch (Exception ex)
             {
+                while (document.PageCount > pageCountBefore) document.Pages.RemoveAt(document.PageCount - 1);
                 errors.Add($"{Path.GetFileName(imagePath)}: {FriendlyErrorFormatter.ToUserMessage(ex)}");
             }
         }
@@ -73,7 +78,7 @@ public sealed class ImageToPdfService : IImageToPdfService
             throw new ArgumentException("PDFに追加できる画像がありませんでした。");
         }
 
-        document.Save(request.OutputPdfPath);
+        AtomicFile.Write(outputPdfPath, path => document.Save(path), cancellationToken);
 
         return new ConversionResult(1, errors);
     }

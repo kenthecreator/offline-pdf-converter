@@ -6,6 +6,11 @@ public static class FriendlyErrorFormatter
 {
     public static string ToUserMessage(Exception exception)
     {
+        if (IsPasswordError(exception))
+        {
+            return "PDFのパスワードが必要か、入力したパスワードが正しくありません。";
+        }
+
         return exception switch
         {
             OperationCanceledException => "処理を中止しました。",
@@ -20,5 +25,20 @@ public static class FriendlyErrorFormatter
                 : exception.Message,
             _ => "変換できませんでした。ファイルが破損しているか、対応していない形式の可能性があります。"
         };
+    }
+
+    public static bool IsPasswordError(Exception exception)
+    {
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            if (current.Message.Contains("password", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("encrypted", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("パスワード", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

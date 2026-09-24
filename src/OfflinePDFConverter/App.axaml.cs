@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
+using Avalonia.Styling;
 using OfflinePDFConverter.Views;
 
 namespace OfflinePDFConverter;
@@ -16,7 +18,10 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var isSystemDarkTheme = PlatformSettings?.GetColorValues().ThemeVariant
+                                    == PlatformThemeVariant.Dark;
+            RequestedThemeVariant = isSystemDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            desktop.MainWindow = new MainWindow(isSystemDarkTheme);
         }
 
         base.OnFrameworkInitializationCompleted();

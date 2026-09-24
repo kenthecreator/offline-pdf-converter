@@ -4,7 +4,8 @@ public sealed record PdfSimpleEditRequest(
     IReadOnlyList<string> PdfFiles,
     IReadOnlyList<PdfTextEditItem> Edits,
     IReadOnlyList<PdfShapeEditItem> Shapes,
-    string OutputPdfPath);
+    string OutputPdfPath,
+    IReadOnlyDictionary<string, string> Passwords);
 
 public sealed record PdfTextEditItem(
     int PageNumber,

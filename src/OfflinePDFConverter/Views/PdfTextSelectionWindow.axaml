@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OfflinePDFConverter.Views.PdfTextSelectionWindow"
+        Title="PDFのテキストを選択"
+        Width="980"
+        Height="760"
+        MinWidth="720"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24" RowSpacing="16">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="20">
+      <StackPanel Spacing="5">
+      <TextBlock x:Name="TitleText" FontSize="21" FontWeight="SemiBold" />
+      <TextBlock Text="文字の上からドラッグして選択 · クリックで選択解除"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 TextWrapping="Wrap" />
+      <TextBlock x:Name="SelectionStatusText"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 TextWrapping="Wrap" />
+      <TextBlock x:Name="CopyShortcutText"
+                 Foreground="{DynamicResource TextMutedBrush}"
+                 FontSize="12" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+        <TextBlock x:Name="ZoomGestureHelpText"
+                   VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   FontSize="12" />
+        <TextBlock x:Name="ZoomValueText"
+                   Text="100%"
+                   Width="52"
+                   VerticalAlignment="Center"
+                   TextAlignment="Center" />
+        <Button Content="100%"
+                ToolTip.Tip="実寸へ戻す"
+                Click="OnResetZoomClick" />
+      </StackPanel>
+    </Grid>
+
+    <Border Grid.Row="1"
+            Background="#E9EDF2"
+            BorderBrush="{DynamicResource CardBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="16">
+      <ScrollViewer x:Name="PreviewScrollViewer"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Auto"
+                    PointerWheelChanged="OnPreviewPointerWheelChanged">
+        <ScrollViewer.GestureRecognizers>
+          <PinchGestureRecognizer />
+        </ScrollViewer.GestureRecognizers>
+        <LayoutTransformControl x:Name="PageZoomTransform"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top">
+          <Canvas x:Name="PageCanvas" Background="White" />
+        </LayoutTransformControl>
+      </ScrollViewer>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="すべて選択" Click="OnSelectAllClick" />
+        <Button Content="選択を解除" Click="OnClearClick" />
+        <Button Content="コピー" Click="OnCopyClick" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="キャンセル" Click="OnCancelClick" />
+        <Button Content="TXTに反映" Click="OnConfirmClick" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

@@ -59,7 +59,9 @@ public sealed class PdfDocumentService : IPdfDocumentService
             throw new ArgumentException("結合するPDFを2つ以上選択してください。");
         }
 
-        var outputPath = EnsurePdfExtension(request.OutputPdfPath);
+        var outputPath = FileNameHelper.IncludeSourceNamesInPath(
+            EnsurePdfExtension(request.OutputPdfPath),
+            request.PdfFiles);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
             throw new ArgumentException("結合後のPDF名と保存先を指定してください。");
@@ -72,13 +74,13 @@ public sealed class PdfDocumentService : IPdfDocumentService
         output.Info.Title = Path.GetFileNameWithoutExtension(outputPath);
         output.Info.Creator = "Offline PDF Converter";
 
-        var totalPages = request.PdfFiles.Sum(GetPageCount);
+        var totalPages = request.PdfFiles.Sum(path => GetPageCount(path, GetPassword(request.Passwords, path)));
         var completed = 0;
 
         foreach (var pdfPath in request.PdfFiles)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            using var input = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+            using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
             for (var pageIndex = 0; pageIndex < input.PageCount; pageIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -91,7 +93,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
             }
         }
 
-        output.Save(outputPath);
+        AtomicFile.Write(outputPath, path => output.Save(path), cancellationToken);
         return new ConversionResult(1, Array.Empty<string>());
     }
 
@@ -108,7 +110,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
         Directory.CreateDirectory(request.OutputFolder);
 
-        var totalPages = request.PdfFiles.Sum(GetPageCount);
+        var totalPages = request.PdfFiles.Sum(path => GetPageCount(path, GetPassword(request.Passwords, path)));
         var completed = 0;
         var createdFiles = 0;
         var errors = new List<string>();
@@ -120,7 +122,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
             try
             {
-                using var input = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+                using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
                 var digits = Math.Max(3, input.PageCount.ToString().Length);
                 var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
 
@@ -134,7 +136,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
                     var pageNumber = (pageIndex + 1).ToString($"D{digits}");
                     var desiredPath = Path.Combine(request.OutputFolder, $"{baseName}_page{pageNumber}.pdf");
-                    output.Save(FileNameHelper.GetUniquePath(desiredPath));
+                    AtomicFile.Write(FileNameHelper.GetUniquePath(desiredPath), path => output.Save(path), cancellationToken);
 
                     completed++;
                     createdFiles++;
@@ -173,7 +175,9 @@ public sealed class PdfDocumentService : IPdfDocumentService
             throw new ArgumentException("ページ削除ではPDFを1つだけ選択してください。");
         }
 
-        var outputPath = EnsurePdfExtension(request.OutputPdfPath);
+        var outputPath = FileNameHelper.IncludeSourceNamesInPath(
+            EnsurePdfExtension(request.OutputPdfPath),
+            request.PdfFiles);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
             throw new ArgumentException("ページ削除後のPDF名と保存先を指定してください。");
@@ -183,7 +187,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
         CreateOutputDirectory(outputPath);
 
         var pdfPath = request.PdfFiles[0];
-        using var input = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+        using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
         var pagesToDelete = PageRangeParser.Parse(request.PagesToDelete, input.PageCount);
 
         if (pagesToDelete.Count == 0)
@@ -217,7 +221,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
                 $"{pageNumber}/{input.PageCount}ページを確認しました"));
         }
 
-        output.Save(outputPath);
+        AtomicFile.Write(outputPath, path => output.Save(path), cancellationToken);
         return new ConversionResult(1, Array.Empty<string>());
     }
 
@@ -232,7 +236,9 @@ public sealed class PdfDocumentService : IPdfDocumentService
             throw new ArgumentException("ページ抽出ではPDFを1つだけ選択してください。");
         }
 
-        var outputPath = EnsurePdfExtension(request.OutputPdfPath);
+        var outputPath = FileNameHelper.IncludeSourceNamesInPath(
+            EnsurePdfExtension(request.OutputPdfPath),
+            request.PdfFiles);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
             throw new ArgumentException("選択ページの出力PDF名と保存先を指定してください。");
@@ -242,7 +248,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
         CreateOutputDirectory(outputPath);
 
         var pdfPath = request.PdfFiles[0];
-        using var input = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+        using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
         var pagesToExtract = PageRangeParser.Parse(
             request.PagesToExtract,
             input.PageCount,
@@ -269,7 +275,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
                 $"{pageNumber}ページ目を出力PDFへ追加しました"));
         }
 
-        output.Save(outputPath);
+        AtomicFile.Write(outputPath, path => output.Save(path), cancellationToken);
         return new ConversionResult(1, Array.Empty<string>());
     }
 
@@ -284,7 +290,9 @@ public sealed class PdfDocumentService : IPdfDocumentService
             throw new ArgumentException("文字・テキスト追加ではPDFを1つだけ選択してください。");
         }
 
-        var outputPath = EnsurePdfExtension(request.OutputPdfPath);
+        var outputPath = FileNameHelper.IncludeSourceNamesInPath(
+            EnsurePdfExtension(request.OutputPdfPath),
+            request.PdfFiles);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
             throw new ArgumentException("編集後のPDF名と保存先を指定してください。");
@@ -342,7 +350,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
         }
 
         var pdfPath = request.PdfFiles[0];
-        using var document = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Modify);
+        using var document = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Modify);
         var maxPage = request.Edits
             .Select(edit => edit.PageNumber)
             .Concat(request.Shapes.Select(shape => shape.PageNumber))
@@ -434,7 +442,7 @@ public sealed class PdfDocumentService : IPdfDocumentService
                 $"{pageNumber}/{document.PageCount}ページを確認しました"));
         }
 
-        document.Save(outputPath);
+        AtomicFile.Write(outputPath, path => document.Save(path), cancellationToken);
         return new ConversionResult(1, Array.Empty<string>());
     }
 
@@ -543,17 +551,27 @@ public sealed class PdfDocumentService : IPdfDocumentService
             || string.Equals(colorHex?.Trim(), "なし", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static int GetPageCount(string pdfPath)
+    private static int GetPageCount(string pdfPath, string password)
     {
-        using var document = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import);
+        using var document = OpenPdf(pdfPath, password, PdfDocumentOpenMode.Import);
         return document.PageCount;
+    }
+
+    private static PdfDocument OpenPdf(string pdfPath, string password, PdfDocumentOpenMode mode)
+    {
+        return string.IsNullOrEmpty(password)
+            ? PdfReader.Open(pdfPath, mode)
+            : PdfReader.Open(pdfPath, password, mode);
+    }
+
+    private static string GetPassword(IReadOnlyDictionary<string, string> passwords, string pdfPath)
+    {
+        return passwords.TryGetValue(pdfPath, out var password) ? password : string.Empty;
     }
 
     private static string GetOutputBaseName(string requestedBaseName, string pdfPath, int pdfCount, int pdfIndex)
     {
-        var baseName = string.IsNullOrWhiteSpace(requestedBaseName)
-            ? FileNameHelper.SafeBaseName(pdfPath)
-            : FileNameHelper.SafeBaseName(requestedBaseName);
+        var baseName = FileNameHelper.BuildOutputBaseName([pdfPath], requestedBaseName);
 
         return pdfCount <= 1 ? baseName : $"{baseName}_pdf{pdfIndex + 1:D3}";
     }

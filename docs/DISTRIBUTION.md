@@ -1,3 +1,11 @@
+# v3.2.0の配布
+
+Windows版は `Offline PDF Converter-v3.2.0-Windows-x64.exe` の一つを利用者へ渡します。OCRを含め、追加ソフト、.NETランタイム、認識データの別配布・インストールは不要です。実行時の部品展開は自動です。マニュアル・検証記録・ハッシュ値は補足資料であり、アプリの動作には必要ありません。
+
+本版の配布対象はWindows 10（1903以降）／11 x64とmacOS Apple Siliconです。Windows実機の検証結果についてはリリース内容を確認してください。Mac版のOCRには別途Tesseract 5が必要です。
+
+以下は旧版を含む配布手順の参考です。
+
 # 配布ファイル構成
 
 ## 通常構成
@@ -44,11 +52,11 @@ macOS版のアイコンは、`.app/Contents/Resources/AppIcon.icns` を配置し
 配布前は、不要な拡張属性を除去してからアプリ全体を署名し、厳格な検証を行います。
 
 ```bash
-xattr -cr "Offline PDF Converter (v3.1.0).app"
+xattr -cr "Offline PDF Converter (v3.2.0).app"
 codesign --force --deep --sign - --timestamp=none \
-  "Offline PDF Converter (v3.1.0).app"
+  "Offline PDF Converter (v3.2.0).app"
 codesign --verify --deep --strict \
-  "Offline PDF Converter (v3.1.0).app"
+  "Offline PDF Converter (v3.2.0).app"
 ```
 
 上記の `-` はad-hoc署名です。署名整合性は確認できますが、初回起動時の
