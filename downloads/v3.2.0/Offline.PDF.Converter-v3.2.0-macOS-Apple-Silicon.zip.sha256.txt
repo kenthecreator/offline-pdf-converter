@@ -1,1 +1,1 @@
-6b10447b44229a2e6fa0611d716a290f113d2b3a8054228ff11b81c33c43a26d  Offline.PDF.Converter-v3.2.0-macOS-Apple-Silicon.zip
+4ec8acd5c0419556f99eea8ac2f43fe5206373d099646dc0fe0e6fd1dfc5df51  Offline.PDF.Converter-v3.2.0-macOS-Apple-Silicon.zip
