@@ -6,6 +6,5 @@ public enum PdfToolOperation
     Split,
     DeletePages,
     ExtractPages,
-    SimpleEdit,
-    ExtractText
+    SimpleEdit
 }

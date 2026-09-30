@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Offline PDF Converter (v4.0) 体験マニュアル</title>
+  <style>
+    :root {
+      --ink: #191919;
+      --muted: #6c6c6c;
+      --line: rgba(18, 18, 18, .13);
+      --paper: rgba(255, 255, 255, .76);
+      --card: rgba(255, 255, 255, .72);
+      --accent: #282828;
+      --accent-ink: #fff;
+      --guide: #397a68;
+      --guide-soft: #e5f3ee;
+      --shadow: 0 24px 70px rgba(20, 20, 20, .12);
+      --radius: 26px;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { min-width: 320px; max-width: 100%; overflow-x: clip; background: #efefed; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      max-width: 100%;
+      overflow-x: clip;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+      background:
+        radial-gradient(circle at 8% 10%, rgba(255,255,255,.92), transparent 34%),
+        radial-gradient(circle at 94% 84%, rgba(187,209,201,.48), transparent 35%),
+        #efefed;
+    }
+
+    button, select, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 3px solid rgba(57,122,104,.35);
+      outline-offset: 2px;
+    }
+
+    .shell { width: 100%; max-width: 1560px; margin: 0 auto; padding: 24px; overflow-x: clip; }
+    .masthead {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark {
+      width: 46px; height: 46px; display: grid; place-items: center;
+      border: 1px solid var(--line); border-radius: 14px; background: white;
+      box-shadow: 0 8px 24px rgba(0,0,0,.07); font-size: 22px; font-weight: 800;
+    }
+    .brand h1 { margin: 0; font-size: clamp(18px, 2.2vw, 28px); letter-spacing: -.02em; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .offline-badge {
+      display: inline-flex; gap: 7px; align-items: center; white-space: nowrap;
+      padding: 9px 13px; border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.62); color: #555; font-size: 12px; font-weight: 700;
+    }
+    .offline-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--guide); }
+
+    .lesson-strip {
+      display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; align-items: center;
+      gap: 12px; padding: 12px 14px; margin-bottom: 18px;
+      background: rgba(255,255,255,.62); border: 1px solid var(--line); border-radius: 18px;
+      backdrop-filter: blur(18px);
+    }
+    .lesson-select {
+      width: 100%; min-height: 42px; border: 0; border-radius: 12px; padding: 0 38px 0 13px;
+      color: var(--ink); background: rgba(255,255,255,.82); font-weight: 700;
+    }
+    .lesson-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .quiet-btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,.65); border-radius: 999px;
+      padding: 9px 14px; cursor: pointer; font-weight: 700;
+    }
+    .quiet-btn:hover { background: white; }
+
+    .workspace {
+      display: grid;
+      width: 100%;
+      min-width: 0;
+      grid-template-columns: 350px minmax(680px, 1fr);
+      grid-template-areas: "assistant stage";
+      gap: 18px;
+      align-items: start;
+    }
+    .stage {
+      grid-area: stage;
+      min-width: 0; padding: 14px; border: 1px solid rgba(0,0,0,.1); border-radius: 34px;
+      background: rgba(213,213,211,.66); box-shadow: var(--shadow); overflow: hidden;
+    }
+
+    .app-window {
+      --app-bg: rgba(247,247,247,.97);
+      --app-panel: rgba(255,255,255,.8);
+      --app-card: rgba(244,244,244,.88);
+      --app-ink: #202020;
+      --app-muted: #6c6c6c;
+      --app-line: rgba(40,40,40,.17);
+      min-height: 700px; border: 1px solid rgba(0,0,0,.14); border-radius: 24px;
+      color: var(--app-ink); background: var(--app-bg); overflow: hidden;
+      box-shadow: inset 0 1px rgba(255,255,255,.7), 0 18px 42px rgba(0,0,0,.12);
+      transition: color .25s, background .25s;
+    }
+    .app-window.dark {
+      --app-bg: rgba(31,31,32,.98); --app-panel: rgba(48,48,49,.92); --app-card: rgba(61,61,63,.92);
+      --app-ink: #f2f2f2; --app-muted: #b3b3b3; --app-line: rgba(255,255,255,.16);
+    }
+    .titlebar {
+      height: 38px; display: flex; align-items: center; padding: 0 16px;
+      border-bottom: 1px solid var(--app-line); color: var(--app-muted); font-size: 12px;
+    }
+    .window-dots { display: flex; gap: 6px; margin-right: 13px; }
+    .window-dots i { width: 9px; height: 9px; background: #bbb; border-radius: 50%; }
+    .app-body { padding: 18px 22px 16px; }
+    .app-head {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; margin-bottom: 17px;
+    }
+    .app-title { font-weight: 800; font-size: 15px; }
+    .segmented {
+      --pill-x: 0%;
+      display: flex; position: relative; isolation: isolate; overflow: hidden;
+      background: rgba(100,100,100,.1); border-radius: 999px; padding: 2px;
+      touch-action: pan-y; user-select: none;
+    }
+    .segmented::before {
+      content: ""; position: absolute; z-index: 0; left: 2px; top: 2px; bottom: 2px;
+      width: calc(50% - 2px); border: 1px solid rgba(0,0,0,.06); border-radius: 999px;
+      background: var(--app-panel); box-shadow: 0 2px 8px rgba(0,0,0,.09);
+      transform: translateX(var(--pill-x));
+      transition: transform .5s cubic-bezier(.18,.89,.22,1.04), background .25s ease;
+    }
+    .segmented.select-second { --pill-x: 100%; }
+    .segmented.dragging::before { transition: background .25s ease; }
+    .segmented button {
+      position: relative; z-index: 1;
+      min-width: 154px; min-height: 48px; padding: 0 20px; border: 0; border-radius: 999px;
+      color: var(--app-muted); background: transparent; cursor: pointer; font-weight: 700; font-size: 17px;
+      transition: color .15s cubic-bezier(.4,0,.2,1), transform .16s ease;
+    }
+    .segmented button:hover { color: var(--app-ink); }
+    .segmented button:active { transform: scale(.97); }
+    .segmented button.active { color: var(--app-ink); }
+    .theme-btn {
+      justify-self: end; width: 68px; height: 32px; border: 0; border-radius: 999px;
+      background: rgba(100,100,100,.1); cursor: pointer; position: relative;
+    }
+    .theme-btn span { position: absolute; top: 2px; left: 2px; width: 36px; height: 28px; display: grid; place-items: center; border-radius: 999px; background: var(--app-panel); box-shadow: 0 1px 6px rgba(0,0,0,.08); transition: transform .5s cubic-bezier(.18,.89,.22,1.04), background .25s, color .25s; }
+    .dark .theme-btn span { transform: translateX(28px); }
+    .theme-btn:active span { scale: .92; }
+
+    .direction-wrap { display: flex; justify-content: center; margin: -4px 0 12px; }
+    .direction-wrap .segmented button { min-width: 112px; min-height: 36px; font-size: 13px; }
+    .app-grid { display: grid; grid-template-columns: minmax(0,1fr) 220px; gap: 16px; }
+    .panel {
+      border: 1px solid var(--app-line); border-radius: 22px; background: var(--app-panel); padding: 17px;
+    }
+    .file-card {
+      height: 475px; padding: 14px; border: 1px solid var(--app-line); border-radius: 17px;
+      background: var(--app-card); display: flex; flex-direction: column; overflow: hidden;
+    }
+    .file-card.tools { height: 475px; }
+    .file-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .file-head h2 { margin: 0; font-size: 18px; }
+    .button-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .app-btn {
+      position: relative; overflow: hidden;
+      border: 1px solid var(--app-line); background: var(--app-panel); color: var(--app-ink);
+      border-radius: 999px; min-height: 34px; padding: 0 12px; cursor: pointer; font-weight: 700; font-size: 12px;
+      transition: transform .19s cubic-bezier(.16,.84,.32,1), background .19s, border-color .19s, box-shadow .19s;
+    }
+    .app-btn:hover { transform: translateY(-1px); filter: brightness(.98); box-shadow: 0 5px 12px rgba(0,0,0,.08); }
+    .app-btn:active { transform: translateY(1px) scale(.97); box-shadow: none; }
+    .file-list {
+      flex: 1; min-height: 120px; margin-top: 12px; border: 1px solid var(--app-line); border-radius: 13px;
+      background: var(--app-panel); overflow: auto; position: relative;
+    }
+    .empty {
+      position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+      padding: 20px; color: var(--app-muted); font-size: 13px; font-weight: 700;
+    }
+    .file-item { padding: 10px 12px; border-bottom: 1px solid var(--app-line); animation: itemArrive .42s cubic-bezier(.16,.84,.32,1) both; }
+    .file-item strong { display: block; font-size: 13px; }
+    .file-item small { color: var(--app-muted); }
+    .preview-head { display: flex; align-items: end; justify-content: space-between; margin: 13px 0 8px; }
+    .preview-head strong { font-size: 14px; }
+    .preview-head small { display: block; color: var(--app-muted); margin-top: 2px; }
+    .view-toggle { --preview-pill: 0%; display: flex; position: relative; isolation: isolate; gap: 2px; background: rgba(100,100,100,.1); border-radius: 999px; padding: 2px; overflow: hidden; }
+    .view-toggle::before { content: ""; position: absolute; z-index: 0; inset: 2px auto 2px 2px; width: calc(50% - 3px); border-radius: 999px; background: var(--app-panel); box-shadow: 0 1px 5px rgba(0,0,0,.08); transform: translateX(var(--preview-pill)); transition: transform .5s cubic-bezier(.18,.89,.22,1.04); }
+    .view-toggle.list-view { --preview-pill: calc(100% + 2px); }
+    .view-toggle button { position: relative; z-index: 1; border: 0; padding: 5px 10px; border-radius: 999px; background: transparent; color: var(--app-muted); font-size: 10px; cursor: pointer; transition: color .15s, transform .15s; }
+    .view-toggle button:active { transform: scale(.95); }
+    .view-toggle button.active { color: var(--app-ink); }
+    .previews { height: 190px; border: 1px solid var(--app-line); border-radius: 13px; padding: 9px; display: flex; gap: 8px; overflow: auto; background: var(--app-panel); }
+    .page-card { flex: 0 0 100px; border: 1px solid var(--app-line); border-radius: 9px; padding: 6px; cursor: pointer; position: relative; animation: pageArrive .48s cubic-bezier(.16,.84,.32,1) both; transition: transform .2s, border-color .2s, box-shadow .2s; }
+    .page-card:nth-child(2) { animation-delay: .05s; }
+    .page-card:nth-child(3) { animation-delay: .1s; }
+    .page-card:nth-child(4) { animation-delay: .15s; }
+    .page-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,.09); }
+    .page-paper { height: 112px; padding: 10px; background: white; border: 1px solid #ddd; color: #777; }
+    .page-paper i { display: block; height: 3px; background: #ddd; margin-bottom: 7px; border-radius: 2px; }
+    .page-card label { display: flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 10px; }
+    .page-card.selected { border-color: var(--guide); box-shadow: 0 0 0 2px rgba(57,122,104,.18); transform: translateY(-2px) scale(.985); }
+
+    .settings { display: flex; flex-direction: column; gap: 9px; }
+    .settings h2 { margin: 0 0 1px; text-align: center; font-size: 18px; }
+    .setting { padding: 9px; border: 1px solid var(--app-line); border-radius: 13px; background: var(--app-card); transition: transform .22s, border-color .22s, background .25s, opacity .25s; }
+    .setting:hover { transform: translateY(-1px); border-color: rgba(57,122,104,.35); }
+    .setting.just-set { animation: settingConfirmed .55s cubic-bezier(.16,.84,.32,1); }
+    .setting label { display: block; margin-bottom: 6px; text-align: center; font-weight: 700; font-size: 12px; }
+    .setting select, .setting input {
+      width: 100%; height: 36px; padding: 0 9px; border: 1px solid var(--app-line); border-radius: 9px;
+      color: var(--app-ink); background: var(--app-panel); font-size: 12px;
+    }
+    .setting .app-btn { width: 100%; margin-top: 6px; }
+    .resolution { display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; }
+    .resolution button { border: 0; border-radius: 8px; padding: 7px 2px; background: transparent; color: var(--app-muted); font-size: 10px; cursor: pointer; transition: background .3s cubic-bezier(.23,1,.32,1), color .2s, transform .18s; }
+    .resolution button:active { transform: scale(.92); }
+    .resolution button.active { background: var(--accent); color: white; transform: scale(1.03); }
+    .setting-note { display: block; margin-top: 5px; color: var(--app-muted); font-size: 10px; line-height: 1.35; }
+    .app-footer { display: grid; grid-template-columns: 1fr 220px; gap: 16px; align-items: center; margin-top: 13px; }
+    .progress-track { height: 18px; border-radius: 999px; overflow: hidden; background: rgba(100,100,100,.13); }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--guide); transition: width 1s ease; }
+    .start-btn { position: relative; overflow: hidden; min-height: 50px; border: 0; border-radius: 999px; color: white; background: var(--accent); font-size: 18px; font-weight: 800; cursor: pointer; transition: transform .19s cubic-bezier(.16,.84,.32,1), box-shadow .19s, filter .19s; }
+    .start-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.18); filter: brightness(1.08); }
+    .start-btn:active { transform: translateY(1px) scale(.975); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    .start-btn.running { pointer-events: none; animation: workingPulse 1.1s ease-in-out infinite; }
+    .status { margin-top: 5px; min-height: 17px; color: var(--app-muted); font-size: 11px; }
+
+    .assistant {
+      grid-area: assistant;
+      position: sticky; top: 18px; border: 1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.82); box-shadow: 0 18px 52px rgba(0,0,0,.1); overflow: hidden;
+      backdrop-filter: blur(22px);
+    }
+    .assistant-top { padding: 21px 21px 18px; color: white; background: #263e37; }
+    .guide-person { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 43px; height: 43px; display: grid; place-items: center; border-radius: 14px; background: #f2cbb7; color: #54392c; font-weight: 900; }
+    .guide-person strong { display: block; }
+    .guide-person small { color: rgba(255,255,255,.72); }
+    .lesson-progress { margin-top: 18px; }
+    .progress-copy { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.76); }
+    .guide-track { height: 5px; margin-top: 7px; background: rgba(255,255,255,.18); border-radius: 999px; overflow: hidden; }
+    .guide-fill { height: 100%; width: 0; background: #b7e2d3; border-radius: inherit; transition: width .35s; }
+    .assistant-body { padding: 21px; }
+    .step-kicker { color: var(--guide); font-size: 11px; font-weight: 900; letter-spacing: .09em; }
+    .assistant h2 { margin: 7px 0 10px; font-size: 21px; letter-spacing: -.02em; }
+    #lessonContent.guide-arrive > :not(.privacy-note):not(.assistant-actions) { animation: guideArrive .38s cubic-bezier(.16,.84,.32,1) both; }
+    .assistant p { min-height: 92px; margin: 0; color: #555; font-size: 14px; line-height: 1.75; }
+    .privacy-note { display: flex; gap: 8px; margin: 15px 0; padding: 11px; border-radius: 12px; background: var(--guide-soft); color: #305b4e; font-size: 11px; line-height: 1.5; }
+    .assistant-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .guide-btn { min-height: 42px; border-radius: 999px; cursor: pointer; font-weight: 800; border: 1px solid var(--line); background: white; }
+    .guide-btn.primary { border-color: #263e37; color: white; background: #263e37; }
+    .completion { display: none; text-align: center; padding: 12px 0 2px; }
+    .completion.show { display: block; animation: completionArrive .58s cubic-bezier(.18,.89,.22,1.04) both; }
+    .completion .check { width: 62px; height: 62px; display: grid; place-items: center; margin: 0 auto 12px; border-radius: 50%; color: white; background: var(--guide); font-size: 28px; }
+    .completion h2 { margin: 0 0 8px; }
+    .completion p { min-height: 0; }
+
+    .coach-target { position: relative; z-index: 2; animation: coachPulse 1.45s ease-in-out infinite; }
+    .ink-ripple { position: absolute; z-index: 8; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: currentColor; opacity: .18; pointer-events: none; animation: ripple .58s ease-out forwards; }
+    .app-grid.swap-in > * { animation: panelSwap .46s cubic-bezier(.16,.84,.32,1) both; }
+    .app-grid.swap-in > *:last-child { animation-delay: .04s; }
+    .previews.list-layout { display: block; }
+    .previews.list-layout .page-card { display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 10px; width: 100%; min-height: 66px; margin-bottom: 6px; }
+    .previews.list-layout .page-paper { height: 48px; padding: 5px; }
+    .previews.list-layout .page-card label { margin: 0; font-size: 11px; }
+    @keyframes ripple { to { transform: scale(26); opacity: 0; } }
+    @keyframes itemArrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes pageArrive { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+    @keyframes panelSwap { from { opacity: 0; transform: translateY(9px) scale(.992); } to { opacity: 1; transform: none; } }
+    @keyframes settingConfirmed { 0% { box-shadow: 0 0 0 0 rgba(57,122,104,0); } 42% { box-shadow: 0 0 0 4px rgba(57,122,104,.18); border-color: var(--guide); } 100% { box-shadow: none; } }
+    @keyframes guideArrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+    @keyframes completionArrive { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+    @keyframes workingPulse { 50% { filter: brightness(1.22); box-shadow: 0 0 0 7px rgba(57,122,104,.12); } }
+    @keyframes coachPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(57,122,104,.0), 0 0 0 2px rgba(57,122,104,.48); }
+      50% { box-shadow: 0 0 0 9px rgba(57,122,104,.16), 0 0 0 2px rgba(57,122,104,.8); }
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 20; transform: translate(-50%, 20px);
+      padding: 11px 16px; border-radius: 999px; color: white; background: #263e37;
+      font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: .25s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .mobile-note { display: none; }
+
+    /* v3.1.0 fidelity pass — dimensions and materials mirror MainWindow.axaml. */
+    .stage {
+      position: relative;
+      contain: inline-size layout paint;
+      padding: 10px;
+      border-radius: 20px;
+      background: #d9d9d9;
+      overflow: clip;
+      box-shadow: 0 24px 70px rgba(20,20,20,.14);
+    }
+    .app-window {
+      --app-bg: #f2f2f2;
+      --app-panel: rgba(255,255,255,.847);
+      --app-card: rgba(247,247,247,.894);
+      --app-field: rgba(255,255,255,.937);
+      --app-ink: #202020;
+      --app-strong: #141414;
+      --app-muted: #606060;
+      --app-subtle: #7a7a7a;
+      --app-line: rgba(153,153,153,.4);
+      width: 1120px;
+      min-width: 1120px;
+      height: 760px;
+      min-height: 760px;
+      border: 0;
+      border-radius: 11px;
+      background: var(--app-bg);
+      box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 10px 30px rgba(0,0,0,.14);
+      transform-origin: top left;
+      will-change: transform;
+    }
+    .app-window.dark {
+      --app-bg: #191919;
+      --app-panel: rgba(32,32,32,.337);
+      --app-card: rgba(40,40,40,.4);
+      --app-field: rgba(45,45,45,.95);
+      --app-ink: #f2f2f2;
+      --app-strong: #f6f6f6;
+      --app-muted: #b9b9b9;
+      --app-subtle: #929292;
+      --app-line: rgba(255,255,255,.19);
+    }
+    .titlebar {
+      height: 31px;
+      padding: 0 11px;
+      border-bottom: 0;
+      color: #a0a0a0;
+      background: rgba(255,255,255,.74);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .dark .titlebar { background: rgba(31,31,31,.88); color: #777; }
+    .window-dots { gap: 7px; margin-right: 10px; }
+    .window-dots i { width: 12px; height: 12px; background: #d8d8d8; }
+    .dark .window-dots i { background: #4c4c4c; }
+    .app-body { padding: 24px 34px 14px; }
+    .app-head {
+      display: grid;
+      grid-template-columns: minmax(380px,1fr) 436px 82px;
+      gap: 14px;
+      min-height: 70px;
+      margin: 0 0 12px;
+    }
+    .app-branding { display: flex; min-width: 0; align-items: center; gap: 16px; }
+    #appHeaderIcon { width: 70px; height: 70px; flex: 0 0 70px; object-fit: contain; }
+    .app-title { min-width: 0; color: var(--app-strong); font-size: 28px; font-weight: 400; white-space: nowrap; letter-spacing: -.035em; }
+    .app-title strong { font-weight: 750; }
+    #modeSelector { width: 436px; height: 68px; padding: 0 2px; align-self: center; }
+    #modeSelector::before {
+      left: -.5px; top: -.5px; bottom: auto; width: 225px; height: 69px;
+      border-color: rgba(0,0,0,.1); box-shadow: 0 1px 6px rgba(0,0,0,.05);
+    }
+    #modeSelector.select-second { --pill-x: 211px; }
+    #modeSelector button { width: 216px; min-width: 216px; height: 68px; min-height: 68px; padding: 10px 22px; font-size: 23px; font-weight: 500; }
+    .theme-btn { width: 82px; height: 36px; padding: 0; align-self: center; }
+    .theme-btn span { width: 50px; height: 37px; top: -.5px; left: -.5px; font-size: 16px; }
+    .dark .theme-btn span { transform: translateX(32px); }
+    .direction-wrap { height: 0; margin: 0; position: relative; z-index: 5; }
+    #directionSelector { position: absolute; top: 20px; left: calc((100% - 262px) / 2 - 131px); width: 270px; height: 46px; padding: 0 2px; }
+    #directionSelector::before { left: -.5px; top: -.5px; bottom: auto; width: 142px; height: 47px; }
+    #directionSelector.select-second { --pill-x: 128px; }
+    #directionSelector button { width: 133px; min-width: 133px; height: 46px; min-height: 46px; padding: 7px 12px; font-size: 14px; font-weight: 500; }
+    .app-grid { grid-template-columns: minmax(0,1fr) 240px; gap: 22px; height: 531px; min-height: 531px; max-height: 531px; overflow: hidden; }
+    .panel { min-width: 0; height: 531px; min-height: 0; padding: 22px; border-radius: 28px; border-color: var(--app-line); background: var(--app-panel); overflow: hidden; }
+    .panel.settings {
+      height: 531px;
+      padding: 16px;
+      gap: 14px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(120,120,120,.34) transparent;
+    }
+    .panel.settings::-webkit-scrollbar { width: 7px; }
+    .panel.settings::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(120,120,120,.34); }
+    .panel.settings::-webkit-scrollbar-track { background: transparent; }
+    .file-card { height: calc(100% - 54px); min-height: 0; margin-top: 54px; padding: 16px; border-radius: 22px; border-color: rgba(143,143,143,.33); background: var(--app-card); }
+    .file-card.tools { height: 100%; min-height: 487px; margin-top: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+    .file-head { min-height: 42px; align-items: start; }
+    .file-head h2 { margin: 0; color: var(--app-ink); font-size: 20px; line-height: 1.2; font-weight: 750; }
+    .file-card.tools .file-head h2 { font-size: 22px; }
+    #fileHelp { display: none; margin: 4px 0 0; color: var(--app-muted); font-size: 14px; line-height: 1.35; }
+    .file-card.tools #fileHelp { display: block; }
+    .button-row { gap: 8px; }
+    .app-btn { min-height: 40px; padding: 8px 13px; border-color: rgba(137,137,137,.4); background: rgba(237,237,237,.87); font-size: 14px; font-weight: 650; }
+    .dark .app-btn { background: rgba(48,48,48,.85); }
+    .file-list { min-height: 0; margin-top: 12px; border-radius: 15px; border-color: rgba(143,143,143,.36); background: rgba(255,255,255,.3); }
+    .file-card.tools .file-list { flex: 0 0 116px; }
+    .empty { color: var(--app-subtle); font-size: 15px; font-weight: 650; }
+    .order-buttons { display: none; gap: 8px; margin-top: 12px; }
+    .file-card.tools .order-buttons { display: flex; }
+    .order-buttons.show { display: flex; }
+    .preview-head { align-items: end; margin: 18px 0 12px; }
+    .preview-head strong { font-size: 18px; }
+    .preview-head small { margin-top: 3px; font-size: 12px; }
+    .view-toggle { width: 164px; height: 38px; padding: 0 2px; }
+    .view-toggle::before { left: -.5px; top: -.5px; bottom: auto; width: 89px; height: 39px; }
+    .view-toggle.list-view { --preview-pill: 75px; }
+    .view-toggle button { width: 80px; padding: 6px 10px; font-size: 14px; font-weight: 500; }
+    .previews { height: 162px; padding: 8px; border-radius: 18px; border-color: rgba(143,143,143,.33); background: var(--app-card); }
+    .page-card { flex-basis: 112px; border-radius: 12px; background: var(--app-card); }
+    .page-paper { height: 110px; }
+    .settings h2 { margin: 4px 0 3px; color: var(--app-ink); font-size: 22px; font-weight: 750; }
+    .setting { padding: 10px; border-radius: 14px; border-color: rgba(143,143,143,.33); background: var(--app-card); }
+    .setting label { margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+    .setting select, .setting input { height: 42px; padding: 0 10px; border-radius: 13px; border-color: rgba(150,150,150,.4); color: var(--app-ink); background: var(--app-field); font-size: 14px; }
+    .setting .app-btn { min-height: 38px; margin-top: 8px; }
+    .resolution { position: relative; gap: 0; padding: 3px; border-radius: 15px; background: rgba(0,0,0,.06); }
+    .resolution button { min-height: 34px; border-radius: 12px; font-size: 11px; }
+    .setting-note { font-size: 12px; }
+    .app-footer { grid-template-columns: minmax(0,1fr) 240px; gap: 22px; margin-top: 16px; align-items: start; }
+    .progress-track { height: 22px; border-radius: 12px; background: rgba(0,0,0,.025); }
+    .dark .progress-track { background: rgba(255,255,255,.07); }
+    .progress-fill { background: var(--app-ink); }
+    .start-btn { min-height: 62px; border: 1px solid #5c5c5c; border-radius: 999px; color: #fff; background: #2c2c2c; font-size: 25px; font-weight: 650; }
+    .dark .start-btn { border-color: #f5f5f5; color: #121212; background: #e5e5e5; }
+    .status { font-size: 15px; }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 1fr; grid-template-areas: "assistant" "stage"; }
+      .assistant { position: static; }
+      .assistant p { min-height: 0; }
+      .stage { overflow: clip; }
+      .app-window { min-width: 1120px; }
+    }
+    @media (max-width: 720px) {
+      .shell { padding: 14px; }
+      .masthead { align-items: flex-start; }
+      .offline-badge { display: none; }
+      .lesson-strip { grid-template-columns: 1fr auto; }
+      .lesson-meta { display: none; }
+      .stage { margin: 0 -14px; border-radius: 0; padding: 10px; }
+      .mobile-note { display: block; margin: 0 0 8px; color: #666; font-size: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">↻</div>
+        <div>
+          <h1>Offline PDF Converter (v4.0) 体験マニュアル</h1>
+          <p>読むより、触って覚える。実際のファイルは変更されません。</p>
+        </div>
+      </div>
+      <div class="offline-badge">完全オフラインで動作</div>
+    </header>
+
+    <section class="lesson-strip" aria-label="v4.0のOCR案内">
+      <p>v4.0では「OCR処理」で検索・選択・コピーできるPDFを作成できます。日本語（横書き・縦書き）／英語／日英混在に対応します。この体験画面はPDF編集・画像変換の練習用です。<a href="../SEARCHABLE_PDF.md">OCRの使い方</a>と<a href="../RELEASE_DETAILS_v4.0.0.md">v4.0の変更点</a>をご覧ください。</p>
+    </section>
+    <section class="lesson-strip" aria-label="レッスン選択">
+      <select id="lessonSelect" class="lesson-select" aria-label="練習する機能">
+        <option value="pdfToImage">PDFを画像に変換する</option>
+        <option value="imageToPdf">画像を1つのPDFにする</option>
+        <option value="merge">複数PDFを結合する</option>
+        <option value="deletePages">不要なページを削除する</option>
+        <option value="explore">自由に触ってみる</option>
+      </select>
+      <span id="lessonTime" class="lesson-meta">目安 2分・全6ステップ</span>
+      <button id="resetBtn" class="quiet-btn" type="button">最初から</button>
+    </section>
+
+    <div class="workspace">
+      <section class="stage" aria-label="Offline PDF Converter 練習画面">
+        <p class="mobile-note">横にスクロールすると、アプリ画面全体を操作できます。</p>
+        <div id="appWindow" class="app-window">
+          <div class="titlebar"><span class="window-dots"><i></i><i></i><i></i></span>Offline PDF Converter (v4.0)</div>
+          <div class="app-body">
+            <div class="app-head">
+              <div class="app-branding">
+                <img id="appHeaderIcon" src="../../src/OfflinePDFConverter/Assets/AppIconLight.png" alt="">
+                <div class="app-title"><strong>Offline PDF Converter</strong><span> (v4.0)</span></div>
+              </div>
+              <div class="segmented" id="modeSelector">
+                <button id="modeTools" type="button" data-action="modeTools">PDF編集</button>
+                <button id="modeConvert" type="button" class="active" data-action="modeConvert">PDF ↔ 画像</button>
+              </div>
+              <button id="themeBtn" class="theme-btn" type="button" aria-label="ライト・ダークモード切替"><span>☀</span></button>
+            </div>
+
+            <div id="directionWrap" class="direction-wrap">
+              <div id="directionSelector" class="segmented">
+                <button id="dirPdf" type="button" class="active" data-action="dirPdf">PDF → 画像</button>
+                <button id="dirImage" type="button" data-action="dirImage">画像 → PDF</button>
+              </div>
+            </div>
+
+            <div class="app-grid">
+              <section class="panel">
+                <div id="fileCard" class="file-card">
+                  <div class="file-head">
+                    <div><h2 id="fileHeading">PDFファイル</h2><p id="fileHelp">結合する順番で並べます。分割やページ削除にも使います。</p></div>
+                    <div class="button-row">
+                      <button id="addBtn" class="app-btn" type="button" data-action="add">追加</button>
+                      <button id="removeBtn" class="app-btn" type="button">削除</button>
+                      <button id="clearBtn" class="app-btn" type="button">すべて削除</button>
+                    </div>
+                  </div>
+                  <div id="fileList" class="file-list">
+                    <div id="emptyHint" class="empty">「追加」ボタンをクリックするか、ファイルをドロップ</div>
+                  </div>
+                  <div id="orderButtons" class="order-buttons"><button class="app-btn" type="button">上へ</button><button class="app-btn" type="button">下へ</button></div>
+                  <div id="previewArea" hidden>
+                    <div class="preview-head">
+                      <div><strong>ページプレビュー</strong><small>ページの見た目を確認できます。</small></div>
+                      <div id="previewToggle" class="view-toggle"><button id="iconViewBtn" class="active" type="button">アイコン</button><button id="listViewBtn" type="button">リスト</button></div>
+                    </div>
+                    <div id="previews" class="previews"></div>
+                  </div>
+                </div>
+              </section>
+
+              <aside class="panel settings">
+                <h2 id="settingsHeading">出力設定</h2>
+                <div id="operationSetting" class="setting" hidden>
+                  <label for="operationSelect">操作</label>
+                  <select id="operationSelect" data-action="operation">
+                    <option value="merge">複数PDFを結合</option>
+                    <option value="split">1ページずつ分割</option>
+                    <option value="deletePages">選択ページを削除</option>
+                    <option value="extract">選択ページのみ出力</option>
+                    <option value="text">文字・テキストを追加</option>
+                  </select>
+                </div>
+                <div id="formatSetting" class="setting">
+                  <label id="formatLabel" for="formatSelect">画像形式</label>
+                  <select id="formatSelect" data-action="format"><option>PNG</option><option>JPEG</option></select>
+                </div>
+                <div id="resolutionSetting" class="setting">
+                  <label>解像度</label>
+                  <div class="resolution">
+                    <button type="button" data-resolution="普通">普通</button>
+                    <button id="highResolution" type="button" data-resolution="高画質">高画質</button>
+                    <button type="button" data-resolution="超高画質">超高画質</button>
+                  </div>
+                  <small id="resolutionHint" class="setting-note">普通 · 200 dpi</small>
+                </div>
+                <div id="pageSetting" class="setting" hidden>
+                  <label for="pageInput">削除するページ</label>
+                  <input id="pageInput" value="" placeholder="例: 1,3,5-7" data-action="pages">
+                  <small class="setting-note">プレビューのチェックからも選べます。</small>
+                </div>
+                <div id="outputSetting" class="setting">
+                  <label id="outputLabel" for="outputInput">出力先フォルダ</label>
+                  <input id="outputInput" readonly placeholder="保存先フォルダ">
+                  <button id="outputBtn" class="app-btn" type="button" data-action="output">選択</button>
+                </div>
+                <div id="nameSetting" class="setting">
+                  <label for="nameInput">書き出しファイル名</label>
+                  <input id="nameInput" value="" placeholder="例: output" data-action="name">
+                  <small id="nameNote" class="setting-note">複数ページは _page001 を付けて保存します。</small>
+                </div>
+              </aside>
+            </div>
+
+            <div class="app-footer">
+              <div><div class="progress-track"><div id="conversionProgress" class="progress-fill"></div></div><div id="status" class="status" aria-live="polite"></div></div>
+              <button id="startBtn" class="start-btn" type="button" data-action="start">開始</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="assistant" aria-label="使い方アシスタント">
+        <div class="assistant-top">
+          <div class="guide-person"><div class="avatar">A</div><div><strong>操作アシスタント</strong><small>あなたのペースで進めましょう</small></div></div>
+          <div class="lesson-progress">
+            <div class="progress-copy"><span id="progressText">ステップ 1 / 6</span><span id="progressPercent">0%</span></div>
+            <div class="guide-track"><div id="guideFill" class="guide-fill"></div></div>
+          </div>
+        </div>
+        <div class="assistant-body">
+          <div id="lessonContent">
+            <div id="stepKicker" class="step-kicker">まずはここから</div>
+            <h2 id="stepTitle">変換画面を確認しましょう</h2>
+            <p id="stepText" aria-live="polite">中央上部の「PDF ↔ 画像」が選ばれていることを確認してください。次に、練習用PDFを追加します。</p>
+            <div class="privacy-note"><span>⌁</span><span>これは練習画面です。実際のPDFを開いたり、外部へ送信したりすることはありません。</span></div>
+            <div class="assistant-actions">
+              <button id="hintBtn" class="guide-btn" type="button">場所を光らせる</button>
+              <button id="demoBtn" class="guide-btn primary" type="button">見本を見る</button>
+            </div>
+          </div>
+          <div id="completion" class="completion">
+            <div class="check">✓</div>
+            <h2>レッスン完了</h2>
+            <p id="completionText">これでPDFを画像へ変換できます。</p>
+            <button id="nextLessonBtn" class="guide-btn primary" type="button">次のレッスンへ</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const lessons = {
+      pdfToImage: {
+        title: "PDFを画像に変換する", time: "目安 2分・全6ステップ", completion: "PDFをページごとのPNG画像へ変換する流れを体験しました。",
+        setup: { mode: "convert", direction: "pdf", operation: "merge" },
+        steps: [
+          { target: "addBtn", action: "add", kicker: "STEP 1・ファイルを選ぶ", title: "練習用PDFを追加", text: "「追加」を押してください。このマニュアルでは、練習用の『会議資料.pdf』が自動で入ります。" },
+          { target: "formatSelect", action: "format", kicker: "STEP 2・形式を決める", title: "JPEGを選択", text: "画像形式はPNGとJPEGから選べます。今回はファイルサイズを抑えやすい「JPEG」を選びます。", value: "JPEG" },
+          { target: "highResolution", action: "resolution", kicker: "STEP 3・画質を決める", title: "高画質を選択", text: "「高画質」を押します。品質とファイルサイズのバランスがよく、印刷資料にも使いやすい設定です。", value: "高画質" },
+          { target: "outputBtn", action: "output", kicker: "STEP 4・保存先を決める", title: "出力先フォルダを選択", text: "「選択」を押します。練習ではデスクトップ上の『変換済み』フォルダを指定したことにします。" },
+          { target: "nameInput", action: "name", kicker: "STEP 5・名前を付ける", title: "書き出し名を入力", text: "ファイル名に「会議資料」と入力してください。複数ページには _page001、_page002 が自動で付きます。", value: "会議資料" },
+          { target: "startBtn", action: "start", kicker: "STEP 6・変換する", title: "変換を開始", text: "設定は完了です。「開始」を押してください。元のPDFは変更されず、新しい画像が作られます。" }
+        ]
+      },
+      imageToPdf: {
+        title: "画像を1つのPDFにする", time: "目安 2分・全5ステップ", completion: "複数の画像を、並び順どおりに1つのPDFへまとめる流れを体験しました。",
+        setup: { mode: "convert", direction: "pdf", operation: "merge" },
+        steps: [
+          { target: "dirImage", action: "dirImage", kicker: "STEP 1・方向を切り替える", title: "画像 → PDFを選択", text: "画面上部の「画像 → PDF」を押して、変換方向を切り替えます。" },
+          { target: "addBtn", action: "add", kicker: "STEP 2・画像を選ぶ", title: "練習用画像を追加", text: "「追加」を押すと、3枚の練習用画像が入ります。本番ではJPEGまたはPNGを選べます。" },
+          { target: "formatSelect", action: "format", kicker: "STEP 3・ページサイズ", title: "A4横を選択", text: "ページサイズを「A4横」にします。横長の写真や資料をまとめるときに適した設定です。", value: "A4横" },
+          { target: "outputBtn", action: "output", kicker: "STEP 4・保存先", title: "出力するPDFを指定", text: "「選択」を押して、保存先を指定します。練習では『写真まとめ.pdf』を作成します。" },
+          { target: "startBtn", action: "start", kicker: "STEP 5・作成", title: "PDFを作成", text: "「開始」を押してください。画像一覧の上から順に、1つのPDFへまとまります。" }
+        ]
+      },
+      merge: {
+        title: "複数PDFを結合する", time: "目安 2分・全4ステップ", completion: "複数PDFの並び順を確認し、1つに結合する流れを体験しました。",
+        setup: { mode: "convert", direction: "pdf", operation: "merge" },
+        steps: [
+          { target: "modeTools", action: "modeTools", kicker: "STEP 1・編集画面へ", title: "PDF編集を選択", text: "画面上部の「PDF編集」を押します。結合・分割・ページ削除はこの画面から行います。" },
+          { target: "addBtn", action: "add", kicker: "STEP 2・PDFを追加", title: "2つのPDFを追加", text: "「追加」を押します。結合される順番はファイル一覧の上から下です。" },
+          { target: "outputBtn", action: "output", kicker: "STEP 3・保存先", title: "結合後のPDFを指定", text: "「選択」を押して保存先を指定します。元の2つのPDFはそのまま残ります。" },
+          { target: "startBtn", action: "start", kicker: "STEP 4・結合", title: "結合を開始", text: "プレビューのページ順を確認したら「開始」を押します。" }
+        ]
+      },
+      deletePages: {
+        title: "不要なページを削除する", time: "目安 3分・全6ステップ", completion: "プレビューを見ながら削除ページを選び、新しいPDFとして保存する流れを体験しました。",
+        setup: { mode: "convert", direction: "pdf", operation: "merge" },
+        steps: [
+          { target: "modeTools", action: "modeTools", kicker: "STEP 1・編集画面へ", title: "PDF編集を選択", text: "「PDF編集」を押してください。ページ単位の操作もここにまとまっています。" },
+          { target: "operationSelect", action: "operation", kicker: "STEP 2・操作を選ぶ", title: "選択ページを削除", text: "操作メニューから「選択ページを削除」を選びます。", value: "deletePages" },
+          { target: "addBtn", action: "add", kicker: "STEP 3・PDFを追加", title: "練習用PDFを追加", text: "「追加」を押すと4ページのPDFが入り、下にページプレビューが表示されます。" },
+          { target: "page2", action: "page", kicker: "STEP 4・ページを選ぶ", title: "2ページ目をチェック", text: "不要な2ページ目をクリックしてください。「削除するページ」に 2 が自動入力されます。", value: "2" },
+          { target: "outputBtn", action: "output", kicker: "STEP 5・保存先", title: "新しいPDFの保存先", text: "「選択」を押します。元のPDFは上書きせず、削除後の内容を別のPDFに保存します。" },
+          { target: "startBtn", action: "start", kicker: "STEP 6・削除を実行", title: "新しいPDFを作成", text: "「開始」を押してください。2ページ目を除いた3ページ構成のPDFが作られます。" }
+        ]
+      },
+      explore: {
+        title: "自由に触ってみる", time: "ガイドなし・いつでも操作できます", completion: "",
+        setup: { mode: "convert", direction: "pdf", operation: "merge" }, steps: []
+      }
+    };
+
+    const state = { lesson: "pdfToImage", step: 0, mode: "convert", direction: "pdf", operation: "merge", files: [], selectedPages: [], resolution: "普通", output: "", running: false, runId: 0 };
+
+    function setMode(mode, silent = false) {
+      state.mode = mode;
+      $("modeTools").classList.toggle("active", mode === "tools");
+      $("modeConvert").classList.toggle("active", mode === "convert");
+      $("modeSelector").classList.toggle("select-second", mode === "convert");
+      $("directionWrap").hidden = mode === "tools";
+      $("operationSetting").hidden = mode !== "tools";
+      $("settingsHeading").textContent = mode === "tools" ? "PDF編集" : "出力設定";
+      $("previewArea").hidden = mode !== "tools" || !state.files.length;
+      syncSettings();
+      if (!silent) playSwapTransition();
+      if (!silent) handleAction(mode === "tools" ? "modeTools" : "modeConvert");
+    }
+
+    function setDirection(direction, silent = false) {
+      state.direction = direction;
+      $("dirPdf").classList.toggle("active", direction === "pdf");
+      $("dirImage").classList.toggle("active", direction === "image");
+      $("directionSelector").classList.toggle("select-second", direction === "image");
+      $("fileHeading").textContent = direction === "pdf" ? "PDFファイル" : "画像ファイル";
+      syncSettings();
+      if (!silent) playSwapTransition();
+      if (!silent) handleAction(direction === "pdf" ? "dirPdf" : "dirImage");
+    }
+
+    function playSwapTransition() {
+      const grid = document.querySelector(".app-grid");
+      grid.classList.remove("swap-in"); void grid.offsetWidth; grid.classList.add("swap-in");
+      setTimeout(() => grid.classList.remove("swap-in"), 560);
+    }
+
+    function confirmSetting(element) {
+      const setting = element.closest(".setting") || element;
+      setting.classList.remove("just-set"); void setting.offsetWidth; setting.classList.add("just-set");
+      setTimeout(() => setting.classList.remove("just-set"), 650);
+    }
+
+    function syncSettings() {
+      const tools = state.mode === "tools";
+      const image = state.direction === "image" && !tools;
+      $("settingsHeading").textContent = tools ? "PDF編集" : image ? "PDF設定" : "出力設定";
+      $("formatSetting").hidden = tools;
+      $("resolutionSetting").hidden = tools || image;
+      $("pageSetting").hidden = !tools || state.operation !== "deletePages";
+      $("formatLabel").textContent = image ? "ページサイズ" : "画像形式";
+      if (image) $("formatSelect").innerHTML = '<option>A4縦</option><option>A4横</option><option>画像サイズに合わせる</option>';
+      else $("formatSelect").innerHTML = '<option>PNG</option><option>JPEG</option>';
+      $("outputLabel").textContent = tools || image ? "出力PDF" : "出力先フォルダ";
+      $("nameSetting").hidden = tools || image;
+      $("nameNote").textContent = image ? "1つのPDFとして保存します。" : "複数ページは _page001 を付けて保存します。";
+      $("fileCard").classList.toggle("tools", tools);
+      $("orderButtons").classList.toggle("show", image);
+    }
+
+    function makePage(index) {
+      const card = document.createElement("div");
+      card.className = "page-card";
+      card.id = `page${index}`;
+      card.dataset.page = index;
+      card.innerHTML = `<div class="page-paper"><i></i><i></i><i></i><i style="width:62%"></i></div><label><input type="checkbox"> ${index}ページ</label>`;
+      card.addEventListener("click", (event) => {
+        if (state.mode !== "tools" || state.operation !== "deletePages") return;
+        event.preventDefault();
+        const selected = state.selectedPages.includes(index);
+        state.selectedPages = selected ? state.selectedPages.filter(p => p !== index) : [...state.selectedPages, index].sort();
+        renderPages();
+        $("pageInput").value = state.selectedPages.join(",");
+        handleAction("page", String(index));
+      });
+      return card;
+    }
+
+    function renderPages() {
+      const count = state.files.length ? (state.lesson === "deletePages" ? 4 : Math.max(3, state.files.length * 2)) : 0;
+      $("previews").replaceChildren(...Array.from({ length: count }, (_, i) => makePage(i + 1)));
+      state.selectedPages.forEach(page => {
+        const card = $(`page${page}`);
+        if (card) { card.classList.add("selected"); card.querySelector("input").checked = true; }
+      });
+    }
+
+    function addSamples() {
+      if (state.direction === "image" && state.mode !== "tools") state.files = ["表紙.png", "会場写真.jpg", "案内図.png"];
+      else if (state.mode === "tools" && state.operation === "merge") state.files = ["議案_前半.pdf", "議案_後半.pdf"];
+      else state.files = ["会議資料.pdf"];
+      renderFiles();
+      handleAction("add");
+    }
+
+    function renderFiles() {
+      $("emptyHint").hidden = !!state.files.length;
+      $("fileList").querySelectorAll(".file-item").forEach(el => el.remove());
+      state.files.forEach(name => {
+        const item = document.createElement("div"); item.className = "file-item";
+        item.innerHTML = `<strong>${name}</strong><small>C:\\Users\\User\\Documents</small>`;
+        $("fileList").appendChild(item);
+      });
+      $("previewArea").hidden = state.mode !== "tools" || !state.files.length;
+      renderPages();
+    }
+
+    function clearState() {
+      state.files = []; state.selectedPages = []; state.output = ""; state.resolution = "普通"; state.running = false; state.runId += 1;
+      $("outputInput").value = ""; $("nameInput").value = ""; $("pageInput").value = "";
+      $("startBtn").classList.remove("running"); $("startBtn").textContent = "開始";
+      $("conversionProgress").style.width = "0"; $("status").textContent = "";
+      document.querySelectorAll("[data-resolution]").forEach(btn => btn.classList.toggle("active", btn.dataset.resolution === "普通"));
+      $("resolutionHint").textContent = "普通 · 200 dpi";
+      renderFiles();
+    }
+
+    function setOperation(value, silent = false) {
+      state.operation = value; $("operationSelect").value = value; syncSettings(); renderPages();
+      if (!silent) handleAction("operation", value);
+    }
+
+    function chooseOutput() {
+      state.output = state.mode === "tools" || state.direction === "image" ? "C:\\Users\\User\\Desktop\\出力.pdf" : "C:\\Users\\User\\Desktop\\変換済み";
+      $("outputInput").value = state.output;
+      confirmSetting($("outputSetting"));
+      handleAction("output");
+    }
+
+    function selectResolution(value) {
+      state.resolution = value;
+      document.querySelectorAll("[data-resolution]").forEach(btn => btn.classList.toggle("active", btn.dataset.resolution === value));
+      const dpi = { "普通": 200, "高画質": 300, "超高画質": 600 }[value];
+      $("resolutionHint").textContent = `${value} · ${dpi} dpi`;
+      confirmSetting($("resolutionSetting"));
+      handleAction("resolution", value);
+    }
+
+    function startConversion() {
+      if (state.running) return;
+      if (!state.files.length) return toast("先にファイルを追加してください");
+      const runId = ++state.runId;
+      state.running = true; $("startBtn").classList.add("running"); $("startBtn").textContent = "処理中…";
+      $("status").textContent = "ファイルを確認しています…"; $("conversionProgress").style.width = "12%";
+      setTimeout(() => { if (!state.running || state.runId !== runId) return; $("status").textContent = "ページを処理しています…"; $("conversionProgress").style.width = "58%"; }, 230);
+      setTimeout(() => { if (!state.running || state.runId !== runId) return; $("status").textContent = "保存しています…"; $("conversionProgress").style.width = "84%"; }, 590);
+      setTimeout(() => {
+        if (!state.running || state.runId !== runId) return;
+        state.running = false; $("startBtn").classList.remove("running"); $("startBtn").textContent = "開始"; $("conversionProgress").style.width = "100%";
+        $("status").textContent = "完了しました。練習用のため、実ファイルは作成していません。";
+        handleAction("start"); toast("変換が完了しました（シミュレーション）");
+      }, 1050);
+    }
+
+    function currentLesson() { return lessons[state.lesson]; }
+    function currentStep() { return currentLesson().steps[state.step]; }
+
+    function handleAction(action, value) {
+      if (state.lesson === "explore") return toast("操作できました。自由にほかの機能も試せます。", 1400);
+      const step = currentStep(); if (!step || step.action !== action) return;
+      if (step.value !== undefined && value !== step.value) {
+        toast(`このレッスンでは「${step.value === "deletePages" ? "選択ページを削除" : step.value}」を選びます`); return;
+      }
+      state.step += 1;
+      setTimeout(renderGuide, action === "start" ? 120 : 180);
+    }
+
+    function renderGuide() {
+      document.querySelectorAll(".coach-target").forEach(el => el.classList.remove("coach-target"));
+      const lesson = currentLesson();
+      $("lessonTime").textContent = lesson.time;
+      if (state.lesson === "explore") {
+        $("progressText").textContent = "自由操作モード"; $("progressPercent").textContent = "—"; $("guideFill").style.width = "100%";
+        $("stepKicker").textContent = "FREE EXPLORE"; $("stepTitle").textContent = "好きな機能を試せます";
+        $("stepText").textContent = "ボタンやメニューは自由に操作できます。実際のファイルは開かず、すべて練習用データで動きます。レッスンに戻ると、案内が再開します。";
+        $("hintBtn").disabled = true; $("demoBtn").disabled = true; $("completion").classList.remove("show"); $("lessonContent").hidden = false; return;
+      }
+      const total = lesson.steps.length;
+      if (state.step >= total) {
+        $("lessonContent").hidden = true; $("completion").classList.add("show"); $("completionText").textContent = lesson.completion;
+        $("progressText").textContent = `完了・${total}ステップ`; $("progressPercent").textContent = "100%"; $("guideFill").style.width = "100%";
+        try { localStorage.setItem(`offlinePdfManual.${state.lesson}`, "complete"); } catch (_) {}
+        return;
+      }
+      $("lessonContent").hidden = false; $("completion").classList.remove("show");
+      const step = currentStep(); const percent = Math.round((state.step / total) * 100);
+      $("progressText").textContent = `ステップ ${state.step + 1} / ${total}`; $("progressPercent").textContent = `${percent}%`; $("guideFill").style.width = `${percent}%`;
+      $("stepKicker").textContent = step.kicker; $("stepTitle").textContent = step.title; $("stepText").textContent = step.text;
+      $("lessonContent").classList.remove("guide-arrive"); void $("lessonContent").offsetWidth; $("lessonContent").classList.add("guide-arrive");
+      $("hintBtn").disabled = false; $("demoBtn").disabled = false;
+    }
+
+    function setPreviewView(view) {
+      const list = view === "list";
+      $("previewToggle").classList.toggle("list-view", list);
+      $("iconViewBtn").classList.toggle("active", !list); $("listViewBtn").classList.toggle("active", list);
+      $("previews").classList.toggle("list-layout", list);
+      renderPages();
+    }
+
+    function installSlidingSelector(container, chooseFirst, chooseSecond) {
+      const dragThreshold = 7;
+      let pointerActive = false, dragging = false, startX = 0, startY = 0, pointerId = null, suppressClick = false;
+      container.addEventListener("click", event => {
+        if (!suppressClick) return;
+        suppressClick = false; event.preventDefault(); event.stopPropagation();
+      }, true);
+      container.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || pointerActive) return;
+        pointerActive = true; dragging = false; pointerId = event.pointerId; startX = event.clientX; startY = event.clientY;
+      });
+      container.addEventListener("pointermove", event => {
+        if (!pointerActive || event.pointerId !== pointerId) return;
+        const dx = event.clientX - startX; const dy = event.clientY - startY;
+        if (!dragging) {
+          if (Math.abs(dx) < dragThreshold) return;
+          if (Math.abs(dy) > Math.abs(dx)) return;
+          dragging = true; container.classList.add("dragging"); container.setPointerCapture(event.pointerId);
+        }
+        const rect = container.getBoundingClientRect(); const half = rect.width / 2;
+        const x = Math.max(0, Math.min(half, event.clientX - rect.left - half / 2));
+        container.style.setProperty("--pill-x", `${x}px`);
+      });
+      const finish = (event, cancelled = false) => {
+        if (!pointerActive || event.pointerId !== pointerId) return;
+        pointerActive = false;
+        if (container.hasPointerCapture?.(event.pointerId)) container.releasePointerCapture(event.pointerId);
+        if (!dragging) { pointerId = null; return; }
+        dragging = false; pointerId = null; container.classList.remove("dragging");
+        const rect = container.getBoundingClientRect(); const second = event.clientX - rect.left >= rect.width / 2;
+        container.style.removeProperty("--pill-x");
+        if (cancelled) return;
+        suppressClick = true; setTimeout(() => { suppressClick = false; }, 250);
+        event.preventDefault(); second ? chooseSecond() : chooseFirst();
+      };
+      window.addEventListener("pointerup", event => finish(event));
+      window.addEventListener("pointercancel", event => finish(event, true));
+    }
+
+    function addRipple(event) {
+      const button = event.target.closest("button"); if (!button || !button.matches(".app-btn,.start-btn,.guide-btn,.quiet-btn")) return;
+      const rect = button.getBoundingClientRect(); const ripple = document.createElement("span"); ripple.className = "ink-ripple";
+      ripple.style.left = `${event.clientX - rect.left}px`; ripple.style.top = `${event.clientY - rect.top}px`;
+      button.appendChild(ripple); setTimeout(() => ripple.remove(), 650);
+    }
+
+    function fitAppPreview() {
+      const stage = document.querySelector(".stage");
+      const app = $("appWindow");
+      const mobileNote = stage.querySelector(".mobile-note");
+      stage.scrollLeft = 0;
+      stage.scrollTop = 0;
+      if (window.scrollX !== 0) window.scrollTo(0, window.scrollY);
+      const stageWidth = stage.clientWidth;
+      if (!stageWidth) return;
+      const horizontalPadding = 20;
+      const scale = Math.min(1, Math.max(.2, (stageWidth - horizontalPadding) / 1120));
+      const noteVisible = getComputedStyle(mobileNote).display !== "none";
+      const noteSpace = noteVisible ? mobileNote.offsetHeight + 8 : 0;
+      app.style.transform = `scale(${scale})`;
+      stage.style.height = `${Math.ceil(760 * scale + noteSpace + 20)}px`;
+    }
+
+    function resetLesson() {
+      const lesson = currentLesson(); state.step = 0; clearState();
+      setMode(lesson.setup.mode, true); setDirection(lesson.setup.direction, true); setOperation(lesson.setup.operation, true);
+      renderGuide();
+      requestAnimationFrame(fitAppPreview);
+    }
+
+    function hint() {
+      const step = currentStep(); if (!step) return;
+      const target = $(step.target); if (!target) return;
+      target.classList.remove("coach-target"); void target.offsetWidth; target.classList.add("coach-target");
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      setTimeout(() => target.classList.remove("coach-target"), 4200);
+    }
+
+    function demo() {
+      const step = currentStep(); if (!step) return;
+      hint(); setTimeout(() => {
+        switch (step.action) {
+          case "modeTools": setMode("tools"); break;
+          case "modeConvert": setMode("convert"); break;
+          case "dirImage": setDirection("image"); break;
+          case "dirPdf": setDirection("pdf"); break;
+          case "add": addSamples(); break;
+          case "format": $("formatSelect").value = step.value; handleAction("format", step.value); break;
+          case "resolution": selectResolution(step.value); break;
+          case "operation": setOperation(step.value); break;
+          case "output": chooseOutput(); break;
+          case "name": $("nameInput").value = step.value; handleAction("name", step.value); break;
+          case "page": $(`page${step.value}`)?.click(); break;
+          case "start": startConversion(); break;
+        }
+      }, 650);
+    }
+
+    function toast(message, duration = 2400) {
+      $("toast").textContent = message; $("toast").classList.add("show");
+      clearTimeout(toast.timer); toast.timer = setTimeout(() => $("toast").classList.remove("show"), duration);
+    }
+
+    $("modeTools").addEventListener("click", () => setMode("tools"));
+    $("modeConvert").addEventListener("click", () => setMode("convert"));
+    $("dirPdf").addEventListener("click", () => setDirection("pdf"));
+    $("dirImage").addEventListener("click", () => setDirection("image"));
+    $("themeBtn").addEventListener("click", () => {
+      const dark = $("appWindow").classList.toggle("dark");
+      $("themeBtn").querySelector("span").textContent = dark ? "☾" : "☀";
+      $("appHeaderIcon").src = dark ? "../../src/OfflinePDFConverter/Assets/AppIconDark.png" : "../../src/OfflinePDFConverter/Assets/AppIconLight.png";
+    });
+    $("addBtn").addEventListener("click", addSamples);
+    $("clearBtn").addEventListener("click", () => { state.files = []; state.selectedPages = []; renderFiles(); toast("一覧を空にしました"); });
+    $("removeBtn").addEventListener("click", () => { if (state.files.length) state.files.pop(); renderFiles(); });
+    $("formatSelect").addEventListener("change", event => { confirmSetting(event.target); handleAction("format", event.target.value); });
+    $("operationSelect").addEventListener("change", event => setOperation(event.target.value));
+    $("outputBtn").addEventListener("click", chooseOutput);
+    $("nameInput").addEventListener("input", event => { if (event.target.value === currentStep()?.value) handleAction("name", event.target.value); });
+    $("pageInput").addEventListener("change", event => handleAction("pages", event.target.value));
+    document.querySelectorAll("[data-resolution]").forEach(btn => btn.addEventListener("click", () => selectResolution(btn.dataset.resolution)));
+    $("startBtn").addEventListener("click", startConversion);
+    $("iconViewBtn").addEventListener("click", () => setPreviewView("icon")); $("listViewBtn").addEventListener("click", () => setPreviewView("list"));
+    $("hintBtn").addEventListener("click", hint); $("demoBtn").addEventListener("click", demo); $("resetBtn").addEventListener("click", resetLesson);
+    $("lessonSelect").addEventListener("change", event => { state.lesson = event.target.value; resetLesson(); });
+    $("nextLessonBtn").addEventListener("click", () => {
+      const keys = Object.keys(lessons).filter(key => key !== "explore"); const next = keys[(keys.indexOf(state.lesson) + 1) % keys.length];
+      state.lesson = next; $("lessonSelect").value = next; resetLesson();
+    });
+
+    installSlidingSelector($("modeSelector"), () => setMode("tools"), () => setMode("convert"));
+    installSlidingSelector($("directionSelector"), () => setDirection("pdf"), () => setDirection("image"));
+    document.addEventListener("pointerdown", addRipple);
+    resetLesson();
+    requestAnimationFrame(fitAppPreview);
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.addEventListener("pageshow", () => {
+      window.scrollTo(0, window.scrollY);
+      fitAppPreview();
+      setTimeout(fitAppPreview, 80);
+    });
+    if ("ResizeObserver" in window) {
+      let lastStageWidth = 0;
+      window.appPreviewResizeObserver = new ResizeObserver(() => {
+        const width = document.querySelector(".stage").clientWidth;
+        if (Math.abs(width - lastStageWidth) < 1) return;
+        lastStageWidth = width;
+        fitAppPreview();
+      });
+      window.appPreviewResizeObserver.observe(document.querySelector(".stage"));
+    } else {
+      window.addEventListener("resize", fitAppPreview);
+    }
+  </script>
+</body>
+</html>

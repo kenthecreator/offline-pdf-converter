@@ -9,7 +9,8 @@ namespace OfflinePDFConverter.Views;
 public partial class MainWindow
 {
     private async Task RunBatchAsync(IReadOnlyList<string> files,
-        Func<string, IProgress<ConversionProgress>, CancellationToken, Task<ConversionResult>> convert)
+        Func<string, IProgress<ConversionProgress>, CancellationToken, Task<ConversionResult>> convert,
+        Func<CancellationToken, Task>? beforeResult = null, Action? cleanup = null)
     {
         if (_conversionCts != null) return;
         var pending = files;
@@ -22,11 +23,12 @@ public partial class MainWindow
             {
                 result = await BatchRunner.RunAsync(pending, convert,
                     new Progress<ConversionProgress>(UpdateProgress), _conversionCts.Token);
+                if (beforeResult != null) await beforeResult(_conversionCts.Token);
                 _mainProgressBar.Value = result.Items.Any(x => x.Status is FileConversionStatus.Cancelled or FileConversionStatus.NotStarted) ? _mainProgressBar.Value : 100;
                 SetStatus("一括処理の結果を確認してください。");
             }
             catch (Exception ex) { await ShowMessageAsync("処理できませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }
-            finally { _conversionCts.Dispose(); _conversionCts = null; SetBusy(false); }
+            finally { cleanup?.Invoke(); _conversionCts.Dispose(); _conversionCts = null; SetBusy(false); }
             if (result == null) return;
             pending = await ShowBatchResultAsync(result);
         }
@@ -60,9 +62,10 @@ public partial class MainWindow
     private void SetBusy(bool busy)
     {
         if (this.FindControl<Button>("CancelConversionButton") is { } cancel) cancel.IsVisible = busy;
-        if (this.FindControl<Button>("OfflineOcrButton") is { } ocr) ocr.IsEnabled = !busy;
-        if (this.FindControl<ComboBox>("OutputPresetCombo") is { } preset) preset.IsEnabled = !busy;
-        if (this.FindControl<NumericUpDown>("JpegQualityInput") is { } quality) quality.IsEnabled = !busy;
+        _startOcrButton.IsEnabled = !busy && _pdfFiles.Count > 0;
+        _ocrModeButton.IsEnabled = !busy;
+        Required<Grid>("OcrInputPanel").IsEnabled = !busy;
+        Required<StackPanel>("OcrSettingsPanel").IsEnabled = !busy;
         _startPdfButton.IsEnabled = !busy;
         _startImageButton.IsEnabled = !busy;
         _startPdfToolButton.IsEnabled = !busy;

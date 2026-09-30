@@ -1,0 +1,102 @@
+{
+  "model": "PP-OCRv6 small",
+  "runtime": "RapidOcrNet 4.2.0",
+  "files": [
+    {
+      "file": "det.onnx",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx",
+      "sha256": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+      "bytes": 9929594
+    },
+    {
+      "file": "rec.onnx",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx",
+      "sha256": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+      "bytes": 21234383
+    },
+    {
+      "file": "cls.onnx",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx",
+      "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+      "bytes": 585532
+    },
+    {
+      "file": "keys.txt",
+      "source": "rec.onnx metadata.character; CTC blank and terminal space supplied by RapidOcrNet",
+      "characters": 18708,
+      "sha256": "b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d",
+      "bytes": 74947
+    },
+    {
+      "file": "PaddleOCR-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/LICENSE",
+      "sha256": "3840c5c0c61c294264d2dd77b8777be6ddd90121ef4e0e64abcd22edea581d6e",
+      "bytes": 11376
+    },
+    {
+      "file": "RapidOCR-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/RapidAI/RapidOCR/v3.9.2/LICENSE",
+      "sha256": "3e0af25fdd06aa9586ae97adb00ea927ebe5a3805ac77d2d3a81ce5f55693333",
+      "bytes": 11422
+    },
+    {
+      "file": "RapidOcrNet-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/BobLd/RapidOcrNet/708cae2fcb88720e1d891a81b5ee3e8b2bcc139e/LICENSE.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "bytes": 11357
+    },
+    {
+      "file": "ONNX-Runtime-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.29.0/LICENSE",
+      "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+      "bytes": 1073
+    },
+    {
+      "file": "ONNX-Runtime-ThirdPartyNotices.txt",
+      "url": "https://raw.githubusercontent.com/microsoft/onnxruntime/v1.29.0/ThirdPartyNotices.txt",
+      "sha256": "53d3fa5821ac016ac24dd35775c996efec86e2ae0841e9a3a5e146c0ae916845",
+      "bytes": 336906
+    },
+    {
+      "file": "Clipper2-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/AngusJohnson/Clipper2/main/LICENSE",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "bytes": 1338
+    },
+    {
+      "file": "PContour-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/BobLd/RapidOcrNet/708cae2fcb88720e1d891a81b5ee3e8b2bcc139e/RapidOcrNet/PContour.cs",
+      "sha256": "ca83d351007d5654d1e750b44ab05744b39fc2f6d1cd0be72fe66937593ac036",
+      "bytes": 1097
+    },
+    {
+      "file": "NOTICE.txt",
+      "sha256": "38859a0b5917ec8e539bd7d9783016f96174b71f7da6e879718355a65a7832e7",
+      "bytes": 532
+    },
+    {
+      "file": "rec-jpn.onnx",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/rec/japan_PP-OCRv4_rec_mobile.onnx",
+      "sha256": "e1075a67dba758ecfc7ebc78a10ae61c95ac8fb66a9c86fab5541e33f085cb7a",
+      "bytes": 9753335
+    },
+    {
+      "file": "keys-jpn.txt",
+      "source": "rec-jpn.onnx metadata.character",
+      "sha256": "e89ba84e657af0f6d3ea3acb6f7aadfbe17de90452ecbad3ca158ffc4a30054c",
+      "bytes": 17333
+    },
+    {
+      "file": "rec-eng.onnx",
+      "url": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/rec/en_PP-OCRv4_rec_mobile.onnx",
+      "sha256": "e8770c967605983d1570cdf5352041dfb68fa0c21664f49f47b155abd3e0e318",
+      "bytes": 7653044
+    },
+    {
+      "file": "keys-eng.txt",
+      "source": "rec-eng.onnx metadata.character",
+      "sha256": "df75c3ebb041795560d339ebe088edd24124a1d0564921bc86112a3bd13108c7",
+      "bytes": 191
+    }
+  ]
+}

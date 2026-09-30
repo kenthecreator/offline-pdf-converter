@@ -5,30 +5,22 @@
 - PDF・画像・TXTは同じ保存先の一時ファイルに書き込み、完成後だけ正式名で確定します。既存ファイルは置き換えず、連番で保存します。失敗・中止時には作業用ファイルを削除します。
 - PDF→画像、PDF分割、OCRの一括処理は、入力ごとに成功・失敗・中止・未処理を表示します。失敗だけ、または中止・未処理だけを再実行できます。再実行はファイルの先頭から行い、保存済みのページは別名で残します。
 - 処理中に「処理を中止」を表示します。PDFの処理は現在のページ処理が戻った段階で止まります。OCRの外部プロセスは終了させます。
-- PDF→画像に「印刷向け（PNG・300 dpi）」「メール添付向け（JPEG・200 dpi・品質80）」「細部を残す（PNG・600 dpi）」を追加しました。JPEG品質は1〜100で調整できます。容量を一定以下にする保証はありません。
-- PDF編集の「テキスト出力」内に「スキャンPDFを文字認識（OCR）」を追加しました。
-- メイン画面から既存の編集処理を `MainWindow.Editor.cs` に分離し、一括結果・OCR・用途設定も別ファイルにしました。今回は段階的な整理で、画面と状態を完全に分離するMVVMへの全面移行は行っていません。
+- PDF→画像の設定はv3.1.0の「解像度」に戻しました。「普通（200 dpi）」「高画質（300 dpi）」「超高画質（600 dpi）」をスライダーで選択します。初期値は普通です。
+- 独立した「OCR処理」カテゴリーで、スキャンPDFをTXTへ文字認識できます。原本プレビューと認識設定を同じ画面に表示します。
+- メイン画面から既存の編集処理を `MainWindow.Editor.cs` に分離し、一括結果・OCRも別ファイルにしました。今回は段階的な整理で、画面と状態を完全に分離するMVVMへの全面移行は行っていません。
 
 結合や画像→PDFは複数入力で1つの成果物を作るため、従来の一括結果表示を使います。失敗した入力だけで別の結合PDFを作るような再実行は行いません。
 
-## 内蔵OCRの使い方
+## v4.0の内蔵OCR
 
-Windows版はTesseract 5.5.3本体と日本語（横書き・縦書き）／英語の認識データをexeに内蔵しています。インストール・場所の指定・初回ダウンロードはありません。
+Mac・Windowsの両版でPaddleOCRを内蔵し、検索・選択・コピーできるPDFを作成します。「OCR処理」でPDF、4種類の言語設定、対象ページ、保存先を選び「開始」を押します。処理前・処理後を比較し、クリックして文字を確認できます。TXT出力は廃止しました。
 
-1. PDFを追加し、PDF編集 → テキスト出力 → スキャンPDFを文字認識（OCR）を選びます。
-2. TXTの保存先、言語、ページ範囲を指定します。空欄は全ページです。
-3. 開始すると内蔵部品を自動で展開し、300 dpi・1ページずつ文字認識します。1ページが3分を超えた場合は中止します。
+Tesseract・Python・GPUは不要です。WindowsはVisual C++ v14（x64）ランタイムが必要です。ネット接続や外部送信は行いません。モデルはハッシュ確認後に一時領域へ展開します。詳細は [検索可能PDF](SEARCHABLE_PDF.md) を参照してください。
 
-出力はPDFごとのUTF-8 TXTです。検索可能PDFの生成、元PDFの文字置換、ページ内の矩形選択のOCRは含みません。文字・数字・固有名詞は原本と照合してください。
-
-処理は端末内で完結します。OCR本体はHTTP機能を組み込まずに構築しており、アプリもOCRのために通信しません。実行時の部品はユーザーの一時フォルダに展開し、ハッシュ値で検証します。通常のアプリ終了時に内蔵OCRの展開先を削除します。強制終了時には一時ファイルが残ることがあります。.NETの展開キャッシュは別の仕組みで管理されます。
-
-v3.2.0の内蔵OCRはWindows版に対応しています。macOS版のOCRには、利用者が別途インストールしたTesseract 5が必要です。
-
-## 自動テスト
+## 自動テスト（旧Tesseract実装の回帰検証を含む）
 
 ```sh
-dotnet run --project tests/RegressionTests -c Release
+dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
 ```
 
 標準テストは実際にPDFを生成し、保存失敗・取消・並行保存、ページ指定、結合、削除、抽出、パスワード付きPDFの分割、日本語文字抽出、画像レンダリングを検証します。破損PDF、誤ったパスワード、画像からのPDF作成、失敗した画像の扱い、OCR子プロセスの中止・異常終了も確認します。失敗時には非ゼロの終了コードを返します。
@@ -38,7 +30,7 @@ dotnet run --project tests/RegressionTests -c Release
 ```sh
 OCR_TEST_ENGINE=/opt/homebrew/bin/tesseract \
 OCR_TEST_DATA="$PWD/src/OfflinePDFConverter/ocr/tessdata" \
-dotnet run --project tests/RegressionTests -c Release
+dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
 ```
 
 Windows/MacのCI定義を追加しています。ローカルで確認したOSはmacOS arm64です。Windows実機とCIの実行結果は別途確認が必要です。
@@ -52,7 +44,7 @@ Windowsでは上書きしないファイル移動を使います。macOSでは�
 ## 単体exeの検証（Windows）
 
 ```powershell
-pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v3.2.0/OfflinePDFConverter.exe
+pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.0/OfflinePDFConverter.PaddleEdition.exe
 ```
 
 検証スクリプトは空のフォルダへexeだけをコピーし、PATHをWindows標準の場所だけに制限したうえで、アプリ内の日本語画像 → PDF → 画像レンダリング → 内蔵OCRを実行します。実際の配布exe自身が検証するため、開発機にインストール済みのTesseractや同梱し忘れたファイルには依存しません。スクリプト自体はネットワークを遮断しません。ネットワーク無効のWindows Sandboxで実行すると、初回からオフラインで動くことも確認できます。

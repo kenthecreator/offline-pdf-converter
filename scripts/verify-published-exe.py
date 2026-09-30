@@ -5,9 +5,12 @@ root=Path(__file__).resolve().parent.parent
 folder=Path(sys.argv[1])
 files=[p for p in folder.rglob('*') if p.is_file()]
 assert len(files)==1 and files[0].suffix.lower()=='.exe', [str(p) for p in files]
-exe=files[0];data=exe.read_bytes();payload=(root/'src/OfflinePDFConverter/ocr/windows-x64.zip').read_bytes()
+exe=files[0];data=exe.read_bytes();manifest=json.loads((root/'src/OfflinePDFConverter/ocr/paddle/manifest.json').read_text())
 assert data[:2]==b'MZ', 'Not a Windows PE executable'
-assert payload in data, 'Exact OCR payload was not found in the executable'
+for entry in manifest['files']:
+ payload=(root/'src/OfflinePDFConverter/ocr/paddle'/entry['file']).read_bytes()
+ assert hashlib.sha256(payload).hexdigest()==entry['sha256'], 'Model hash mismatch'
+ assert payload in data, 'Embedded OCR resource missing: '+entry['file']
 pe=struct.unpack_from('<I',data,0x3c)[0]
 assert data[pe:pe+4]==b'PE\0\0' and struct.unpack_from('<H',data,pe+4)[0]==0x8664, 'Not Windows x64'
 count=struct.unpack_from('<H',data,pe+6)[0]; optional_size=struct.unpack_from('<H',data,pe+20)[0]
@@ -36,5 +39,5 @@ for kind,relative in resource_entries(0):
      ms,ls=struct.unpack_from('<II',version_data,signature+8)
      versions.append(f'{ms>>16}.{ms&65535}.{ls>>16}.{ls&65535}')
 version=versions[0] if len(versions)==1 else None
-assert version=='3.2.0.0', f'Wrong PE file version: {version}'
-print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'3.2.0.0'},indent=2))
+assert version=='4.0.0.0', f'Wrong PE file version: {version}'
+print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'4.0.0.0'},indent=2))

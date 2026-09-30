@@ -4,7 +4,7 @@ $source = (Resolve-Path $ExePath).Path
 $testDirectory = Join-Path $env:TEMP ("OfflinePDFConverter-clean-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $testDirectory | Out-Null
 try {
-  $isolatedExe = Join-Path $testDirectory 'Offline PDF Converter v3.2.0.exe'
+  $isolatedExe = Join-Path $testDirectory 'Offline PDF Converter (v4.0).exe'
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }
   $report = Join-Path $testDirectory 'report.json'

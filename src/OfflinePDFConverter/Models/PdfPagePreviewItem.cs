@@ -26,6 +26,20 @@ public sealed class PdfPagePreviewItem : INotifyPropertyChanged
         SelectionLabel = selectionLabel;
     }
 
+    private double _ocrResultPosition = -1;
+    public double OcrResultPosition
+    {
+        get => _ocrResultPosition;
+        set => SetField(ref _ocrResultPosition, value);
+    }
+
+    private double _ocrScanPosition = -1;
+    public double OcrScanPosition
+    {
+        get => _ocrScanPosition;
+        set => SetField(ref _ocrScanPosition, value);
+    }
+
     private bool _hasEditMarker;
     private double _editMarkerLeft;
     private double _editMarkerTop;

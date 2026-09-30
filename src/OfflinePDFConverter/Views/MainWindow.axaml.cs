@@ -30,10 +30,14 @@ namespace OfflinePDFConverter.Views;
 
 public partial class MainWindow : Window
 {
-    private const double ModeDragMaximum = 208;
+    private const double ModeSegmentWidth = 144;
+    private const double ModeDragMaximum = ModeSegmentWidth * 2;
     private const double DirectionDragMaximum = 125;
     private const double PreviewViewDragMaximum = 72;
-    private const double ThemeDragMaximum = 33;
+    private const double ThemeSegmentWidth = 50;
+    private const double ThemeDragMaximum = ThemeSegmentWidth * 2;
+    private int _themeMode; // 0: Auto, 1: Light, 2: Dark
+    private TextBlock _themeAutoLabel = null!;
     private const double PdfDpiDragMaximum = 169;
     private const double PdfDpiTrackInset = 14;
     private const double DragActivationDistance = 4;
@@ -94,23 +98,17 @@ public partial class MainWindow : Window
         MimeTypes = new[] { "image/jpeg", "image/png" }
     };
 
-    private static readonly FilePickerFileType TextFileType = new("テキストファイル")
-    {
-        Patterns = new[] { "*.txt" },
-        MimeTypes = new[] { "text/plain" }
-    };
+
 
     private readonly ObservableCollection<FileItem> _pdfFiles = new();
     private readonly ObservableCollection<FileItem> _imageFiles = new();
     private readonly ObservableCollection<PdfPagePreviewItem> _pdfPagePreviews = new();
     private readonly Dictionary<string, string> _pdfPasswords = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<(string PdfPath, int PageNumber), PdfTextSelectionState> _pdfTextSelections = new();
     private readonly List<PdfTextEditDraft> _pdfTextEdits = new();
     private readonly List<PdfShapeEditDraft> _pdfShapeEdits = new();
     private readonly IPdfToImageService _pdfToImageService = new PdfToImageService();
     private readonly IImageToPdfService _imageToPdfService = new ImageToPdfService();
     private readonly IPdfDocumentService _pdfDocumentService = new PdfDocumentService();
-    private readonly IPdfTextExtractionService _pdfTextExtractionService = new PdfTextExtractionService();
     private Image _appHeaderIcon = null!;
     private Grid _themeTransitionRoot = null!;
     private Border _modeSelectorSwitch = null!;
@@ -188,7 +186,6 @@ public partial class MainWindow : Window
     private StackPanel _pdfToolOutputFolderPanel = null!;
     private StackPanel _pdfPageSelectionPanel = null!;
     private StackPanel _pdfSimpleEditPanel = null!;
-    private StackPanel _pdfTextOutputPanel = null!;
     private TextBlock _pdfToolOutputPdfLabel = null!;
     private TextBlock _pdfPageSelectionLabel = null!;
     private TextBlock _pdfPageSelectionHelpText = null!;
@@ -226,15 +223,21 @@ public partial class MainWindow : Window
     public MainWindow(bool isInitialDarkTheme)
     {
         InitializeComponent();
-        _lightHeaderIcon = LoadAssetBitmap("avares://OfflinePDFConverter/Assets/AppIconLight.png");
-        _darkHeaderIcon = LoadAssetBitmap("avares://OfflinePDFConverter/Assets/AppIconDark.png");
+        _lightHeaderIcon = LoadAssetBitmap($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/AppIconLight.png");
+        _darkHeaderIcon = LoadAssetBitmap($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/AppIconDark.png");
         _reduceMotion = ShouldReduceMotion();
         BindControls();
         ApplyTheme(isInitialDarkTheme);
+        if (Application.Current?.PlatformSettings is { } settings)
+        {
+            settings.ColorValuesChanged += OnSystemColorsChanged;
+            Closed += (_, _) => settings.ColorValuesChanged -= OnSystemColorsChanged;
+        }
         SetPdfDpiIndex(0);
 
         _pdfFilesList.ItemsSource = _pdfFiles;
         _pdfToolFilesList.ItemsSource = _pdfFiles;
+        InitializeOcrScreen();
         _pdfFiles.CollectionChanged += (_, _) => UpdatePdfFileEmptyHints();
         UpdatePdfFileEmptyHints();
         _pdfPagePreviewThumbnailItems.ItemsSource = _pdfPagePreviews;
@@ -264,6 +267,7 @@ public partial class MainWindow : Window
         _modeSelectorSwitch = Required<Border>("ModeSelectorSwitch");
         _themeToggleSwitch = Required<Border>("ThemeToggleSwitch");
         _themeToggleThumb = Required<Border>("ThemeToggleThumb");
+        _themeAutoLabel = Required<TextBlock>("ThemeAutoLabel");
         _themeLightLabel = Required<TextBlock>("ThemeLightLabel");
         _themeDarkLabel = Required<TextBlock>("ThemeDarkLabel");
         _themeToggleTransform = _themeToggleThumb.RenderTransform as TranslateTransform
@@ -329,7 +333,6 @@ public partial class MainWindow : Window
         _pdfToolOutputFolderPanel = Required<StackPanel>("PdfToolOutputFolderPanel");
         _pdfPageSelectionPanel = Required<StackPanel>("PdfPageSelectionPanel");
         _pdfSimpleEditPanel = Required<StackPanel>("PdfSimpleEditPanel");
-        _pdfTextOutputPanel = Required<StackPanel>("PdfTextOutputPanel");
         _pdfToolOutputPdfLabel = Required<TextBlock>("PdfToolOutputPdfLabel");
         _pdfPageSelectionLabel = Required<TextBlock>("PdfPageSelectionLabel");
         _pdfPageSelectionHelpText = Required<TextBlock>("PdfPageSelectionHelpText");
@@ -418,6 +421,7 @@ public partial class MainWindow : Window
             _themeToggleTransform.Transitions = null;
             _themeToggleSwitch.Transitions = null;
             _themeToggleThumb.Transitions = null;
+            _themeAutoLabel.Transitions = null;
             _themeLightLabel.Transitions = null;
             _themeDarkLabel.Transitions = null;
             _directionSelectionTransform.Transitions = null;
@@ -436,6 +440,7 @@ public partial class MainWindow : Window
             _modeSelectionTransitions = null;
             _directionSelectionTransitions = null;
             _pdfPreviewSelectionTransitions = null;
+            _ocrPreviewSelectionTransitions = null;
             _themeToggleTransitions = null;
         }
     }
@@ -590,25 +595,28 @@ public partial class MainWindow : Window
         SetMode(ConversionMode.PdfTools);
     }
 
+    private int GetCategoryIndex() => _mode == ConversionMode.PdfTools ? 0 : _mode == ConversionMode.Ocr ? 2 : 1;
+
+    private void SelectCategory(int index)
+    {
+        index = Math.Clamp(index, 0, 2);
+        SetMode(index == 0 ? ConversionMode.PdfTools : index == 2 ? ConversionMode.Ocr : ConversionMode.PdfToImage);
+        (index == 0 ? _pdfToolsModeButton : index == 2 ? _ocrModeButton : _pdfModeButton).Focus();
+    }
+
+    private void OnOcrModeClick(object? sender, RoutedEventArgs e) => SetMode(ConversionMode.Ocr);
+
     private void OnModeSelectorKeyDown(object? sender, KeyEventArgs e)
     {
-        switch (e.Key)
+        int? index = e.Key switch
         {
-            case Key.Left:
-            case Key.Up:
-            case Key.Home:
-                SetMode(ConversionMode.PdfTools);
-                _pdfToolsModeButton.Focus();
-                e.Handled = true;
-                break;
-            case Key.Right:
-            case Key.Down:
-            case Key.End:
-                SetMode(ConversionMode.PdfToImage);
-                _pdfModeButton.Focus();
-                e.Handled = true;
-                break;
-        }
+            Key.Left or Key.Up => GetCategoryIndex() - 1,
+            Key.Right or Key.Down => GetCategoryIndex() + 1,
+            Key.Home => 0,
+            Key.End => 2,
+            _ => null
+        };
+        if (index is { } value) { SelectCategory(value); e.Handled = true; }
     }
 
     private void OnModeSelectorPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -651,10 +659,10 @@ public partial class MainWindow : Window
         }
 
         var releaseX = e.GetPosition(_modeSelectorSwitch).X;
-        var targetPdfTools = _modeDragMoved
-            ? _modeSelectionTransform.X < ModeDragMaximum / 2
-            : releaseX < _modeSelectorSwitch.Bounds.Width / 2;
-        FinishModeDrag(targetPdfTools);
+        var index = _modeDragMoved
+            ? (int)Math.Round(_modeSelectionTransform.X / ModeSegmentWidth)
+            : (int)(releaseX / (_modeSelectorSwitch.Bounds.Width / 3));
+        FinishModeDrag(index);
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -663,16 +671,15 @@ public partial class MainWindow : Window
     {
         if (_modeDragActive)
         {
-            FinishModeDrag(_modeSelectionTransform.X < ModeDragMaximum / 2);
+            FinishModeDrag((int)Math.Round(_modeSelectionTransform.X / ModeSegmentWidth));
         }
     }
 
-    private void FinishModeDrag(bool selectPdfTools)
+    private void FinishModeDrag(int index)
     {
         _modeDragActive = false;
         _modeSelectionTransform.Transitions = _modeSelectionTransitions;
-        SetMode(selectPdfTools ? ConversionMode.PdfTools : ConversionMode.PdfToImage);
-        (selectPdfTools ? _pdfToolsModeButton : _pdfModeButton).Focus();
+        SelectCategory(index);
     }
 
     private void OnDirectionSelectorKeyDown(object? sender, KeyEventArgs e)
@@ -801,10 +808,10 @@ public partial class MainWindow : Window
         }
 
         var releaseX = e.GetPosition(_themeToggleSwitch).X;
-        var targetDarkTheme = _themeDragMoved
-            ? _themeToggleTransform.X >= ThemeDragMaximum / 2
-            : releaseX >= _themeToggleSwitch.Bounds.Width / 2;
-        FinishThemeDrag(targetDarkTheme);
+        var index = _themeDragMoved
+            ? (int)Math.Round(_themeToggleTransform.X / ThemeSegmentWidth)
+            : (int)(releaseX / ThemeSegmentWidth);
+        FinishThemeDrag(index);
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -813,45 +820,43 @@ public partial class MainWindow : Window
     {
         if (_themeDragActive)
         {
-            FinishThemeDrag(_themeToggleTransform.X >= ThemeDragMaximum / 2);
+            FinishThemeDrag((int)Math.Round(_themeToggleTransform.X / ThemeSegmentWidth));
         }
     }
 
-    private void FinishThemeDrag(bool useDarkTheme)
+    private void FinishThemeDrag(int index)
     {
         _themeDragActive = false;
         _themeToggleTransform.Transitions = _themeToggleTransitions;
-        if (_reduceMotion)
-        {
-            ApplyTheme(useDarkTheme);
-            return;
-        }
+        if (_themeTransitionActive) return;
+        _themeMode = Math.Clamp(index, 0, 2);
+        var dark = _themeMode == 0
+            ? Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant == PlatformThemeVariant.Dark
+            : _themeMode == 2;
+        if (_reduceMotion || dark == _isDarkTheme) ApplyTheme(dark);
+        else _ = ApplyThemeWithUnifiedFadeAsync(dark);
+    }
 
-        _ = ApplyThemeWithUnifiedFadeAsync(useDarkTheme);
+    private void OnSystemColorsChanged(object? sender, PlatformColorValues values)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_themeMode == 0 && !_themeTransitionActive) ApplyTheme(values.ThemeVariant == PlatformThemeVariant.Dark);
+        });
     }
 
     private void OnThemeSelectorKeyDown(object? sender, KeyEventArgs e)
     {
-        switch (e.Key)
+        int? index = e.Key switch
         {
-            case Key.Left:
-            case Key.Up:
-            case Key.Home:
-                FinishThemeDrag(useDarkTheme: false);
-                e.Handled = true;
-                break;
-            case Key.Right:
-            case Key.Down:
-            case Key.End:
-                FinishThemeDrag(useDarkTheme: true);
-                e.Handled = true;
-                break;
-            case Key.Space:
-            case Key.Enter:
-                FinishThemeDrag(!_isDarkTheme);
-                e.Handled = true;
-                break;
-        }
+            Key.Left or Key.Up => _themeMode - 1,
+            Key.Right or Key.Down => _themeMode + 1,
+            Key.Home => 0,
+            Key.End => 2,
+            Key.Space or Key.Enter => (_themeMode + 1) % 3,
+            _ => null
+        };
+        if (index is { } selected) { FinishThemeDrag(selected); e.Handled = true; }
     }
 
     private async Task ApplyThemeWithUnifiedFadeAsync(bool isDarkTheme)
@@ -865,7 +870,7 @@ public partial class MainWindow : Window
         var restoreThemeSwitchEnabled = _themeToggleSwitch.IsEnabled;
         _themeToggleSwitch.IsEnabled = false;
         _isDarkTheme = isDarkTheme;
-        _themeToggleTransform.X = isDarkTheme ? ThemeDragMaximum : 0;
+        _themeToggleTransform.X = _themeMode * ThemeSegmentWidth;
 
         try
         {
@@ -917,6 +922,8 @@ public partial class MainWindow : Window
         {
             _themeToggleSwitch.IsEnabled = restoreThemeSwitchEnabled;
             _themeTransitionActive = false;
+            if (_themeMode == 0)
+                ApplyTheme(Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant == PlatformThemeVariant.Dark);
         }
     }
 
@@ -943,12 +950,14 @@ public partial class MainWindow : Window
     {
         if (Application.Current != null)
         {
-            Application.Current.RequestedThemeVariant = isDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+            Application.Current.RequestedThemeVariant = _themeMode == 0 ? ThemeVariant.Default
+                : isDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
         }
 
-        _themeToggleTransform.X = isDarkTheme ? ThemeDragMaximum : 0;
-        _themeLightLabel.Classes.Set("selected", !isDarkTheme);
-        _themeDarkLabel.Classes.Set("selected", isDarkTheme);
+        _themeToggleTransform.X = _themeMode * ThemeSegmentWidth;
+        _themeAutoLabel.Classes.Set("selected", _themeMode == 0);
+        _themeLightLabel.Classes.Set("selected", _themeMode == 1);
+        _themeDarkLabel.Classes.Set("selected", _themeMode == 2);
         _appHeaderIcon.Source = isDarkTheme ? _darkHeaderIcon : _lightHeaderIcon;
     }
 
@@ -974,17 +983,22 @@ public partial class MainWindow : Window
     private void SetMode(ConversionMode mode)
     {
         _mode = mode;
+        if (mode != ConversionMode.Ocr) CancelOcrPreview();
         _pdfPanel.IsVisible = mode == ConversionMode.PdfToImage;
         _imagePanel.IsVisible = mode == ConversionMode.ImageToPdf;
         _pdfToolsPanel.IsVisible = mode == ConversionMode.PdfTools;
-        _directionSelectorHost.IsVisible = mode != ConversionMode.PdfTools;
+        _ocrPanel.IsVisible = mode == ConversionMode.Ocr;
+        Required<Grid>("ActionFooter").ColumnDefinitions[1].Width = new GridLength(mode == ConversionMode.Ocr ? 300 : 240);
+        _directionSelectorHost.IsVisible = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
+        _startOcrButton.IsVisible = mode == ConversionMode.Ocr;
         _startPdfButton.IsVisible = mode == ConversionMode.PdfToImage;
         _startImageButton.IsVisible = mode == ConversionMode.ImageToPdf;
         _startPdfToolButton.IsVisible = mode == ConversionMode.PdfTools;
         var isPdfToolsMode = mode == ConversionMode.PdfTools;
         _pdfToolsModeButton.IsChecked = isPdfToolsMode;
-        _pdfModeButton.IsChecked = !isPdfToolsMode;
-        _modeSelectionTransform.X = isPdfToolsMode ? 0 : ModeDragMaximum;
+        _pdfModeButton.IsChecked = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
+        _ocrModeButton.IsChecked = mode == ConversionMode.Ocr;
+        _modeSelectionTransform.X = GetCategoryIndex() * ModeSegmentWidth;
         var isPdfToImage = mode != ConversionMode.ImageToPdf;
         _pdfToImageDirectionButton.IsChecked = isPdfToImage;
         _imageToPdfDirectionButton.IsChecked = !isPdfToImage;
@@ -995,6 +1009,7 @@ public partial class MainWindow : Window
         {
             RefreshPdfToolPreview();
         }
+        else if (mode == ConversionMode.Ocr) RefreshOcrPreview();
     }
 
     private void UpdatePdfFileEmptyHints()
@@ -1002,6 +1017,7 @@ public partial class MainWindow : Window
         var showHint = _pdfFiles.Count == 0;
         _pdfFilesEmptyHint.IsVisible = showHint;
         _pdfToolFilesEmptyHint.IsVisible = showHint;
+        UpdateOcrFiles();
     }
 
     private static bool ShouldReduceMotion()
@@ -1141,30 +1157,26 @@ public partial class MainWindow : Window
             PdfToolOperation.DeletePages => ("deleted_pages.pdf", "ページ削除後のPDFを保存"),
             PdfToolOperation.ExtractPages => ("extracted_pages.pdf", "選択ページのPDFを保存"),
             PdfToolOperation.SimpleEdit => ("edited.pdf", "編集後のPDFを保存"),
-            PdfToolOperation.ExtractText => ("extracted_text.txt", "テキストを保存"),
             _ => ("merged.pdf", "結合後のPDFを保存")
         };
 
-        var isTextOutput = operation == PdfToolOperation.ExtractText;
         var suggestedBaseName = FileNameHelper.BuildOutputBaseName(
             _pdfFiles.Select(item => item.Path),
             Path.GetFileNameWithoutExtension(suggestedName));
-        suggestedName = $"{suggestedBaseName}{(isTextOutput ? ".txt" : ".pdf")}";
+        suggestedName = $"{suggestedBaseName}{(".pdf")}";
 
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = title,
             SuggestedFileName = suggestedName,
-            DefaultExtension = isTextOutput ? "txt" : "pdf",
-            FileTypeChoices = new[] { isTextOutput ? TextFileType : PdfFileType }
+            DefaultExtension = "pdf",
+            FileTypeChoices = new[] { PdfFileType }
         });
 
         var path = file?.TryGetLocalPath();
         if (!string.IsNullOrWhiteSpace(path))
         {
-            _pdfToolOutputPdfTextBox.Text = isTextOutput
-                ? EnsureTextExtension(path)
-                : EnsurePdfExtension(path);
+            _pdfToolOutputPdfTextBox.Text = EnsurePdfExtension(path);
             _pdfToolOutputPdfBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(_pdfToolOutputPdfTextBox.Text);
         }
     }
@@ -1184,23 +1196,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private ListBox CurrentPdfList() => _mode == ConversionMode.Ocr ? _ocrFilesList
+        : _mode == ConversionMode.PdfTools ? _pdfToolFilesList : _pdfFilesList;
+
     private void OnRemovePdfFilesClick(object? sender, RoutedEventArgs e)
     {
-        var selectedPaths = (_mode == ConversionMode.PdfTools ? _pdfToolFilesList : _pdfFilesList)
+        var selectedPaths = CurrentPdfList()
             .SelectedItems?
             .Cast<FileItem>()
             .Select(item => item.Path)
             .ToList() ?? new List<string>();
-        RemoveSelected(_mode == ConversionMode.PdfTools ? _pdfToolFilesList : _pdfFilesList, _pdfFiles);
+        RemoveSelected(CurrentPdfList(), _pdfFiles);
         foreach (var path in selectedPaths)
         {
             _pdfPasswords.Remove(path);
-            foreach (var key in _pdfTextSelections.Keys
-                         .Where(key => string.Equals(key.PdfPath, path, StringComparison.OrdinalIgnoreCase))
-                         .ToList())
-            {
-                _pdfTextSelections.Remove(key);
-            }
+
         }
 
         RefreshPdfToolPreview();
@@ -1217,7 +1227,6 @@ public partial class MainWindow : Window
         _pdfPasswords.Clear();
         _pdfTextEdits.Clear();
         _pdfShapeEdits.Clear();
-        _pdfTextSelections.Clear();
         RefreshPdfToolPreview();
     }
 
@@ -1359,7 +1368,7 @@ public partial class MainWindow : Window
     private void OnPdfPreviewPageSelectionChanged(object? sender, RoutedEventArgs e)
     {
         var operation = GetPdfToolOperation();
-        if (operation is not (PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages or PdfToolOperation.ExtractText))
+        if (operation is not (PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages))
         {
             return;
         }
@@ -1367,17 +1376,8 @@ public partial class MainWindow : Window
         if (sender is CheckBox { DataContext: PdfPagePreviewItem item } checkBox)
         {
             item.IsPageSelected = checkBox.IsChecked == true;
-            if (operation == PdfToolOperation.ExtractText && item.IsPageSelected)
-            {
-                _pdfTextSelections.Remove((item.PdfPath, item.PageNumber));
-                item.HasEditMarker = false;
-            }
         }
 
-        if (operation == PdfToolOperation.ExtractText)
-        {
-            return;
-        }
 
         var pages = _pdfPagePreviews
             .Where(item => item.IsPageSelected)
@@ -1402,10 +1402,6 @@ public partial class MainWindow : Window
         {
             _ = OpenSimpleEditWindowAsync(item);
         }
-        else if (operation == PdfToolOperation.ExtractText)
-        {
-            _ = OpenTextSelectionWindowAsync(item);
-        }
     }
 
     private void OnPdfPreviewListItemPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -1421,10 +1417,6 @@ public partial class MainWindow : Window
         {
             _ = OpenSimpleEditWindowAsync(item);
         }
-        else if (operation == PdfToolOperation.ExtractText)
-        {
-            _ = OpenTextSelectionWindowAsync(item);
-        }
     }
 
     private async void OnStartPdfConversionClick(object? sender, RoutedEventArgs e)
@@ -1436,8 +1428,7 @@ public partial class MainWindow : Window
             GetPdfImageFormat(),
             GetPdfDpi(),
             _pdfPageRangeTextBox.Text?.Trim() ?? string.Empty,
-            GetPdfPasswords(),
-            (int)(this.FindControl<NumericUpDown>("JpegQualityInput")?.Value ?? 95));
+            GetPdfPasswords());
 
         await RunBatchAsync(request.PdfFiles,
             (file, progress, token) => _pdfToImageService.ConvertAsync(request with { PdfFiles = new[] { file } }, progress, token));
@@ -1486,9 +1477,6 @@ public partial class MainWindow : Window
                 break;
             case PdfToolOperation.SimpleEdit:
                 await StartSimpleEditPdfAsync();
-                break;
-            case PdfToolOperation.ExtractText:
-                await StartExtractPdfTextAsync();
                 break;
         }
     }
@@ -1617,135 +1605,6 @@ public partial class MainWindow : Window
             "文字・テキストや図形を追加したPDFを作成しました。");
     }
 
-    private async Task StartExtractPdfTextAsync()
-    {
-        var pdfPaths = _pdfFiles.Select(item => item.Path).ToList();
-        var outputTextPath = BuildOutputTextPath(
-            _pdfToolOutputPdfTextBox.Text?.Trim() ?? string.Empty,
-            _pdfToolOutputPdfBaseNameTextBox.Text?.Trim() ?? string.Empty,
-            pdfPaths);
-        _pdfToolOutputPdfTextBox.Text = outputTextPath;
-
-        var request = new PdfTextExtractionRequest(
-            pdfPaths,
-            outputTextPath,
-            GetPdfPasswords(),
-            _pdfPagePreviews
-                .Where(item => item.IsPageSelected)
-                .GroupBy(item => item.PdfPath, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(
-                    group => group.Key,
-                    group => (IReadOnlyList<int>)group.Select(item => item.PageNumber).Distinct().Order().ToList(),
-                    StringComparer.OrdinalIgnoreCase),
-            _pdfTextSelections
-                .Where(entry => !string.IsNullOrWhiteSpace(entry.Value.Text))
-                .Select(entry => new PdfTextSelectionItem(
-                    entry.Key.PdfPath,
-                    entry.Key.PageNumber,
-                    entry.Value.Text))
-                .ToList());
-
-        await RunConversionAsync(
-            (progress, token) => _pdfTextExtractionService.ExtractAsync(request, progress, token),
-            "テキスト出力が完了しました。");
-    }
-
-    private async Task OpenTextSelectionWindowAsync(PdfPagePreviewItem pageItem)
-    {
-        try
-        {
-            var password = _pdfPasswords.TryGetValue(pageItem.PdfPath, out var value)
-                ? value
-                : string.Empty;
-            var words = await Task.Run(() => ExtractSelectableWords(pageItem, password));
-            var key = (pageItem.PdfPath, pageItem.PageNumber);
-            var selectedIndices = _pdfTextSelections.TryGetValue(key, out var current)
-                ? current.SelectedWordIndices
-                : Array.Empty<int>();
-            var window = new PdfTextSelectionWindow(
-                $"{Path.GetFileName(pageItem.PdfPath)} — {pageItem.PageNumber}ページ",
-                pageItem.Thumbnail,
-                pageItem.PageWidthPoints,
-                pageItem.PageHeightPoints,
-                words,
-                selectedIndices);
-            var result = await window.ShowDialog<PdfTextSelectionResult?>(this);
-            if (result == null)
-            {
-                return;
-            }
-
-            if (result.SelectedWordIndices.Count == 0 || string.IsNullOrWhiteSpace(result.Text))
-            {
-                _pdfTextSelections.Remove(key);
-                pageItem.HasEditMarker = false;
-                SetStatus($"{pageItem.PageNumber}ページの個別テキスト選択を解除しました。");
-                return;
-            }
-
-            _pdfTextSelections[key] = new PdfTextSelectionState(result.SelectedWordIndices, result.Text);
-            pageItem.IsPageSelected = false;
-            pageItem.HasEditMarker = true;
-            pageItem.EditMarkerLeft = 108;
-            pageItem.EditMarkerTop = 6;
-            SetStatus($"{pageItem.PageNumber}ページで{result.SelectedWordIndices.Count}文字を選択しました。");
-        }
-        catch (Exception ex)
-        {
-            await ShowMessageAsync("テキストを選択できません", FriendlyErrorFormatter.ToUserMessage(ex));
-        }
-    }
-
-    private static IReadOnlyList<PdfSelectableWord> ExtractSelectableWords(
-        PdfPagePreviewItem pageItem,
-        string password)
-    {
-        using var document = string.IsNullOrEmpty(password)
-            ? PdfDocument.Open(pageItem.PdfPath)
-            : PdfDocument.Open(pageItem.PdfPath, new ParsingOptions { Password = password });
-        var page = document.GetPage(pageItem.PageNumber);
-        var scaleX = pageItem.PageWidthPoints / page.Width;
-        var scaleY = pageItem.PageHeightPoints / page.Height;
-        var characters = new List<PdfSelectableWord>();
-        var characterIndex = 0;
-        var wordIndex = 0;
-        foreach (var word in page.GetWords())
-        {
-            foreach (var letter in word.Letters)
-            {
-                var elementStarts = StringInfo.ParseCombiningCharacters(letter.Value);
-                var textElements = elementStarts
-                    .Select((start, index) => letter.Value.Substring(
-                        start,
-                        (index + 1 < elementStarts.Length ? elementStarts[index + 1] : letter.Value.Length) - start))
-                    .Where(value => !string.IsNullOrWhiteSpace(value))
-                    .ToList();
-                if (textElements.Count == 0)
-                {
-                    continue;
-                }
-
-                var bounds = letter.BoundingBox;
-                var elementWidth = bounds.Width / textElements.Count;
-                for (var elementIndex = 0; elementIndex < textElements.Count; elementIndex++)
-                {
-                    characters.Add(new PdfSelectableWord(
-                        characterIndex++,
-                        wordIndex,
-                        textElements[elementIndex],
-                        (bounds.Left + (elementWidth * elementIndex)) * scaleX,
-                        (page.Height - bounds.Top) * scaleY,
-                        elementWidth * scaleX,
-                        bounds.Height * scaleY));
-                }
-            }
-
-            wordIndex++;
-        }
-
-        return characters;
-    }
-
     private async Task RunConversionAsync(
         Func<IProgress<ConversionProgress>, CancellationToken, Task<ConversionResult>> action,
         string successMessage)
@@ -1824,6 +1683,7 @@ public partial class MainWindow : Window
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
+        if (_conversionCts != null) return;
         var dropped = e.DataTransfer.TryGetFiles();
         if (dropped == null)
         {
@@ -1836,7 +1696,7 @@ public partial class MainWindow : Window
         {
             await AddPdfPathsAsync(paths);
         }
-        else if (_mode == ConversionMode.PdfTools)
+        else if (_mode is ConversionMode.PdfTools or ConversionMode.Ocr)
         {
             await AddPdfPathsAsync(paths);
         }
@@ -2099,7 +1959,7 @@ public partial class MainWindow : Window
 
     private void MoveSelectedPdf(int offset)
     {
-        if (_pdfToolFilesList.SelectedItem is not FileItem selected)
+        if (CurrentPdfList().SelectedItem is not FileItem selected)
         {
             return;
         }
@@ -2112,7 +1972,7 @@ public partial class MainWindow : Window
         }
 
         _pdfFiles.Move(index, newIndex);
-        _pdfToolFilesList.SelectedItem = selected;
+        CurrentPdfList().SelectedItem = selected;
         RefreshPdfToolPreview();
     }
 
@@ -2168,12 +2028,6 @@ public partial class MainWindow : Window
             return PdfToolOperation.ExtractPages;
         }
 
-        if (value.Contains("テキスト出力", StringComparison.Ordinal)
-            || value.Contains("文字を抽出", StringComparison.Ordinal))
-        {
-            return PdfToolOperation.ExtractText;
-        }
-
         if (value.Contains("文字・テキスト", StringComparison.Ordinal)
             || value.Contains("テキスト追加", StringComparison.Ordinal)
             || value.Contains("簡易編集", StringComparison.Ordinal)
@@ -2192,22 +2046,18 @@ public partial class MainWindow : Window
             or PdfToolOperation.DeletePages
             or PdfToolOperation.ExtractPages
             or PdfToolOperation.SimpleEdit
-            or PdfToolOperation.ExtractText;
+           ;
         _pdfToolOutputFolderPanel.IsVisible = operation == PdfToolOperation.Split;
         _pdfPageSelectionPanel.IsVisible = operation is PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages;
         _pdfSimpleEditPanel.IsVisible = operation == PdfToolOperation.SimpleEdit;
-        _pdfTextOutputPanel.IsVisible = operation == PdfToolOperation.ExtractText;
         _pdfToolOutputPdfLabel.Text = operation switch
         {
             PdfToolOperation.DeletePages => "削除後のPDF",
             PdfToolOperation.ExtractPages => "選択ページのPDF",
             PdfToolOperation.SimpleEdit => "編集後のPDF",
-            PdfToolOperation.ExtractText => "出力テキスト（TXT）",
             _ => "結合後のPDF"
         };
-        _pdfToolOutputPdfTextBox.Watermark = operation == PdfToolOperation.ExtractText
-            ? "保存先とTXT名"
-            : "保存先とPDF名";
+        _pdfToolOutputPdfTextBox.Watermark = "保存先とPDF名";
         _pdfPageSelectionLabel.Text = operation == PdfToolOperation.ExtractPages
             ? "出力するページ"
             : "削除するページ";
@@ -2220,7 +2070,6 @@ public partial class MainWindow : Window
             PdfToolOperation.DeletePages => "deleted_pages.pdf",
             PdfToolOperation.ExtractPages => "extracted_pages.pdf",
             PdfToolOperation.SimpleEdit => "edited.pdf",
-            PdfToolOperation.ExtractText => "extracted_text.txt",
             _ => "merged.pdf"
         };
         var currentFileName = Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty);
@@ -2229,8 +2078,7 @@ public partial class MainWindow : Window
             "merged.pdf",
             "deleted_pages.pdf",
             "extracted_pages.pdf",
-            "edited.pdf",
-            "extracted_text.txt"
+            "edited.pdf"
         };
         if (knownDefaultNames.Contains(currentFileName, StringComparer.OrdinalIgnoreCase)
             && !string.Equals(currentFileName, defaultFileName, StringComparison.OrdinalIgnoreCase))
@@ -2264,18 +2112,14 @@ public partial class MainWindow : Window
         var operation = GetPdfToolOperation();
         var isPageSelectionMode = operation is PdfToolOperation.DeletePages
             or PdfToolOperation.ExtractPages
-            or PdfToolOperation.ExtractText;
-        var selectionLabel = operation == PdfToolOperation.ExtractText
-            ? "ページ全体"
-            : operation == PdfToolOperation.ExtractPages ? "出力" : "削除";
+           ;
+        var selectionLabel = operation == PdfToolOperation.ExtractPages ? "出力" : "削除";
         _pdfPreviewHelpText.Text = operation == PdfToolOperation.DeletePages
             ? "削除したいページにチェックを入れると、ページ番号が自動入力されます。"
             : operation == PdfToolOperation.ExtractPages
                 ? "出力したいページにチェックを入れると、ページ番号が自動入力されます。"
             : operation == PdfToolOperation.SimpleEdit
                 ? "編集したいページ上をクリックすると、右側に位置が自動入力されます。"
-            : operation == PdfToolOperation.ExtractText
-                ? "ページ全体はチェック、細かな範囲はページ画像を開いて文字の上をなぞります。何も選択しない場合は全文を出力します。"
             : "結合や分割の前に、ページの見た目と順番を確認できます。";
 
         try
@@ -2293,13 +2137,6 @@ public partial class MainWindow : Window
 
             foreach (var preview in previews)
             {
-                if (operation == PdfToolOperation.ExtractText
-                    && _pdfTextSelections.ContainsKey((preview.PdfPath, preview.PageNumber)))
-                {
-                    preview.HasEditMarker = true;
-                    preview.EditMarkerLeft = 108;
-                    preview.EditMarkerTop = 6;
-                }
                 _pdfPagePreviews.Add(preview);
             }
         }
@@ -2613,17 +2450,7 @@ public partial class MainWindow : Window
             : $"{path}.pdf";
     }
 
-    private static string EnsureTextExtension(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return string.Empty;
-        }
 
-        return path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase)
-            ? path
-            : $"{path}.txt";
-    }
 
     private static string BuildOutputPdfPath(
         string currentPath,
@@ -2646,26 +2473,7 @@ public partial class MainWindow : Window
         return FileNameHelper.IncludeSourceNamesInPath(desiredPath, sourcePaths);
     }
 
-    private static string BuildOutputTextPath(
-        string currentPath,
-        string outputBaseName,
-        IReadOnlyList<string> sourcePaths)
-    {
-        var path = EnsureTextExtension(currentPath);
-        if (string.IsNullOrWhiteSpace(outputBaseName))
-        {
-            return FileNameHelper.IncludeSourceNamesInPath(path, sourcePaths);
-        }
 
-        var directory = Path.GetDirectoryName(path);
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            directory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        }
-
-        var desiredPath = Path.Combine(directory, $"{FileNameHelper.SafeBaseName(outputBaseName)}.txt");
-        return FileNameHelper.IncludeSourceNamesInPath(desiredPath, sourcePaths);
-    }
 
     private static bool IsPdfFile(string path)
     {
@@ -2792,9 +2600,7 @@ internal sealed class PdfTextEditDraft
     public string DisplayText => string.IsNullOrWhiteSpace(Text) ? "(空のテキスト)" : Text;
 }
 
-internal sealed record PdfTextSelectionState(
-    IReadOnlyList<int> SelectedWordIndices,
-    string Text);
+
 
 internal sealed class PdfShapeEditDraft
 {

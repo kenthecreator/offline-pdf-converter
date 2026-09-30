@@ -16,11 +16,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Run PDF and file safety regression tests
-        run: dotnet run --project tests/RegressionTests -c Release
+        run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
       - name: Publish Windows standalone executable
         if: runner.os == 'Windows'
-        run: dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PublishProfile=WindowsSingleFile -o artifacts/standalone
+        run: dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PaddleOcrEdition=true -p:PublishProfile=WindowsSingleFile -o artifacts/standalone
       - name: Verify standalone OCR without installed dependencies
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/standalone/OfflinePDFConverter.exe
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/standalone/OfflinePDFConverter.PaddleEdition.exe

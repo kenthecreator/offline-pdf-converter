@@ -10,6 +10,10 @@ public sealed class OfflineOcrService
 {
     public Task<ConversionResult> ExtractBundledAsync(string pdfPath, string outputPath, string language,
         string pages, string password, IProgress<ConversionProgress> progress, CancellationToken token)
+#if PADDLE_OCR
+        => ExtractUsingRecognizerAsync(pdfPath, outputPath, language, pages, password, progress, token,
+            (image, cancellation) => PaddleOcrService.RecognizeImageAsync(image, language, cancellation));
+#else
         => Task.Run(async () =>
         {
             progress.Report(new(0, 1, "内蔵の文字認識機能を準備しています..."));
@@ -31,6 +35,30 @@ public sealed class OfflineOcrService
 
             throw new PlatformNotSupportedException("このOCR機能はWindowsとMacに対応しています。");
         }, token);
+#endif
+
+    public Task<ConversionResult> CreateSearchablePdfBundledAsync(string pdfPath, string outputPath, string language,
+        string pages, string password, IProgress<ConversionProgress> progress, CancellationToken token)
+        => Task.Run(async () =>
+        {
+#if PADDLE_OCR
+            return await SearchablePdfService.CreateAsync(pdfPath, outputPath, language, pages, password, progress, token,
+                (image, cancellation) => PaddleOcrService.RecognizeBlocksAsync(image, language, cancellation));
+#else
+            BundledOcrRuntime? extracted = null;
+            try
+            {
+                var package = OperatingSystem.IsWindows() ? BundledOcrRuntime.Get(token)
+                    : extracted = BundledOcrRuntime.ExtractEmbedded(token);
+                var engine = OperatingSystem.IsWindows() ? package.EnginePath : FindMacTesseract()
+                    ?? throw new FileNotFoundException("MacでOCRを使うにはTesseractをインストールしてください。");
+                return await SearchablePdfService.CreateAsync(pdfPath, outputPath, language, pages, password, progress, token,
+                    async (image, cancellation) => SearchablePdfService.ParseTsv(await RecognizeImageAsync(
+                        engine, package.DataDirectory, language, image, cancellation, "tsv")));
+            }
+            finally { extracted?.Dispose(); }
+#endif
+        }, token);
 
     private static string? FindMacTesseract()
     {
@@ -42,16 +70,27 @@ public sealed class OfflineOcrService
     }
 
     public Task<ConversionResult> ExtractAsync(OcrRequest request, IProgress<ConversionProgress> progress, CancellationToken token)
+    {
+        Validate(request);
+        return ExtractUsingRecognizerAsync(request.PdfPath, request.OutputPath, request.Language, request.Pages,
+            request.Password, progress, token, (image, cancellation) => RecognizeImageAsync(request.EnginePath,
+                request.DataDirectory, request.Language, image, cancellation));
+    }
+
+    private static Task<ConversionResult> ExtractUsingRecognizerAsync(string pdfPath, string outputPath, string language,
+        string pageSelection, string pdfPassword, IProgress<ConversionProgress> progress, CancellationToken token,
+        Func<string, CancellationToken, Task<string>> recognize)
         => Task.Run(async () =>
         {
-            Validate(request);
-            using var countInput = File.OpenRead(request.PdfPath);
-            var password = string.IsNullOrEmpty(request.Password) ? null : request.Password;
+            ValidateDocument(pdfPath, outputPath, language);
+            token.ThrowIfCancellationRequested();
+            using var countInput = File.OpenRead(pdfPath);
+            var password = string.IsNullOrEmpty(pdfPassword) ? null : pdfPassword;
             var count = Conversion.GetPageCount(countInput, password: password);
-            var pages = string.IsNullOrWhiteSpace(request.Pages)
+            var pages = string.IsNullOrWhiteSpace(pageSelection)
                 ? Enumerable.Range(1, count).ToArray()
-                : PageRangeParser.Parse(request.Pages, count, "認識する").ToArray();
-            using var input = File.OpenRead(request.PdfPath);
+                : PageRangeParser.Parse(pageSelection, count, "認識する").ToArray();
+            using var input = File.OpenRead(pdfPath);
             var directory = Path.Combine(Path.GetTempPath(), "OfflinePDFConverter-OCR-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
             try
@@ -68,14 +107,14 @@ public sealed class OfflineOcrService
                         using var stream = File.Create(imagePath);
                         bitmap.Encode(stream, SKEncodedImageFormat.Png, 100);
                     }
-                    progress.Report(new(completed, pages.Length, $"{Path.GetFileName(request.PdfPath)}: {pages[completed]}ページ目を文字認識しています"));
-                    var text = await RecognizeImageAsync(request.EnginePath, request.DataDirectory, request.Language, imagePath, token);
+                    progress.Report(new(completed, pages.Length, $"{Path.GetFileName(pdfPath)}: {pages[completed]}ページ目を文字認識しています"));
+                    var text = await recognize(imagePath, token);
                     builder.AppendLine($"--- {pages[completed]}ページ目（OCR・要確認） ---");
                     builder.AppendLine(string.IsNullOrWhiteSpace(text) ? "[文字を認識できませんでした]" : text.Trim());
                     builder.AppendLine(); completed++;
                     progress.Report(new(completed, pages.Length, $"{completed}/{pages.Length}ページの文字認識が完了しました"));
                 }
-                AtomicFile.Write(request.OutputPath, path => File.WriteAllText(path, builder.ToString(), new UTF8Encoding(false)), token);
+                AtomicFile.Write(outputPath, path => File.WriteAllText(path, builder.ToString(), new UTF8Encoding(false)), token);
                 return new ConversionResult(1, Array.Empty<string>());
             }
             finally { Directory.Delete(directory, recursive: true); }
@@ -83,20 +122,24 @@ public sealed class OfflineOcrService
 
     public static void Validate(OcrRequest request)
     {
-        if (!File.Exists(request.PdfPath)) throw new FileNotFoundException("PDFが見つかりません。", request.PdfPath);
+        ValidateDocument(request.PdfPath, request.OutputPath, request.Language);
         if (!Path.IsPathFullyQualified(request.EnginePath) || !File.Exists(request.EnginePath))
             throw new ArgumentException("Tesseractの実行ファイルをフルパスで指定してください。");
-        if (request.Language is not ("jpn+eng" or "jpn_vert+eng" or "eng"))
-            throw new ArgumentException("認識言語を選択してください。");
         foreach (var language in request.Language.Split('+'))
             if (!File.Exists(Path.Combine(request.DataDirectory, language + ".traineddata")))
                 throw new ArgumentException($"認識データ {language}.traineddata が見つかりません。認識データのフォルダを確認してください。");
-        if (string.IsNullOrWhiteSpace(request.OutputPath)) throw new ArgumentException("保存先を指定してください。");
-        if (string.Equals(Path.GetFullPath(request.OutputPath), Path.GetFullPath(request.PdfPath), StringComparison.OrdinalIgnoreCase))
+    }
+
+    private static void ValidateDocument(string pdfPath, string outputPath, string language)
+    {
+        if (!File.Exists(pdfPath)) throw new FileNotFoundException("PDFが見つかりません。", pdfPath);
+        if (language is not ("jpn" or "jpn_vert" or "jpn+eng" or "jpn_vert+eng" or "eng")) throw new ArgumentException("認識言語を選択してください。");
+        if (string.IsNullOrWhiteSpace(outputPath)) throw new ArgumentException("保存先を指定してください。");
+        if (string.Equals(Path.GetFullPath(outputPath), Path.GetFullPath(pdfPath), StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("元のPDFとは別の保存先を指定してください。");
     }
 
-    public static async Task<string> RecognizeImageAsync(string enginePath, string dataDirectory, string language, string imagePath, CancellationToken token)
+    public static async Task<string> RecognizeImageAsync(string enginePath, string dataDirectory, string language, string imagePath, CancellationToken token, string? outputFormat = null)
     {
         var info = new ProcessStartInfo(enginePath)
         {
@@ -107,6 +150,11 @@ public sealed class OfflineOcrService
         };
         foreach (var argument in new[] { imagePath, "stdout", "--tessdata-dir", dataDirectory, "-l", language, "--psm", language.StartsWith("jpn_vert") ? "5" : "3" })
             info.ArgumentList.Add(argument);
+        if (outputFormat == "tsv")
+        {
+            info.ArgumentList.Add("-c");
+            info.ArgumentList.Add("tessedit_create_tsv=1");
+        }
         using var process = new Process { StartInfo = info };
         token.ThrowIfCancellationRequested();
         process.Start();

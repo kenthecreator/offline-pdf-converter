@@ -6,17 +6,23 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OfflinePDFConverter</AssemblyName>
     <RootNamespace>OfflinePDFConverter</RootNamespace>
-    <Product>Offline PDF Converter (v3.2.0)</Product>
-    <Version>3.2.0</Version>
-    <AssemblyVersion>3.2.0.0</AssemblyVersion>
-    <FileVersion>3.2.0.0</FileVersion>
+    <Product>Offline PDF Converter (v4.0)</Product>
+    <Version>4.0.0</Version>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(PaddleOcrEdition)' == 'true'">
+    <AssemblyName>OfflinePDFConverter.PaddleEdition</AssemblyName>
+    <Product>Offline PDF Converter (v4.0)</Product>
+    <DefineConstants>$(DefineConstants);PADDLE_OCR</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
-    <EmbeddedResource Include="ocr/windows-x64.zip" LogicalName="OfflinePDFConverter.WindowsOcr.zip" />
-    <EmbeddedResource Include="ocr/windows-x64.sha256" LogicalName="OfflinePDFConverter.WindowsOcr.sha256" />
+    <EmbeddedResource Include="ocr/windows-x64.zip" LogicalName="OfflinePDFConverter.WindowsOcr.zip" Condition="'$(PaddleOcrEdition)' != 'true'" />
+    <EmbeddedResource Include="ocr/windows-x64.sha256" LogicalName="OfflinePDFConverter.WindowsOcr.sha256" Condition="'$(PaddleOcrEdition)' != 'true'" />
     <EmbeddedResource Include="Assets/OcrSelfTest.png" LogicalName="OfflinePDFConverter.OcrSelfTest.png" />
     <AvaloniaResource Include="Assets\AppIcon.png" />
     <AvaloniaResource Include="Assets\AppIconLight.png" />
@@ -29,4 +35,11 @@
     <PackageReference Include="PDFtoImage" Version="5.2.1" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
+  <ItemGroup Condition="'$(PaddleOcrEdition)' == 'true'">
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" ExcludeAssets="build" />
+    <EmbeddedResource Include="ocr/paddle/*" LogicalName="OfflinePDFConverter.Paddle.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <Target Name="RequirePaddleModels" BeforeTargets="PrepareForBuild" Condition="'$(PaddleOcrEdition)' == 'true'">
+    <Error Condition="!Exists('ocr/paddle/manifest.json')" Text="Run python3 scripts/prepare-paddle-ocr.py before building PaddleOCR Edition." />
+  </Target>
 </Project>

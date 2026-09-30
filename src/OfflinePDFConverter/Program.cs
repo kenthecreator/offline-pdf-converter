@@ -16,7 +16,13 @@ internal static class Program
         }
         GlobalFontSettings.FontResolver ??= new AppFontResolver();
         try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
-        finally { BundledOcrRuntime.Cleanup(); }
+        finally
+        {
+#if PADDLE_OCR
+            PaddleOcrService.Cleanup();
+#endif
+            BundledOcrRuntime.Cleanup();
+        }
     }
 
     public static AppBuilder BuildAvaloniaApp()

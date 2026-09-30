@@ -13,6 +13,9 @@ public static class FriendlyErrorFormatter
 
         return exception switch
         {
+#if PADDLE_OCR
+            PaddleOcrDependencyException => exception.Message,
+#endif
             OperationCanceledException => "処理を中止しました。",
             UnauthorizedAccessException => "ファイルまたは保存先にアクセスできません。別の保存先を選ぶか、ファイルを閉じてからもう一度お試しください。",
             DirectoryNotFoundException => "保存先フォルダが見つかりません。保存先を選び直してください。",

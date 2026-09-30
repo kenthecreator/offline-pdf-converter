@@ -4,6 +4,8 @@ public sealed record ConversionResult(int CreatedFiles, IReadOnlyList<string> Er
 {
     public IReadOnlyList<FileConversionResult> Items { get; init; } = Array.Empty<FileConversionResult>();
 
+    public IReadOnlyList<string> OutputPaths { get; init; } = Array.Empty<string>();
+
     public bool HasErrors => Errors.Count > 0;
 }
 

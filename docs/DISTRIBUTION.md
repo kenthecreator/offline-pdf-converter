@@ -1,67 +1,22 @@
-# v3.2.0の配布
+# Offline PDF Converter (v4.0) の配布
 
-Windows版は `Offline PDF Converter-v3.2.0-Windows-x64.exe` の一つを利用者へ渡します。OCRを含め、追加ソフト、.NETランタイム、認識データの別配布・インストールは不要です。実行時の部品展開は自動です。マニュアル・検証記録・ハッシュ値は補足資料であり、アプリの動作には必要ありません。
+最新版は [GitHub Releases](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) と [公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/) で配布します。
 
-本版の配布対象はWindows 10（1903以降）／11 x64とmacOS Apple Siliconです。Windows実機の検証結果についてはリリース内容を確認してください。Mac版のOCRには別途Tesseract 5が必要です。
+| 対応端末 | 配布ZIP | アプリ |
+| --- | --- | --- |
+| macOS Apple Silicon | Offline PDF Converter (v4.0)-macOS-arm64.zip | Offline PDF Converter (v4.0).app |
+| Windows 10（1903以降）／11 x64 | Offline PDF Converter (v4.0)-Windows-x64.zip | Offline PDF Converter (v4.0).exe |
 
-以下は旧版を含む配布手順の参考です。
+両版にOCRエンジン・認識モデル・.NET実行基盤を内蔵します。Tesseract、Python、GPUは不要です。WindowsではMicrosoft Visual C++ v14（x64）ランタイムが必要です。配布物にはREADME、マニュアル、リリースノート、OCR説明、第三者ライセンスを同梱します。ZIPのSHA-256も公開します。
 
-# 配布ファイル構成
+Windowsのアプリは単体exeです。ネイティブ部品・モデルを一時領域に自動展開するため、一時フォルダへの書き込みが必要です。MacはZIPを展開して.appを起動してください。ad-hoc署名で、Appleの公証は未実施です。
 
-## 通常構成
+## ローカルでの作成・検証
 
-操作に必要なのは `.exe` だけです。ライセンス表記は配布物として同じフォルダに置いてください。
-
-```text
-Offline PDF Converter/
-  Offline PDF Converter.exe
-  THIRD_PARTY_LICENSES.md
-  MANUAL.md
+```sh
+python3 scripts/build-paddle-edition.py --target both
+codesign --verify --deep --strict "dist/paddle-edition/macos-arm64/Offline PDF Converter (v4.0).app"
+python3 scripts/verify-published-exe.py artifacts/paddle-edition/publish-windows
 ```
 
-`Offline PDF Converter.exe` をダブルクリックして起動します。Python、Poppler、Adobe製品のインストールは不要です。
-
-## 単体exeだけで配布する場合
-
-アプリの動作自体は `Offline PDF Converter.exe` 単体で可能です。ただし、OSSライセンス表記の保持が必要になる場合があります。配布時は `THIRD_PARTY_LICENSES.md` もあわせて提供してください。
-
-## フォルダ配布方式を使う場合
-
-単体exeがセキュリティ設定や一時フォルダ展開の制限で起動できない場合は、`dotnet publish` のフォルダ配布方式で作成した `publish` フォルダ全体を配布します。
-
-```text
-Offline PDF Converter/
-  Offline PDF Converter.exe
-  *.dll
-  runtimes/
-  その他の発行ファイル
-  THIRD_PARTY_LICENSES.md
-  MANUAL.md
-```
-
-通常は単体exe方式を優先してください。
-
-## macOS版の配布
-
-macOS版のアイコンは、`.app/Contents/Resources/AppIcon.icns` を配置し、
-`Info.plist` の `CFBundleIconFile` から参照します。Finderの「情報を見る」経由で
-カスタムアイコンを貼り付ける方法は使用しません。この方法で付く
-`com.apple.FinderInfo` やリソースフォークは、署名後のアプリをmacOSが
-不正な付加データ付きと判定する原因になります。
-
-配布前は、不要な拡張属性を除去してからアプリ全体を署名し、厳格な検証を行います。
-
-```bash
-xattr -cr "Offline PDF Converter (v3.2.0).app"
-codesign --force --deep --sign - --timestamp=none \
-  "Offline PDF Converter (v3.2.0).app"
-codesign --verify --deep --strict \
-  "Offline PDF Converter (v3.2.0).app"
-```
-
-上記の `-` はad-hoc署名です。署名整合性は確認できますが、初回起動時の
-Gatekeeper警告はなくなりません。一般利用者が警告なしで起動できる配布物には、
-Apple Developer ProgramのDeveloper ID証明書による署名とAppleの公証が必要です。
-
-ZIP作成後は、ZIPから別フォルダへ展開した `.app` に対しても同じ
-`codesign --verify --deep --strict` を実行し、SHA-256チェックサムを公開します。
+ZIPを別フォルダへ展開してからもMacの署名検証を行います。Windows実機では `scripts/verify-windows-single-exe.ps1` にexeのパスを渡して内蔵OCRの自己検証を行います。macOS上でのWindows向け発行成功だけではWindowsの実機動作を保証しません。

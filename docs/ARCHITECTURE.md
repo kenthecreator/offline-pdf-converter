@@ -57,9 +57,13 @@ PDF編集はPDFsharpを中心に処理します。結合、1ページずつ分�
 
 PDFsharpで開くすべての処理にファイル単位のパスワードを渡せるようにし、結合、分割、ページ操作、文字・図形追加でもパスワード付きPDFを扱います。パスワードは設定へ保存せず、PDFが一覧から削除された時点でメモリからも削除します。
 
-## テキスト出力
+## v4.0の検索可能PDFと文字確認
 
-PdfPigでPDFの文字レイヤーと文字位置を読み取り、全文、選択ページ、またはプレビュー上のドラッグ矩形と重なる文字列をページ番号付きのUTF-8 TXTとして保存します。選択文字列は画面のボタン、Windowsの`Ctrl+C`、Macの`⌘C`からクリップボードへコピーできます。複数PDFはファイル名の見出しを付けて1つのTXTへまとめます。埋め込み文字が存在しない画像PDFはOCR対象として明示し、このサービスでは画像認識を行いません。
+PDF編集の文字抽出・TXT出力のUIは廃止しました。旧サービスは回帰検証用に残しています。
+
+`SearchablePdfService` が原本ページをコピーし、OCR結果を不可視の文字レイヤーとしてPDFに追加します。既に文字を持つページはスキップします。`PaddleOcrService` は言語別モデル・辞書を使い、縦書き・横書きの読み順を調整します。`BundledPaddleOcrRuntime` が内蔵リソースのSHA-256を確認し、一時領域へ展開します。Mac・Windowsともに同じCPUエンジンを使い、実行時の外部送信・ダウンロードはありません。
+
+`MainWindow.OcrPreview.cs` がPdfPigの実際の文字位置から選択・コピーを提供します。`MainWindow.OcrMotion.cs` が左右の表示形式・スクロール、対象全ページのスキャン、5秒の最低表示時間、完了後の間接照明を管理します。確認画面は文字追加の編集画面と同じ左右配置・拡大縮小パネル・完了ボタンを使います。
 
 文字/テキスト追加では、画面上の編集状態を `PdfSimpleEditRequest` にまとめ、書き出し時にPDF座標へ変換して反映します。テキストボックスは最前面レイヤーとして扱い、図形は四角形、角丸四角形、丸、線を扱います。
 
@@ -69,22 +73,24 @@ PdfPigでPDFの文字レイヤーと文字位置を読み取り、全文、選�
 
 ## 追加しやすい機能
 
-- 画質指定: JPEG品質と用途別設定をUIから指定できます。
+- 解像度指定: v3.1.0と同じスライダーで200／300／600 dpiを選択します。JPEG品質は95です。
 - 出力名ルール変更: `FileNameHelper` を拡張
-- OCR: 専用に構築したTesseract・認識データ・ライセンスをexeに内蔵します。
+- OCR: PaddleOCRのモデル・辞書・ライセンスをMac・Windows配布物に内蔵します。
 
 ## 制限
 
 - PDFiumは1プロセス内での同時レンダリングを避けています。
-- 画像PDFの文字認識は `OfflineOcrService` からローカルのTesseract 5を呼び出します。Windows版はTesseract本体・認識データをexeに埋め込んでいます。通常の文字抽出は従来どおりPdfPigを使用します。
+- v4.0のOCRはPaddleOCR内蔵版です。WindowsではVisual C++ v14（x64）ランタイムが必要です。
 - 既存PDF内の文字を直接編集する機能は実装していません。文字や図形をPDF上に追加する方式です。
 - 単体exe方式ではネイティブライブラリを一時フォルダに展開します。
 
 ## 改良版の構成
 
-`AtomicFile` が出力の確定と衝突回避を共通化します。`BatchRunner` が個別出力操作の入力ごとの結果を管理します。`MainWindow.Editor.cs`、`MainWindow.Batch.cs`、`MainWindow.Ocr.cs`、`MainWindow.Presets.cs` に画面の役割を分離しました。OCRは `ProcessStartInfo.ArgumentList` で引数を渡し、シェルを経由せず、取消時には子プロセスも停止します。
+画面のカテゴリーは `PDF編集`、`PDF↔画像`、`OCR処理` の3つです。`ConversionMode.Ocr` と `MainWindow.Ocr.cs` がOCR専用のPDF一覧、ページプレビュー、認識設定を管理します。PDF一覧と保存済みパスワードは既存画面と共有し、処理は既存の `OfflineOcrService` と `BatchRunner` を使います。
 
-## v3.2.0のWindows単体配布
+`AtomicFile` が出力の確定と衝突回避を共通化します。`BatchRunner` が個別出力操作の入力ごとの結果を管理します。`MainWindow.Editor.cs`、`MainWindow.Batch.cs`、`MainWindow.Ocr.cs`、`MainWindow.Presets.cs` に画面の役割を分離しました。PaddleOCRはアプリ内のONNX RuntimeでCPU推論します。旧Tesseract実装の子プロセス制御は回帰検証用に残しています。
+
+## 旧v3.2.0のWindows単体配布（回帰検証用）
 
 `WindowsSingleFile.pubxml` が自己完結の単体exeを発行し、exe以外の出力ファイルが残る場合はエラーにします。`ocr/windows-x64.zip` はマネージドリソースとして内蔵し、部品本体・日本語／英語データ・ライセンス・由来情報・ファイルごとのハッシュを含みます。
 

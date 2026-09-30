@@ -1,19 +1,20 @@
-# Offline PDF Converter v3.2.0
+# Offline PDF Converter (v4.0)
 
-完全オフライン動作を前提にした、Windows x64向けのPDF/画像変換・PDF編集デスクトップアプリです。Python、Poppler、Adobe製品、外部変換サービスを使わず、発行済みの `.exe` をダブルクリックして利用できます。
+完全オフライン動作を前提にした、Windows x64／macOS Apple Silicon向けのPDF・画像変換とPDF編集のデスクトップアプリです。[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から配布ZIPを取得できます。
 
-## 変更しない基本原則
+v4.0のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
 
-- 実行時のインターネット接続・外部送信・追加ダウンロードを必要としません。
-- 利用者による別ソフト・ランタイムの追加インストールを必要としません。
-- Windows版は配布するexe一つだけで、OCRを含む機能を使える構成です。
-- 内部の部品展開は自動で行い、利用者にエンジンの場所を設定させません。
+## v4.0のオフラインOCR
 
-v3.2.0はWindows 10（1903以降）／11のx64版とmacOS Apple Silicon版を配布します。Windows版は実行時にユーザーの一時フォルダへの書き込みが必要です。内蔵OCRの部品は初回使用時に展開します。.NETのネイティブ部品も内部で展開されるため、「配布するファイルが一つ」と「実行中にファイルを一切作らない」は異なります。
+スキャンしたPDFに、検索・選択・コピーできる文字レイヤーを追加します。原本のページの見た目を保ったPDFとして書き出すため、画像だけだった資料を検索できるようになります。
 
-Mac版アプリのPDF・画像処理は自己完結しています。OCRには別途インストール済みのTesseract 5が必要です。アプリに含まれる日本語・英語の認識データを利用します。Mac版はad-hoc署名で、Appleの公証は未実施です。
+- Mac・WindowsともにPaddleOCRの認識エンジンとモデルを内蔵し、実行時のネット接続・外部送信・追加ダウンロードを必要としません。
+- Tesseract、Python、GPU、.NETランタイムの別途インストールは不要です。
+- Windows x64ではMicrosoft Visual C++ v14（x64）ランタイムが必要です。
+- Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
+- ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
-詳細と確認範囲は [v3.2.0リリース内容](docs/RELEASE_DETAILS_v3.2.0.md) を参照してください。
+[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v4.0リリース内容](docs/RELEASE_DETAILS_v4.0.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
 
 ## 技術構成の提案
 
@@ -24,12 +25,12 @@ Mac版アプリのPDF・画像処理は自己完結しています。OCRには�
 | UI | .NET 8 / C# / Avalonia UI | クロスプラットフォーム開発とWindows x64の自己完結 `.exe` 発行に向いている。WPF風のXAMLで保守しやすい。 |
 | PDF → 画像 | PDFtoImage + PDFium + SkiaSharp | Adobe非依存。PDFiumで各ページをレンダリングし、PNG/JPEGへ保存できる。 |
 | 画像 → PDF | PDFsharp | MITライセンス。JPEG/PNGをPDFページへ配置する用途に向いている。 |
-| テキスト出力 | PdfPig | PDFに埋め込まれた文字情報を、全文・ページ単位・選択範囲からTXTへ保存する。 |
+| 検索可能PDF | PDFsharp + OCR + PdfPig | 原本のページに見えない文字を追加し、既存の文字レイヤーは重複させずに保持する。 |
 | 配布 | self-contained single-file publish | .NET Runtimeや外部DLLを別途入れずに起動できる。 |
 
 WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフォーム開発とWindows用単体exe発行の扱いやすさを重視してAvaloniaを選んでいます。MuPDF系はAGPLまたは商用ライセンスの検討が必要になりやすいため、この実装では採用していません。
 
-改良版の保存・再実行・出力プリセット・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Windows版はOCR本体・日本語／英語の認識データもexeに内蔵し、追加インストールや実行時のダウンロードは不要です。
+改良版の保存・再実行・解像度設定・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Mac・WindowsともにOCRモデルを内蔵します。WindowsのVisual C++ランタイム要件は上記のとおりです。
 
 ## 主な機能
 
@@ -46,8 +47,8 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 複数ページPDFを1ページずつ別PDFに分割
 - 複数ページPDFから指定ページを削除して新しいPDFを作成
 - 複数ページPDFから選択ページだけを元の順番で1つのPDFとして出力
-- PDFに埋め込まれた文字情報をTXTへ出力（全文、選択ページ、プレビュー上でドラッグした選択範囲）
-- 選択範囲は「コピー」またはWindowsの`Ctrl+C`／Macの`⌘C`でコピー
+- OCR処理で検索・選択・コピーできる文字レイヤー付きPDFを作成
+- PDFの言語を日本語（横書き）／日本語（縦書き）／英語／日本語・英語 混在から選択
 - PDF編集時のページプレビュー表示
 - ページプレビューのアイコン/リスト表示切り替え
 - プレビュー上で削除ページをチェック選択
@@ -59,7 +60,7 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 図形の移動、リサイズ、回転、コピー/貼り付け
 - 図形の塗り潰し色、境界線の色、境界線の太さ、色なし設定
 - PDF編集プレビューの拡大/縮小、Ctrl+マウスホイール、トラックパッドのピンチ操作
-- 起動時にデバイスのライト／ダークモードを判別して自動適用（起動後は手動切り替え可能）
+- Auto（初期設定）でデバイスのライト／ダーク設定に追従。手動切り替えも可能
 - ドラッグ＆ドロップ
 - 進捗バー、完了メッセージ、分かりやすいエラー表示
 
@@ -79,19 +80,13 @@ offline-pdf-converter/
 
 詳細は [docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md) を参照してください。
 
-基本コマンド:
+Mac・Windowsのv4.0配布物を作成:
 
-```bash
-dotnet publish "src/OfflinePDFConverter/OfflinePDFConverter.csproj" \
-  -p:PublishProfile=WindowsSingleFile \
-  -o artifacts/windows-v3.2.0
+```sh
+python3 scripts/build-paddle-edition.py --target both
 ```
 
-出力先:
-
-```text
-dist/win-x64-single-offline-pdf-converter/Offline PDF Converter.exe
-```
+出力は `dist/paddle-edition/` の `Offline PDF Converter (v4.0)-macOS-arm64.zip` と `Offline PDF Converter (v4.0)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
 
 ## ライセンス
 

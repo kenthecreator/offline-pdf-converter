@@ -1,0 +1,6 @@
+PaddleOCR Edition uses PP-OCRv6 small detector and recognizer, with the legacy PP-OCRv2 angle classifier.
+Models: PaddlePaddle/PaddleOCR, distributed as ONNX exports by RapidAI/RapidOCR v3.9.2.
+RapidOcrNet 4.2.0 (BobLd, RapidOCR), commit 708cae2fcb88720e1d891a81b5ee3e8b2bcc139e.
+RapidOcrNet is based on RapidOCR and includes code derived from PdfPig and PContour/PContourNet.
+Inference: Microsoft ONNX Runtime 1.29.0; image processing: SkiaSharp; polygons: Clipper2.
+See the accompanying license texts and THIRD_PARTY_LICENSES.md.

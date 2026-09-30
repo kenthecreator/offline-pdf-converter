@@ -17,3 +17,11 @@ test-samples/output/
 artifacts/
 native-build/
 vendor-downloads/
+
+# Isolated OCR comparison environments; results live under artifacts/
+.ocr-benchmark-venv*/
+scripts/__pycache__/
+
+:memory:.ses
+CHATGPT_MEMORY_PROMPTS_OFFLINE_PDF_CONVERTER.md
+MEMORY_INSTRUCTIONS_OFFLINE_PDF_CONVERTER.md

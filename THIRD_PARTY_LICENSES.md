@@ -42,4 +42,18 @@
 
 ## OCR認識データ
 
+### v4.0の内蔵OCR部品
+
+v4.0のMac・Windows配布物は `PaddleOcrEdition=true` でビルドし、以下の部品を使用します。
+
+| 部品 | 固定版・構成 | ライセンス |
+| --- | --- | --- |
+| PaddleOCRモデル | PP-OCRv6 small検出・混在認識、PP-OCRv4日本語・英語認識、PP-OCRv2角度分類。RapidOCR v3.9.2のONNX配布物 | Apache-2.0 |
+| RapidOcrNet | 4.2.0 / commit 708cae2fcb88720e1d891a81b5ee3e8b2bcc139e | Apache-2.0 |
+| Microsoft.ML.OnnxRuntime / Managed | 1.29.0 | MITおよび同梱ThirdPartyNotices |
+| Clipper2 | 2.0.0 | Boost Software License 1.0 |
+| PContourのC#移植（RapidOcrNet内） | Lingdong Huang / BobLd | MIT |
+
+取得URL、SHA-256、文字辞書の由来を`src/OfflinePDFConverter/ocr/paddle/manifest.json`に記録します。上記ライセンス全文と通知をアプリに埋め込み、OCR画面の「使用ライセンス」で表示します。SkiaSharp、PDFium、.NETなど共通部品には上記の既存のライセンスが適用されます。
+
 日本語（jpn / jpn_vert）と英語（eng）の認識データは https://github.com/tesseract-ocr/tessdata_fast から取得しています。Apache License 2.0。ライセンス全文と取得URL・SHA-256は `src/OfflinePDFConverter/ocr/tessdata/` に同梱しています。v3.2.0ではTesseract 5.5.3、Leptonica 1.87.0、libpng 1.6.58、zlib 1.3.2を静的リンクしたWindows x64エンジンを内蔵しています。各ライセンス、MinGWのライセンス、GCC Runtime Library Exception 3.1とGPLv3本文は内蔵OCRアーカイブ内のlicenses/とvendor/ocr-licenses/に含めています。外部のTesseractインストーラは配布しません。
