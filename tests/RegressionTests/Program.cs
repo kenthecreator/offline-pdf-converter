@@ -30,6 +30,23 @@ if(args.Length==2 && args[0]=="--fixture") {
  File.WriteAllText(Path.Combine(args[1],"broken.pdf"),"not a pdf"); Directory.Delete(root,true); return 0;
 }
 try {
+await Test("system font collections create selectable Japanese PDF text", () => {
+ if (!OperatingSystem.IsWindows()) return Task.CompletedTask;
+ var file = Path.Combine(root, "collection-font.pdf");
+ using (var doc = new PdfDocument()) {
+  using var graphics = XGraphics.FromPdfPage(doc.AddPage());
+  graphics.DrawString("日本語 ABC", new XFont("Meiryo", 20), XBrushes.Black, new XPoint(30, 80));
+  doc.Save(file);
+ }
+ using var read = UglyToad.PdfPig.PdfDocument.Open(file);
+ Check(read.GetPage(1).Text.Contains("日本語 ABC"), "collection font lost Japanese text");
+ return Task.CompletedTask;
+});
+await Test("malformed font collections fail clearly", () => {
+ Expect<InvalidDataException>(() => FontCollectionReader.ExtractFirstFace("ttcf"u8.ToArray()));
+ Check(FontCollectionReader.ExtractFirstFace(new byte[] {0,1,0,0}).SequenceEqual(new byte[] {0,1,0,0}), "standalone font changed");
+ return Task.CompletedTask;
+});
 var gestureCharacters = new List<PdfSelectableWord>();
 var nextIndex = 0;
 void AddWord(string value, int wordIndex, double left, double top) {

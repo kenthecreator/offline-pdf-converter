@@ -72,7 +72,7 @@ public sealed class AppFontResolver : IFontResolver
         }
 
         path ??= FindFirstExistingPath(GothicFontCandidates());
-        return path == null ? null : File.ReadAllBytes(path);
+        return path == null ? null : FontCollectionReader.ExtractFirstFace(File.ReadAllBytes(path));
     }
 
     private static string? FindSystemFontPath(string familyName)
