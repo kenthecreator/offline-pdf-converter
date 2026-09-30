@@ -63,6 +63,8 @@ PDF編集の文字抽出・TXT出力のUIは廃止しました。旧サービス
 
 `SearchablePdfService` が原本ページをコピーし、OCR結果を不可視の文字レイヤーとしてPDFに追加します。既に文字を持つページはスキップします。`PaddleOcrService` は言語別モデル・辞書を使い、縦書き・横書きの読み順を調整します。`BundledPaddleOcrRuntime` が内蔵リソースのSHA-256を確認し、一時領域へ展開します。Mac・Windowsともに同じCPUエンジンを使い、実行時の外部送信・ダウンロードはありません。
 
+Windowsの日本語TTCフォントは `FontCollectionReader` が先頭のフォントを単独のsfntデータへ変換してPDFsharpに渡します。フォントファイル自体の再配布は行いません。内蔵OCRリソースは `.gitattributes` で改行変換を禁止し、Windowsでも固定ハッシュを維持します。
+
 `MainWindow.OcrPreview.cs` がPdfPigの実際の文字位置から選択・コピーを提供します。`MainWindow.OcrMotion.cs` が左右の表示形式・スクロール、対象全ページのスキャン、5秒の最低表示時間、完了後の間接照明を管理します。確認画面は文字追加の編集画面と同じ左右配置・拡大縮小パネル・完了ボタンを使います。
 
 文字/テキスト追加では、画面上の編集状態を `PdfSimpleEditRequest` にまとめ、書き出し時にPDF座標へ変換して反映します。テキストボックスは最前面レイヤーとして扱い、図形は四角形、角丸四角形、丸、線を扱います。
