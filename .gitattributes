@@ -1,0 +1,2 @@
+# OCR resources are byte-verified; never translate their line endings on checkout.
+src/OfflinePDFConverter/ocr/paddle/** -text
