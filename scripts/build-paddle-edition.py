@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / 'artifacts/paddle-edition'
 DIST = ROOT / 'dist/paddle-edition'
-TITLE = 'Offline PDF Converter (v4.1)'
+TITLE = 'Offline PDF Converter (v4.2)'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -52,7 +52,7 @@ def main():
             with (contents/'Info.plist').open('wb') as stream:
                 plistlib.dump({'CFBundleName':TITLE,'CFBundleDisplayName':TITLE,'CFBundleIdentifier':'com.offlinepdfconverter.paddle',
                                'CFBundleExecutable':'OfflinePDFConverter.PaddleEdition','CFBundlePackageType':'APPL',
-                               'CFBundleShortVersionString':'4.1.0','CFBundleVersion':'4.1.0','CFBundleIconFile':'AppIcon',
+                               'CFBundleShortVersionString':'4.2.0','CFBundleVersion':'4.2.0','CFBundleIconFile':'AppIcon',
                                'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'11.0'},stream)
             subprocess.run(['codesign','--force','--deep','--sign','-',str(app)],check=True)
             subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
@@ -61,13 +61,14 @@ def main():
             if len(files) != 1 or files[0].suffix != '.exe': raise ValueError('Expected one Windows executable')
             shutil.copy2(files[0], package/(TITLE+'.exe'))
         documents = [ROOT/'README.md', ROOT/'THIRD_PARTY_LICENSES.md'] + [ROOT/'docs'/name for name in
-                     ['MANUAL.md', 'IMPROVEMENTS.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.1.0.md']]
+                     ['MANUAL.md', 'IMPROVEMENTS.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.2.0.md']]
         for source in documents:
             shutil.copy2(source, package/source.name)
+        shutil.copy2(ROOT/'src/OfflinePDFConverter/Assets/Fonts/OFL.txt', package/'OFL-ZenKakuGothicNew.txt')
         archive = DIST/(TITLE+'-'+('macOS-arm64' if target == 'mac' else 'Windows-x64')+'.zip')
         deliverable = package / (TITLE + ('.app' if target == 'mac' else '.exe'))
         files = list(deliverable.rglob('*')) if target == 'mac' else [deliverable]
-        files += [package/source.name for source in documents]
+        files += [package/source.name for source in documents] + [package/'OFL-ZenKakuGothicNew.txt']
         with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as bundle:
             for file in sorted(files):
                 if file.is_file(): bundle.write(file,file.relative_to(package))

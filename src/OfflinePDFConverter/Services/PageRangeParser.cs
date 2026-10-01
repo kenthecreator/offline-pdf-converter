@@ -27,7 +27,7 @@ public static class PageRangeParser
         {
             if (part.Contains('-', StringComparison.Ordinal))
             {
-                var range = part.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var range = part.Split('-', StringSplitOptions.TrimEntries);
                 if (range.Length != 2
                     || !int.TryParse(range[0], out var start)
                     || !int.TryParse(range[1], out var end))
@@ -53,6 +53,7 @@ public static class PageRangeParser
             }
         }
 
+        if (pages.Count == 0) throw new ArgumentException($"{pageAction}ページを入力してください。例: 1,3,5-7");
         return pages;
     }
 
@@ -63,9 +64,12 @@ public static class PageRangeParser
         int pageCount,
         string pageAction)
     {
-        for (var page = start; page <= end; page++)
+        if (start < 1 || end > pageCount)
+            throw new ArgumentException($"{pageAction}ページは1から{pageCount}までの範囲で指定してください。");
+        for (var page = start; ; page++)
         {
             AddPage(pages, page, pageCount, pageAction);
+            if (page == end) break;
         }
     }
 

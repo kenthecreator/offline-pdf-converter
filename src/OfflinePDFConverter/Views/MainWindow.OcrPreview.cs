@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using OfflinePDFConverter.Models;
+using OfflinePDFConverter.Services;
 using UglyToad.PdfPig;
 
 namespace OfflinePDFConverter.Views;
@@ -177,7 +178,11 @@ public partial class MainWindow
         async Task CopyAsync()
         {
             if (selected.Count == 0 || dialog.Clipboard == null) return;
-            await dialog.Clipboard.SetTextAsync(BuildText()); count.Text = "選択した文字をコピーしました。";
+            try
+            {
+                await dialog.Clipboard.SetTextAsync(BuildText()); count.Text = "選択した文字をコピーしました。";
+            }
+            catch (Exception ex) { count.Text = "コピーできませんでした：" + FriendlyErrorFormatter.ToUserMessage(ex); }
         }
         minus.Click += (_, _) => SetZoom(zoom - .25); plus.Click += (_, _) => SetZoom(zoom + .25); reset.Click += (_, _) => SetZoom(1);
         close.Click += (_, _) => dialog.Close();

@@ -20,7 +20,7 @@ public static class FileNameHelper
 
     public static string GetUniquePath(string desiredPath)
     {
-        if (!File.Exists(desiredPath))
+        if (!File.Exists(desiredPath) && !Directory.Exists(desiredPath))
         {
             return desiredPath;
         }
@@ -32,7 +32,7 @@ public static class FileNameHelper
         for (var i = 2; i < 10000; i++)
         {
             var candidate = Path.Combine(directory, $"{name}_{i}{extension}");
-            if (!File.Exists(candidate))
+            if (!File.Exists(candidate) && !Directory.Exists(candidate))
             {
                 return candidate;
             }

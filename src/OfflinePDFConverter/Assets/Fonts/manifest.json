@@ -1,0 +1,17 @@
+{
+  "source": "https://github.com/google/fonts/tree/main/ofl/zenkakugothicnew",
+  "files": [
+    {
+      "file": "ZenKakuGothicNew-Regular.ttf",
+      "gitBlob": "9940304caecd27df011ef6d15af9e187713967be",
+      "sha256": "b840cd07a67d89cacca44249ae49aa99ee7640eb5ce623be8d8983d6aabac801",
+      "bytes": 2360248
+    },
+    {
+      "file": "OFL.txt",
+      "gitBlob": "c05130c2195586600c9bc245c88a67d1154369a8",
+      "sha256": "0fac78a235c98d640cb06332eb5362c211d86fa03c011df438c35005d22ad2c7",
+      "bytes": 4401
+    }
+  ]
+}

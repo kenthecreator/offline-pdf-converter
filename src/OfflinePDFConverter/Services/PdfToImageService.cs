@@ -58,73 +58,81 @@ public sealed class PdfToImageService : IPdfToImageService
         var createdFiles = 0;
         progress.Report(new ConversionProgress(0, totalPages, "変換を開始しています..."));
 
-        for (var pdfFileIndex = 0; pdfFileIndex < request.PdfFiles.Count; pdfFileIndex++)
+        try
         {
-            var pdfPath = request.PdfFiles[pdfFileIndex];
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!pagesByPdf.TryGetValue(pdfPath, out var pdfSelection))
+            for (var pdfFileIndex = 0; pdfFileIndex < request.PdfFiles.Count; pdfFileIndex++)
             {
-                continue;
-            }
-
-            try
-            {
-                var pagesToConvert = pdfSelection.Pages;
-                var digits = Math.Max(3, pdfSelection.PageCount.ToString().Length);
-                var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
-                var extension = request.OutputFormat == PdfImageFormat.Png ? "png" : "jpg";
-                var format = request.OutputFormat == PdfImageFormat.Png
-                    ? SKEncodedImageFormat.Png
-                    : SKEncodedImageFormat.Jpeg;
-
-                using var stream = File.OpenRead(pdfPath);
-                var password = GetPassword(request.Passwords, pdfPath);
-                var options = new RenderOptions(
-                    Dpi: request.Dpi,
-                    WithAnnotations: true,
-                    BackgroundColor: SKColors.White,
-                    UseTiling: true);
-
-                var zeroBasedPages = pagesToConvert.Select(page => page - 1).ToArray();
-                var convertedIndex = 0;
-                foreach (var bitmap in Conversion.ToImages(
-                             stream,
-                             zeroBasedPages,
-                             password: NullIfEmpty(password),
-                             options: options))
+                var pdfPath = request.PdfFiles[pdfFileIndex];
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!pagesByPdf.TryGetValue(pdfPath, out var pdfSelection))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var originalPageNumber = pagesToConvert[convertedIndex];
-                    using (bitmap)
+                    continue;
+                }
+
+                try
+                {
+                    var pagesToConvert = pdfSelection.Pages;
+                    var digits = Math.Max(3, pdfSelection.PageCount.ToString().Length);
+                    var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
+                    var extension = request.OutputFormat == PdfImageFormat.Png ? "png" : "jpg";
+                    var format = request.OutputFormat == PdfImageFormat.Png
+                        ? SKEncodedImageFormat.Png
+                        : SKEncodedImageFormat.Jpeg;
+
+                    using var stream = File.OpenRead(pdfPath);
+                    var password = GetPassword(request.Passwords, pdfPath);
+                    var options = new RenderOptions(
+                        Dpi: request.Dpi,
+                        WithAnnotations: true,
+                        BackgroundColor: SKColors.White,
+                        UseTiling: true);
+
+                    var zeroBasedPages = pagesToConvert.Select(page => page - 1).ToArray();
+                    var convertedIndex = 0;
+                    foreach (var bitmap in Conversion.ToImages(
+                                 stream,
+                                 zeroBasedPages,
+                                 password: NullIfEmpty(password),
+                                 options: options))
                     {
-                        var pageNumber = originalPageNumber.ToString($"D{digits}");
-                        var desiredPath = Path.Combine(request.OutputFolder, $"{baseName}_page{pageNumber}.{extension}");
-                        var outputPath = FileNameHelper.GetUniquePath(desiredPath);
-
-                        AtomicFile.Write(outputPath, path =>
+                        var originalPageNumber = pagesToConvert[convertedIndex];
+                        using (bitmap)
                         {
-                            using var output = File.Open(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                            bitmap.Encode(output, format, request.OutputFormat == PdfImageFormat.Png ? 100 : request.JpegQuality);
-                        }, cancellationToken);
-                        createdFiles++;
-                    }
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var pageNumber = originalPageNumber.ToString($"D{digits}");
+                            var desiredPath = Path.Combine(request.OutputFolder, $"{baseName}_page{pageNumber}.{extension}");
+                            var outputPath = FileNameHelper.GetUniquePath(desiredPath);
 
-                    convertedIndex++;
-                    completed++;
-                    progress.Report(new ConversionProgress(
-                        completed,
-                        totalPages,
-                        $"{Path.GetFileName(pdfPath)}: {originalPageNumber}ページ目を保存しました"));
+                            AtomicFile.Write(outputPath, path =>
+                            {
+                                using var output = File.Open(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                                bitmap.Encode(output, format, request.OutputFormat == PdfImageFormat.Png ? 100 : request.JpegQuality);
+                            }, cancellationToken);
+                            createdFiles++;
+                        }
+
+                        convertedIndex++;
+                        completed++;
+                        progress.Report(new ConversionProgress(
+                            completed,
+                            totalPages,
+                            $"{Path.GetFileName(pdfPath)}: {originalPageNumber}ページ目を保存しました"));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{Path.GetFileName(pdfPath)}: {FriendlyErrorFormatter.ToUserMessage(ex)}");
                 }
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{Path.GetFileName(pdfPath)}: {FriendlyErrorFormatter.ToUserMessage(ex)}");
-            }
+
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new PartialConversionCanceledException(createdFiles, cancellationToken);
         }
 
         return new ConversionResult(createdFiles, errors);

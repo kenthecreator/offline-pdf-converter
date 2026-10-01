@@ -23,13 +23,15 @@ public partial class MainWindow
             {
                 result = await BatchRunner.RunAsync(pending, convert,
                     new Progress<ConversionProgress>(UpdateProgress), _conversionCts.Token);
+                if (_closeWhenIdle) return;
                 if (beforeResult != null) await beforeResult(_conversionCts.Token);
                 _mainProgressBar.Value = result.Items.Any(x => x.Status is FileConversionStatus.Cancelled or FileConversionStatus.NotStarted) ? _mainProgressBar.Value : 100;
                 SetStatus("一括処理の結果を確認してください。");
             }
-            catch (Exception ex) { await ShowMessageAsync("処理できませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }
-            finally { cleanup?.Invoke(); _conversionCts.Dispose(); _conversionCts = null; SetBusy(false); }
-            if (result == null) return;
+            catch (OperationCanceledException) { SetStatus("処理を中止しました。"); }
+            catch (Exception ex) { if (!_closeWhenIdle) await ShowMessageAsync("処理できませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }
+            finally { cleanup?.Invoke(); _conversionCts.Dispose(); _conversionCts = null; SetBusy(false); if (_closeWhenIdle) Close(); }
+            if (_windowClosed || _closeWhenIdle || result == null) return;
             pending = await ShowBatchResultAsync(result);
         }
     }
@@ -61,6 +63,7 @@ public partial class MainWindow
     }
     private void SetBusy(bool busy)
     {
+        foreach (var panel in new[] { "PdfPanel", "ImagePanel", "PdfToolsPanel" }) Required<Grid>(panel).IsEnabled = !busy;
         if (this.FindControl<Button>("CancelConversionButton") is { } cancel) cancel.IsVisible = busy;
         _startOcrButton.IsEnabled = !busy && _pdfFiles.Count > 0;
         _ocrModeButton.IsEnabled = !busy;

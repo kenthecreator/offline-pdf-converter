@@ -132,7 +132,7 @@ await Test("embedded OCR extracts without installed software",()=>{using var run
 await Test("OCR extraction cleans its private directory",()=>{var runtime=BundledOcrRuntime.ExtractEmbedded();var path=runtime.RootDirectory;runtime.Dispose();Check(!Directory.Exists(path),"extraction survived dispose");return Task.CompletedTask;});
 await Test("corrupted OCR bundle is rejected",()=>{using var stream=new MemoryStream(new byte[]{1,2,3});Expect<InvalidDataException>(()=>BundledOcrRuntime.Extract(stream,new string('0',64)));return Task.CompletedTask;});
 await Test("OCR extraction respects cancellation",()=>{using var cts=new CancellationTokenSource();cts.Cancel();Expect<OperationCanceledException>(()=>BundledOcrRuntime.ExtractEmbedded(cts.Token));return Task.CompletedTask;});
-await Test("application version is 4.1.0.0",()=>{Check(typeof(ConversionResult).Assembly.GetName().Version?.ToString()=="4.1.0.0","wrong version");return Task.CompletedTask;});
+await Test("application version is 4.2.0.0",()=>{Check(typeof(ConversionResult).Assembly.GetName().Version?.ToString()=="4.2.0.0","wrong version");return Task.CompletedTask;});
 await Test("atomic write cleans incomplete output", () => { var dir=Folder("failure"); var path=Path.Combine(dir,"out.txt"); Expect<IOException>(()=>AtomicFile.Write(path,temp=>{File.WriteAllText(temp,"partial");throw new IOException("disk full");})); Check(Directory.GetFiles(dir).Length==0,"partial survived"); return Task.CompletedTask; });
 await Test("atomic write preserves an existing file", () => { var dir=Folder("collision");var path=Path.Combine(dir,"out.txt");File.WriteAllText(path,"original");var actual=AtomicFile.Write(path,temp=>File.WriteAllText(temp,"complete"));Check(File.ReadAllText(path)=="original"&&File.ReadAllText(actual)=="complete"&&actual!=path,"overwritten");return Task.CompletedTask; });
 await Test("atomic cancellation before publication", () => { var dir=Folder("cancel-save");using var cts=new CancellationTokenSource();Expect<OperationCanceledException>(()=>AtomicFile.Write(Path.Combine(dir,"out.txt"),temp=>{File.WriteAllText(temp,"complete");cts.Cancel();},cts.Token));Check(Directory.GetFiles(dir).Length==0,"cancelled output survived");return Task.CompletedTask; });
@@ -140,13 +140,55 @@ await Test("concurrent writers preserve every output", async () => {var dir=Fold
 await Test("page ranges normalize and deduplicate",()=>{Check(PageRangeParser.Parse("5-3、1,3",5).SequenceEqual(new[]{1,3,4,5}),"wrong pages");Expect<ArgumentException>(()=>PageRangeParser.Parse("0",5));Expect<ArgumentException>(()=>PageRangeParser.Parse("1-9",5));return Task.CompletedTask;});
 await Test("batch continues after failure and selects retry inputs",async()=>{var calls=new List<string>();var result=await BatchRunner.RunAsync(new[]{"a","b","c"},(f,p,t)=>{calls.Add(f);if(f=="b")throw new IOException("broken");return Task.FromResult(new ConversionResult(1,Array.Empty<string>()));},progress,default);Check(calls.Count==3&&result.CreatedFiles==2&&result.Items[1].Status==FileConversionStatus.Failed,"batch status");Check(result.Items.Where(x=>x.Status==FileConversionStatus.Failed).Select(x=>x.SourcePath).SequenceEqual(new[]{"b"}),"retry selection");});
 await Test("batch cancellation separates current and unstarted",async()=>{using var cts=new CancellationTokenSource();var result=await BatchRunner.RunAsync(new[]{"a","b","c"},(f,p,t)=>{if(f=="b"){cts.Cancel();t.ThrowIfCancellationRequested();}return Task.FromResult(new ConversionResult(1,Array.Empty<string>()));},progress,cts.Token);Check(result.Items.Select(x=>x.Status).SequenceEqual(new[]{FileConversionStatus.Succeeded,FileConversionStatus.Cancelled,FileConversionStatus.NotStarted}),"cancel states");});
+await Test("directory output collision allocates a new filename", () => {
+ var dir=Folder("directory-collision"); var target=Path.Combine(dir,"out.pdf"); Directory.CreateDirectory(target);
+ var saved=AtomicFile.Write(target,path=>File.WriteAllText(path,"complete"));
+ Check(saved!=target && Directory.Exists(target) && File.ReadAllText(saved)=="complete", "directory collision not preserved");
+ return Task.CompletedTask;
+});
+await Test("malformed and punctuation-only page ranges are rejected", () => {
+ foreach(var value in new[]{"1--3", "1-", "-3", ",、，", "0-2147483647", "1-2147483647"})
+  Expect<ArgumentException>(()=>PageRangeParser.Parse(value,5));
+ Check(PageRangeParser.Parse("2147483647-2147483647",int.MaxValue).SetEquals(new[]{int.MaxValue}),"range overflow");
+ return Task.CompletedTask;
+});
+await Test("bundled font produces Japanese text without OS font lookup", () => {
+ var resolver=new AppFontResolver();var face=resolver.ResolveTypeface(AppFontResolver.BundledFontFamily,false,false)!;
+ Check(resolver.GetFont(face.FaceName)!.Length>100000,"bundled font missing");
+ var file=Pdf("bundled-japanese",1,text:true);
+ using var doc=UglyToad.PdfPig.PdfDocument.Open(file);
+ Check(doc.GetPage(1).Text.Contains("日本語の書類確認 ABC 12345"),"Japanese glyphs or mapping lost");
+ return Task.CompletedTask;
+});
+await Test("editor numeric input rejects nonfinite or invalid dimensions", () => {
+ foreach(var value in new[]{"", "abc", "0", "-1", "NaN", "Infinity", "-Infinity", "1e999"})
+  Expect<ArgumentException>(()=>EditorNumericInput.Positive(value,"幅"));
+ foreach(var value in new[]{"", "abc", "-1", "NaN", "Infinity", "1e999"})
+  Expect<ArgumentException>(()=>EditorNumericInput.NonNegative(value,"太さ"));
+ Check(EditorNumericInput.Positive(" 160 ","幅")==160 && EditorNumericInput.NonNegative("0","太さ")==0,"valid editor input lost");
+ return Task.CompletedTask;
+});
 var source=Pdf("source",4);var other=Pdf("other",2);var service=new PdfDocumentService();
+await Test("nonfinite PDF edit geometry is rejected before output", async () => {
+ var dir=Folder("invalid-edit-geometry");
+ var edit=new PdfTextEditItem(1,0,0,double.NaN,20,"test","OfflinePDFConverterBundled",14,false,"None","#000000","Left",false,false);
+ try { await service.SimpleEditAsync(new(new[]{source},new[]{edit},Array.Empty<PdfShapeEditItem>(),Path.Combine(dir,"invalid.pdf"),passwords),progress,default); throw new Exception("invalid geometry accepted"); }
+ catch(ArgumentException) { Check(Directory.GetFiles(dir).Length==0,"invalid geometry wrote an output"); }
+});
 await Test("merge preserves page count and source",async()=>{var dir=Folder("merge");var before=File.ReadAllBytes(source);await service.MergeAsync(new(new[]{source,other},Path.Combine(dir,"merged.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==6&&File.ReadAllBytes(source).SequenceEqual(before),"merge changed source or count");});
 await Test("delete removes only requested pages",async()=>{var dir=Folder("delete");await service.DeletePagesAsync(new(new[]{source},"2,4",Path.Combine(dir,"deleted.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==2&&doc.Pages[0].Width.Point==401&&doc.Pages[1].Width.Point==403,"wrong remaining pages");});
 await Test("extract orders noncontiguous pages",async()=>{var dir=Folder("extract");await service.ExtractPagesAsync(new(new[]{source},"4,1",Path.Combine(dir,"extracted.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==2&&doc.Pages[0].Width.Point==401&&doc.Pages[1].Width.Point==404,"wrong selected order");});
 await Test("password protected split",async()=>{var input=Pdf("protected",2,"secret");var dir=Folder("split");await service.SplitAsync(new(new[]{input},dir,"split",new Dictionary<string,string>{{input,"secret"}}),progress,default);Check(Directory.GetFiles(dir).Length==2,"split count");foreach(var f in Directory.GetFiles(dir)){using var doc=PdfReader.Open(f,PdfDocumentOpenMode.Import);Check(doc.PageCount==1,"split pages");}});
 await Test("Japanese text extraction round trip",async()=>{var input=Path.Combine(AppContext.BaseDirectory,"Fixtures","Japanese.pdf");var dir=Folder("text");await new PdfTextExtractionService().ExtractAsync(new(new[]{input},Path.Combine(dir,"text.txt"),passwords,new Dictionary<string,IReadOnlyList<int>>(),Array.Empty<PdfTextSelectionItem>()),progress,default);var text=File.ReadAllText(Directory.GetFiles(dir).Single());Check(text.Contains("日本語")&&text.Contains("12345"),"Japanese text lost");});
 await Test("selected page rendering yields readable image",async()=>{var dir=Folder("images");var result=await new PdfToImageService().ConvertAsync(new(new[]{source},dir,"test",PdfImageFormat.Jpeg,200,"2",passwords,80),progress,default);Check(!result.HasErrors&&result.CreatedFiles==1,"render error: "+string.Join(",",result.Errors));using var bitmap=SkiaSharp.SKBitmap.Decode(Directory.GetFiles(dir).Single());Check(bitmap!=null&&bitmap.Width>100,"invalid image");});
+await Test("cancelled PDF rendering reports saved pages in batch result", async () => {
+ var dir=Folder("cancelled-render"); using var cts=new CancellationTokenSource();
+ var result=await BatchRunner.RunAsync(new[]{source,other}, (file,p,t)=>new PdfToImageService().ConvertAsync(
+  new(new[]{file},dir,"cancel",PdfImageFormat.Png,150,"",passwords),
+  new ImmediateProgress(value=>{if(value.Completed>0) cts.Cancel();}),t),progress,cts.Token);
+ Check(result.CreatedFiles==1 && result.Items[0].CreatedFiles==1 && result.Items[0].Status==FileConversionStatus.Cancelled
+  && result.Items[1].Status==FileConversionStatus.NotStarted && Directory.GetFiles(dir).Length==1,"saved page count lost on cancellation");
+});
 await Test("OCR rejects missing local engine",()=>{Expect<ArgumentException>(()=>OfflineOcrService.Validate(new(source,Path.Combine(root,"ocr.txt"),Path.Combine(root,"missing-engine"),root,"jpn+eng","")));return Task.CompletedTask;});
 await Test("wrong password creates no split outputs",async()=>{var input=Pdf("wrong-password",2,"secret");var dir=Folder("wrong-password-out");var result=await BatchRunner.RunAsync(new[]{input},(file,p,t)=>service.SplitAsync(new(new[]{file},dir,"split",passwords),p,t),progress,default);Check(result.HasErrors&&Directory.GetFiles(dir).Length==0,"invalid password produced output");});
 await Test("broken PDF creates no image outputs",async()=>{var input=Path.Combine(root,"broken.pdf");File.WriteAllText(input,"broken");var dir=Folder("broken-out");var result=await new PdfToImageService().ConvertAsync(new(new[]{input},dir,"test",PdfImageFormat.Png,200,"",passwords),progress,default);Check(result.HasErrors&&Directory.GetFiles(dir).Length==0,"broken PDF produced output");});

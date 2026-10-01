@@ -5,6 +5,16 @@ namespace OfflinePDFConverter.Services;
 
 public sealed class AppFontResolver : IFontResolver
 {
+    public const string BundledFontFamily = "Zen Kaku Gothic New";
+    private const string BundledFaceName = "OfflinePDFConverter-BundledJapanese";
+    private static readonly Lazy<byte[]> BundledFont = new(() =>
+    {
+        using var stream = typeof(AppFontResolver).Assembly.GetManifestResourceStream("OfflinePDFConverter.Fonts.ZenKakuGothicNew-Regular.ttf")
+            ?? throw new InvalidDataException("内蔵フォントが見つかりません。");
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
+    });
     private const string SystemFacePrefix = "OfflinePDFConverter-SystemFont-";
     private const string GothicFaceName = "OfflinePDFConverter-Gothic";
     private const string GothicBoldFaceName = "OfflinePDFConverter-GothicBold";
@@ -22,6 +32,8 @@ public sealed class AppFontResolver : IFontResolver
     public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic)
     {
         var normalized = familyName.Trim();
+        if (normalized is "OfflinePDFConverterGothic" or "OfflinePDFConverterBundled" or BundledFontFamily)
+            return new FontResolverInfo(BundledFaceName, bold, italic);
 
         if (normalized.Contains("Mincho", StringComparison.OrdinalIgnoreCase)
             || normalized.Contains("明朝", StringComparison.Ordinal))
@@ -55,6 +67,7 @@ public sealed class AppFontResolver : IFontResolver
 
     public byte[]? GetFont(string faceName)
     {
+        if (faceName == BundledFaceName) return BundledFont.Value;
         var path = SystemFontFamilies.TryGetValue(faceName, out var systemFamilyName)
             ? FindSystemFontPath(systemFamilyName)
             : faceName switch
@@ -72,7 +85,7 @@ public sealed class AppFontResolver : IFontResolver
         }
 
         path ??= FindFirstExistingPath(GothicFontCandidates());
-        return path == null ? null : FontCollectionReader.ExtractFirstFace(File.ReadAllBytes(path));
+        return path == null ? BundledFont.Value : FontCollectionReader.ExtractFirstFace(File.ReadAllBytes(path));
     }
 
     private static string? FindSystemFontPath(string familyName)
@@ -83,7 +96,7 @@ public sealed class AppFontResolver : IFontResolver
             return null;
         }
 
-        if (KnownSystemFontCandidates(familyName).FirstOrDefault(File.Exists) is { } knownPath)
+        if (KnownSystemFontCandidates(familyName).Select(ResolveFontPath).FirstOrDefault(File.Exists) is { } knownPath)
         {
             return knownPath;
         }
@@ -134,7 +147,7 @@ public sealed class AppFontResolver : IFontResolver
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "Library",
             "Fonts");
-        yield return @"C:\Windows\Fonts";
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
         yield return @"/usr/share/fonts";
         yield return @"/usr/local/share/fonts";
         yield return Path.Combine(
@@ -190,13 +203,16 @@ public sealed class AppFontResolver : IFontResolver
         }
     }
 
+    private static string ResolveFontPath(string path) => OperatingSystem.IsWindows() && path.StartsWith(@"C:\Windows\Fonts\", StringComparison.OrdinalIgnoreCase)
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), path[17..]) : path;
+
     private static string? FindFirstExistingPath(IEnumerable<string> paths)
     {
         foreach (var path in paths)
         {
-            if (File.Exists(path))
+            if (File.Exists(ResolveFontPath(path)))
             {
-                return path;
+                return ResolveFontPath(path);
             }
         }
 

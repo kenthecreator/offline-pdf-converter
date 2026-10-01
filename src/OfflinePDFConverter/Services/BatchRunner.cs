@@ -29,6 +29,11 @@ public static class BatchRunner
                 items.Add(new(file, result.HasErrors ? FileConversionStatus.Failed : FileConversionStatus.Succeeded,
                     result.CreatedFiles, string.Join("\n", result.Errors)));
             }
+            catch (PartialConversionCanceledException ex) when (token.IsCancellationRequested)
+            {
+                created += ex.CreatedFiles;
+                items.Add(new(file, FileConversionStatus.Cancelled, ex.CreatedFiles, $"中止（保存済み {ex.CreatedFiles}ファイルは残ります）"));
+            }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             { items.Add(new(file, FileConversionStatus.Cancelled, 0, "中止（保存済みのページは残ります）")); }
             catch (Exception ex)

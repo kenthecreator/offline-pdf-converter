@@ -11,6 +11,10 @@ for entry in manifest['files']:
  payload=(root/'src/OfflinePDFConverter/ocr/paddle'/entry['file']).read_bytes()
  assert hashlib.sha256(payload).hexdigest()==entry['sha256'], 'Model hash mismatch'
  assert payload in data, 'Embedded OCR resource missing: '+entry['file']
+for entry in json.loads((root/'src/OfflinePDFConverter/Assets/Fonts/manifest.json').read_text())['files']:
+ payload=(root/'src/OfflinePDFConverter/Assets/Fonts'/entry['file']).read_bytes()
+ assert hashlib.sha256(payload).hexdigest()==entry['sha256'], 'Font resource hash mismatch'
+ assert payload in data, 'Embedded Japanese font or license missing'
 crt_folder=root/'artifacts/windows-crt'
 crt_manifest=json.loads((crt_folder/'manifest.json').read_text(encoding='utf-8-sig'))
 assert {'msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll'} <= {e['file'] for e in crt_manifest['files']}, 'Incomplete CRT manifest'
@@ -46,5 +50,5 @@ for kind,relative in resource_entries(0):
      ms,ls=struct.unpack_from('<II',version_data,signature+8)
      versions.append(f'{ms>>16}.{ms&65535}.{ls>>16}.{ls&65535}')
 version=versions[0] if len(versions)==1 else None
-assert version=='4.1.0.0', f'Wrong PE file version: {version}'
-print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'4.1.0.0'},indent=2))
+assert version=='4.2.0.0', f'Wrong PE file version: {version}'
+print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'4.2.0.0'},indent=2))

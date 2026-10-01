@@ -65,3 +65,7 @@ v4.0のMac・Windows配布物は `PaddleOcrEdition=true` でビルドし、以�
 取得URL、SHA-256、文字辞書の由来を`src/OfflinePDFConverter/ocr/paddle/manifest.json`に記録します。上記ライセンス全文と通知をアプリに埋め込み、OCR画面の「使用ライセンス」で表示します。SkiaSharp、PDFium、.NETなど共通部品には上記の既存のライセンスが適用されます。
 
 日本語（jpn / jpn_vert）と英語（eng）の認識データは https://github.com/tesseract-ocr/tessdata_fast から取得しています。Apache License 2.0。ライセンス全文と取得URL・SHA-256は `src/OfflinePDFConverter/ocr/tessdata/` に同梱しています。v3.2.0ではTesseract 5.5.3、Leptonica 1.87.0、libpng 1.6.58、zlib 1.3.2を静的リンクしたWindows x64エンジンを内蔵しています。各ライセンス、MinGWのライセンス、GCC Runtime Library Exception 3.1とGPLv3本文は内蔵OCRアーカイブ内のlicenses/とvendor/ocr-licenses/に含めています。外部のTesseractインストーラは配布しません。
+
+## v4.2内蔵日本語フォント
+
+Zen Kaku Gothic New Regularを未改変でexeに内蔵します。Copyright 2022 The Zen Kaku Gothic Project Authors。SIL Open Font License 1.1です。日本語OCRの文字層はOSの日本語フォント導入状況に依存しません。ライセンス全文は同梱の`OFL-ZenKakuGothicNew.txt`とexeの内蔵リソースに含めます。取得元と固定ハッシュは`Assets/Fonts/manifest.json`に記録しています。

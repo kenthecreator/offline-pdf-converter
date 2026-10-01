@@ -21,7 +21,19 @@ public partial class App : Application
             var isSystemDarkTheme = PlatformSettings?.GetColorValues().ThemeVariant
                                     == PlatformThemeVariant.Dark;
             RequestedThemeVariant = isSystemDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
-            desktop.MainWindow = new MainWindow(isSystemDarkTheme);
+            var window = new MainWindow(isSystemDarkTheme);
+            desktop.MainWindow = window;
+            if (Program.GuiVerificationReport is { } report)
+            {
+                // Keep the dispatcher alive until the verification report has been written after closing.
+                desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+                window.Opened += async (_, _) =>
+                {
+                    Program.GuiVerificationExitCode = await window.VerifyGuiAsync(report);
+                    window.Close();
+                    desktop.Shutdown(Program.GuiVerificationExitCode);
+                };
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -161,8 +161,15 @@ public partial class MainWindow
 
     private async void OnOcrOutputFolderClick(object? sender, RoutedEventArgs e)
     {
-        var selected = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "PDFの保存先", AllowMultiple = false });
-        if (selected.FirstOrDefault()?.TryGetLocalPath() is { } path) Required<TextBox>("OcrOutputFolderTextBox").Text = path;
+        try
+        {
+            var selected = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "PDFの保存先", AllowMultiple = false });
+            if (selected.FirstOrDefault()?.TryGetLocalPath() is { } path) Required<TextBox>("OcrOutputFolderTextBox").Text = path;
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
     }
 
     private async void OnOcrLicensesClick(object? sender, RoutedEventArgs e)
@@ -170,10 +177,21 @@ public partial class MainWindow
         try
         {
             var text = await Task.Run(AppIdentity.ReadOcrLicenses);
-            var viewer = new Window { Title = "内蔵OCRの使用ライセンス", Width = 760, Height = 560,
+            var viewer = new Window
+            {
+                Title = "内蔵OCRの使用ライセンス",
+                Width = 760,
+                Height = 560,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new TextBox { Margin = new Avalonia.Thickness(16), Text = text, IsReadOnly = true,
-                    AcceptsReturn = true, TextWrapping = TextWrapping.Wrap } };
+                Content = new TextBox
+                {
+                    Margin = new Avalonia.Thickness(16),
+                    Text = text,
+                    IsReadOnly = true,
+                    AcceptsReturn = true,
+                    TextWrapping = TextWrapping.Wrap
+                }
+            };
             await viewer.ShowDialog(this);
         }
         catch (Exception ex) { await ShowMessageAsync("ライセンスを表示できませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }

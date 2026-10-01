@@ -115,50 +115,58 @@ public sealed class PdfDocumentService : IPdfDocumentService
         var createdFiles = 0;
         var errors = new List<string>();
 
-        for (var pdfFileIndex = 0; pdfFileIndex < request.PdfFiles.Count; pdfFileIndex++)
+        try
         {
-            var pdfPath = request.PdfFiles[pdfFileIndex];
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
+            for (var pdfFileIndex = 0; pdfFileIndex < request.PdfFiles.Count; pdfFileIndex++)
             {
-                using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
-                var digits = Math.Max(3, input.PageCount.ToString().Length);
-                var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
+                var pdfPath = request.PdfFiles[pdfFileIndex];
+                cancellationToken.ThrowIfCancellationRequested();
 
-                for (var pageIndex = 0; pageIndex < input.PageCount; pageIndex++)
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using var output = new PdfDocument();
-                    output.Info.Title = $"{baseName}_page{pageIndex + 1}";
-                    output.Info.Creator = "Offline PDF Converter";
-                    output.AddPage(input.Pages[pageIndex]);
+                    using var input = OpenPdf(pdfPath, GetPassword(request.Passwords, pdfPath), PdfDocumentOpenMode.Import);
+                    var digits = Math.Max(3, input.PageCount.ToString().Length);
+                    var baseName = GetOutputBaseName(request.OutputBaseName, pdfPath, request.PdfFiles.Count, pdfFileIndex);
 
-                    var pageNumber = (pageIndex + 1).ToString($"D{digits}");
-                    var desiredPath = Path.Combine(request.OutputFolder, $"{baseName}_page{pageNumber}.pdf");
-                    AtomicFile.Write(FileNameHelper.GetUniquePath(desiredPath), path => output.Save(path), cancellationToken);
+                    for (var pageIndex = 0; pageIndex < input.PageCount; pageIndex++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        using var output = new PdfDocument();
+                        output.Info.Title = $"{baseName}_page{pageIndex + 1}";
+                        output.Info.Creator = "Offline PDF Converter";
+                        output.AddPage(input.Pages[pageIndex]);
 
-                    completed++;
-                    createdFiles++;
-                    progress.Report(new ConversionProgress(
-                        completed,
-                        totalPages,
-                        $"{Path.GetFileName(pdfPath)}: {pageIndex + 1}/{input.PageCount}ページを保存しました"));
+                        var pageNumber = (pageIndex + 1).ToString($"D{digits}");
+                        var desiredPath = Path.Combine(request.OutputFolder, $"{baseName}_page{pageNumber}.pdf");
+                        AtomicFile.Write(FileNameHelper.GetUniquePath(desiredPath), path => output.Save(path), cancellationToken);
+
+                        completed++;
+                        createdFiles++;
+                        progress.Report(new ConversionProgress(
+                            completed,
+                            totalPages,
+                            $"{Path.GetFileName(pdfPath)}: {pageIndex + 1}/{input.PageCount}ページを保存しました"));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{Path.GetFileName(pdfPath)}: {FriendlyErrorFormatter.ToUserMessage(ex)}");
                 }
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{Path.GetFileName(pdfPath)}: {FriendlyErrorFormatter.ToUserMessage(ex)}");
-            }
-        }
 
-        if (createdFiles == 0)
+            if (createdFiles == 0)
+            {
+                throw new ArgumentException("分割できるPDFがありませんでした。");
+            }
+
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw new ArgumentException("分割できるPDFがありませんでした。");
+            throw new PartialConversionCanceledException(createdFiles, cancellationToken);
         }
 
         return new ConversionResult(createdFiles, errors);
@@ -308,6 +316,8 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
         foreach (var edit in request.Edits)
         {
+            if (!new[] { edit.X, edit.Y, edit.Width, edit.Height, edit.FontSize }.All(double.IsFinite))
+                throw new ArgumentException("文字の位置・幅・高さ・サイズは有限の数字で指定してください。");
             if (edit.PageNumber <= 0)
             {
                 throw new ArgumentException("編集するページ番号を1以上で入力してください。");
@@ -326,6 +336,8 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
         foreach (var shape in request.Shapes)
         {
+            if (!new[] { shape.X, shape.Y, shape.Width, shape.Height, shape.StrokeThickness, shape.CornerRadius, shape.RotationDegrees }.All(double.IsFinite))
+                throw new ArgumentException("図形の位置・サイズ・角度は有限の数字で指定してください。");
             if (shape.PageNumber <= 0)
             {
                 throw new ArgumentException("図形を追加するページ番号を1以上で入力してください。");

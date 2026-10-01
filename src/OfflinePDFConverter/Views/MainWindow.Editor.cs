@@ -113,6 +113,16 @@ public partial class MainWindow
             Foreground = dialogTextBrush,
             BorderBrush = dialogFieldBorderBrush
         };
+        var inputError = new TextBlock
+        {
+            Name = "EditorInputError", IsVisible = false, TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.Parse("#D65353"))
+        };
+        void RunEditorAction(Action action)
+        {
+            try { action(); inputError.IsVisible = false; inputError.Text = string.Empty; }
+            catch (ArgumentException ex) { inputError.Text = ex.Message; inputError.IsVisible = true; }
+        }
         var textColorBox = CreateEditTextBox("#000000");
         var textColorSwatch = new Border
         {
@@ -134,6 +144,7 @@ public partial class MainWindow
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var fontSizeBox = CreateEditTextBox("14");
+        fontSizeBox.Name = "EditFontSizeTextBox";
         var boldToggle = new Avalonia.Controls.Primitives.ToggleButton
         {
             Content = "B",
@@ -177,6 +188,7 @@ public partial class MainWindow
         var shapeFillColorBox = CreateEditTextBox("None");
         var shapeStrokeColorBox = CreateEditTextBox("#000000");
         var shapeStrokeThicknessBox = CreateEditTextBox("2");
+        shapeStrokeThicknessBox.Name = "EditStrokeThicknessTextBox";
         var shapeFillSwatch = CreateColorSwatch(42, 32, Brushes.Transparent);
         var shapeStrokeSwatch = CreateColorSwatch(42, 32, Brushes.Black);
         var chooseTextColorButton = new Button
@@ -201,6 +213,7 @@ public partial class MainWindow
         };
         var addTextBoxButton = new Button
         {
+            Name = "AddEditorTextButton",
             Content = new Grid
             {
                 ColumnDefinitions = new ColumnDefinitions("Auto,*"),
@@ -300,7 +313,10 @@ public partial class MainWindow
 
         FontFamily PreviewFontFamily(string? fontFamily)
         {
-            return new FontFamily(FontFamilyDisplayName(fontFamily));
+            var name = FontFamilyDisplayName(fontFamily);
+            return name == AppFontResolver.BundledFontFamily
+                ? new FontFamily($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/Fonts#{AppFontResolver.BundledFontFamily}")
+                : new FontFamily(name);
         }
 
         var fontSizeStepper = MacStepper(fontSizeBox, 1, " pt");
@@ -448,7 +464,7 @@ public partial class MainWindow
                 selectedEdit.IsBold = boldToggle.IsChecked == true;
                 selectedEdit.IsUnderline = underlineToggle.IsChecked == true;
             }
-            if (double.TryParse(fontSizeBox.Text, out var fontSize) && fontSize > 0)
+            if (double.TryParse(fontSizeBox.Text, out var fontSize) && double.IsFinite(fontSize) && fontSize > 0)
             {
                 if (selectedEdit != null)
                 {
@@ -456,7 +472,7 @@ public partial class MainWindow
                 }
             }
 
-            if (double.TryParse(widthBox.Text, out var width) && width > 0)
+            if (double.TryParse(widthBox.Text, out var width) && double.IsFinite(width) && width > 0)
             {
                 if (selectedEdit != null)
                 {
@@ -468,7 +484,7 @@ public partial class MainWindow
                 }
             }
 
-            if (double.TryParse(heightBox.Text, out var height) && height > 0)
+            if (double.TryParse(heightBox.Text, out var height) && double.IsFinite(height) && height > 0)
             {
                 if (selectedEdit != null)
                 {
@@ -490,7 +506,7 @@ public partial class MainWindow
             {
                 selectedShape.FillColorHex = NormalizeOptionalColorHex(shapeFillColorBox.Text);
                 selectedShape.StrokeColorHex = NormalizeOptionalColorHex(shapeStrokeColorBox.Text);
-                if (double.TryParse(shapeStrokeThicknessBox.Text, out var strokeThickness) && strokeThickness >= 0)
+                if (double.TryParse(shapeStrokeThicknessBox.Text, out var strokeThickness) && double.IsFinite(strokeThickness) && strokeThickness >= 0)
                 {
                     selectedShape.StrokeThickness = strokeThickness;
                 }
@@ -591,11 +607,12 @@ public partial class MainWindow
 
         void AddTextBoxAt(double pdfX, double pdfY)
         {
-            PushUndo();
             var edit = CreateTextEdit(pdfX, pdfY);
             edit.X = Math.Clamp(edit.X, 0, Math.Max(0, pageItem.PageWidthPoints - edit.Width));
             edit.Y = Math.Clamp(edit.Y, 0, Math.Max(0, pageItem.PageHeightPoints - edit.Height));
+            PushUndo();
             pageEdits.Add(edit);
+            inlineEditingEdit = edit;
             selectedEdit = edit;
             selectedShape = null;
             LoadSelectedEdit(edit);
@@ -603,14 +620,14 @@ public partial class MainWindow
             canvas.Focus();
         }
 
-        addTextBoxButton.Click += (_, _) =>
+        addTextBoxButton.Click += (_, _) => RunEditorAction(() =>
         {
             var width = ParsePositiveDouble(widthBox.Text, "幅");
             var height = ParsePositiveDouble(heightBox.Text, "高さ");
             AddTextBoxAt(
                 (pageItem.PageWidthPoints - width) / 2,
                 (pageItem.PageHeightPoints - height) / 2);
-        };
+        });
 
         PdfShapeEditDraft CreateShapeEdit(string shapeType, double pdfX, double pdfY)
         {
@@ -634,7 +651,6 @@ public partial class MainWindow
 
         void AddShapeAt(string shapeType)
         {
-            PushUndo();
             var defaultWidth = shapeType == "Line" ? 160 : 120;
             var defaultHeight = shapeType == "Line" ? 0 : 120;
             var shape = CreateShapeEdit(
@@ -653,6 +669,7 @@ public partial class MainWindow
                 shape.X = Math.Clamp(shape.X, 0, Math.Max(0, pageItem.PageWidthPoints - shape.Width));
                 shape.Y = Math.Clamp(shape.Y, 0, Math.Max(0, pageItem.PageHeightPoints - shape.Height));
             }
+            PushUndo();
             pageShapes.Add(shape);
             selectedEdit = null;
             selectedShape = shape;
@@ -729,8 +746,9 @@ public partial class MainWindow
                 MinHeight = 58
             };
             button.Classes.Remove("small-action");
+            button.Name = "AddShape" + shapeType + "Button";
             ToolTip.SetTip(button, text);
-            button.Click += (_, _) => AddShapeAt(shapeType);
+            button.Click += (_, _) => RunEditorAction(() => AddShapeAt(shapeType));
             return button;
         }
 
@@ -1026,10 +1044,10 @@ public partial class MainWindow
                 }
             }
 
-            newX = Math.Clamp(newX, 0, pageItem.PageWidthPoints - 8);
-            newY = Math.Clamp(newY, 0, pageItem.PageHeightPoints - 8);
-            newWidth = Math.Clamp(newWidth, 8, pageItem.PageWidthPoints - newX);
-            newHeight = Math.Clamp(newHeight, 8, pageItem.PageHeightPoints - newY);
+            newX = Math.Clamp(newX, 0, Math.Max(0, pageItem.PageWidthPoints - 8));
+            newY = Math.Clamp(newY, 0, Math.Max(0, pageItem.PageHeightPoints - 8));
+            newWidth = Math.Clamp(newWidth, Math.Min(8, pageItem.PageWidthPoints - newX), pageItem.PageWidthPoints - newX);
+            newHeight = Math.Clamp(newHeight, Math.Min(8, pageItem.PageHeightPoints - newY), pageItem.PageHeightPoints - newY);
         }
 
         void RefreshOverlays()
@@ -1548,8 +1566,11 @@ public partial class MainWindow
                             e.Handled = true;
                         },
                         RoutingStrategies.Tunnel);
-                    inlineTextBox.TextChanged += (_, _) =>
+                    // TextChanged is dispatched later. A style change can replace this control
+                    // before it runs, so persist the text when the property changes instead.
+                    inlineTextBox.PropertyChanged += (_, e) =>
                     {
+                        if (e.Property != TextBox.TextProperty) return;
                         edit.Text = inlineTextBox.Text ?? string.Empty;
                         if (selectedEdit == edit)
                         {
@@ -1842,8 +1863,8 @@ public partial class MainWindow
                     return;
                 }
 
-                const double minWidth = 8;
-                const double minHeight = 8;
+                var minWidth = Math.Min(8, Math.Min(startWidth, pageItem.PageWidthPoints - startX));
+                var minHeight = Math.Min(8, Math.Min(startHeight, pageItem.PageHeightPoints - startY));
                 var newX = startX;
                 var newY = startY;
                 var newWidth = startWidth;
@@ -2141,6 +2162,7 @@ public partial class MainWindow
             Children =
             {
                 addTextBoxButton,
+                inputError,
                 Label("フォント", 15, FontWeight.Bold),
                 fontFamilyCombo,
                 fontSizeStepper,
