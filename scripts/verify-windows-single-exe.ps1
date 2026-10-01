@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory=$true)][string]$ExePath,
   [switch]$BlockNetwork,
+  [switch]$VerifyGui,
   [string]$ReportPath = ''
 )
 $ErrorActionPreference = 'Stop'
@@ -10,8 +11,8 @@ New-Item -ItemType Directory $testDirectory | Out-Null
 $rules = @()
 $profiles = @()
 try {
-  # A simple filename avoids netsh's extra command-line parsing of a program path with spaces.
-  $testName = if ($BlockNetwork) { 'OfflinePDFConverter.exe' } else { 'Offline PDF Converter (v4.1).exe' }
+  # Verify the actual distribution filename, including spaces and parentheses.
+  $testName = 'Offline PDF Converter (v4.2).exe'
   $isolatedExe = Join-Path $testDirectory $testName
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }
@@ -24,11 +25,8 @@ try {
     if (@(Get-NetFirewallProfile -PolicyStore ActiveStore | Where-Object { $_.Enabled -ne 'True' }).Count) { throw 'Firewall profiles are not all enabled.' }
     foreach ($direction in @('Inbound', 'Outbound')) {
       $name = 'OfflinePDFConverter-test-' + [Guid]::NewGuid().ToString('N')
-      $nativeDirection = if ($direction -eq 'Inbound') { 'in' } else { 'out' }
       $program = [IO.Path]::GetFullPath($isolatedExe)
-      Write-Host "Setting $nativeDirection block for $program"
-      & netsh.exe advfirewall firewall add rule "name=$name" "dir=$nativeDirection" action=block "program=$program" enable=yes profile=any
-      if ($LASTEXITCODE -ne 0) { throw 'Could not establish application network isolation.' }
+      New-NetFirewallRule -DisplayName $name -Direction $direction -Action Block -Program $program -Enabled True -Profile Any | Out-Null
       $rules += $name
       $active = Get-NetFirewallRule -DisplayName $name -PolicyStore ActiveStore
       if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block') { throw 'Network block rule is not active.' }
@@ -47,11 +45,14 @@ try {
     $env:TESSDATA_PREFIX = Join-Path $testDirectory 'missing-data'
     # A fresh private directory avoids accidentally testing an older extracted bundle.
     $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $testDirectory 'bundle'
-    $process = Start-Process $isolatedExe -ArgumentList @('--verify-offline', ('"' + $report + '"')) -PassThru
-    if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Self-test timed out.' }
+    $mode = if ($VerifyGui) { '--verify-gui' } else { '--verify-offline' }
+    $process = Start-Process $isolatedExe -WorkingDirectory $testDirectory -ArgumentList @($mode, ('"' + $report + '"')) -PassThru
+    if (-not $process.WaitForExit(300000)) { $process.Kill(); throw 'Self-test timed out.' }
     if (-not (Test-Path $report)) { throw 'No self-test report was produced.' }
     $result = Get-Content $report -Raw | ConvertFrom-Json
     if ($process.ExitCode -ne 0 -or -not $result.passed) { throw (Get-Content $report -Raw) }
+    if ((Get-FileHash $source).Hash -ne (Get-FileHash $isolatedExe).Hash) { throw 'Executable modified during verification.' }
+    if (@(Get-ChildItem $testDirectory -File -Filter '*.dll').Count) { throw 'Verification required loose DLLs beside the exe.' }
     $result | Add-Member -NotePropertyName networkIsolation -NotePropertyValue $(if ($BlockNetwork) { 'Windows Firewall: tested exe blocked inbound and outbound on all profiles' } else { 'not enforced' })
     $result | Add-Member -NotePropertyName freshBundleExtraction -NotePropertyValue $true
     $result | ConvertTo-Json -Depth 8 | Write-Output
@@ -59,6 +60,7 @@ try {
       $destination = [IO.Path]::GetFullPath($ReportPath)
       New-Item -ItemType Directory -Force (Split-Path $destination -Parent) | Out-Null
       $result | ConvertTo-Json -Depth 8 | Set-Content $destination -Encoding utf8
+      if ($VerifyGui -and (Test-Path ([IO.Path]::ChangeExtension($report, ".png")))) { Copy-Item ([IO.Path]::ChangeExtension($report, ".png")) ([IO.Path]::ChangeExtension($destination, ".png")) }
     }
   } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory }
 } finally {

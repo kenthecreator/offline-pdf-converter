@@ -208,6 +208,8 @@ public partial class MainWindow : Window
     private ConversionMode _mode = ConversionMode.PdfTools;
     private CancellationTokenSource? _conversionCts;
     private CancellationTokenSource? _previewCts;
+    private bool _windowClosed;
+    private bool _closeWhenIdle;
     private bool _isPdfPreviewListView;
     private bool _isDarkTheme;
     private bool _themeTransitionActive;
@@ -256,6 +258,25 @@ public partial class MainWindow : Window
         UpdatePdfToolOperationUi();
         SetMode(ConversionMode.PdfTools);
 
+        Closing += (_, e) =>
+        {
+            if (_conversionCts == null) return;
+            e.Cancel = true;
+            _closeWhenIdle = true;
+            _conversionCts.Cancel();
+            SetStatus("処理を中止してから終了します。保存済みのファイルは保持します。");
+        };
+        Closed += (_, _) =>
+        {
+            _windowClosed = true;
+            _previewCts?.Cancel();
+            _previewCts?.Dispose();
+            _previewCts = null;
+            DisposeOcrPages(_pdfPagePreviews);
+            _pdfPagePreviews.Clear();
+            _lightHeaderIcon.Dispose();
+            _darkHeaderIcon.Dispose();
+        };
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
@@ -841,7 +862,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.UIThread.Post(() =>
         {
-            if (_themeMode == 0 && !_themeTransitionActive) ApplyTheme(values.ThemeVariant == PlatformThemeVariant.Dark);
+            if (!_windowClosed && _themeMode == 0 && !_themeTransitionActive) ApplyTheme(values.ThemeVariant == PlatformThemeVariant.Dark);
         });
     }
 
@@ -1089,110 +1110,152 @@ public partial class MainWindow : Window
 
     private async void OnAddPdfFilesClick(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        try
         {
-            Title = "PDFファイルを選択",
-            AllowMultiple = true,
-            FileTypeFilter = new[] { PdfFileType }
-        });
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "PDFファイルを選択",
+                AllowMultiple = true,
+                FileTypeFilter = new[] { PdfFileType }
+            });
 
-        await AddPdfPathsAsync(files.Select(file => file.TryGetLocalPath()).WhereNotNull());
+            await AddPdfPathsAsync(files.Select(file => file.TryGetLocalPath()).WhereNotNull());
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
     }
 
     private async void OnAddImageFilesClick(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        try
         {
-            Title = "画像ファイルを選択",
-            AllowMultiple = true,
-            FileTypeFilter = new[] { ImageFileType }
-        });
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "画像ファイルを選択",
+                AllowMultiple = true,
+                FileTypeFilter = new[] { ImageFileType }
+            });
 
-        AddImagePaths(files.Select(file => file.TryGetLocalPath()).WhereNotNull());
+            AddImagePaths(files.Select(file => file.TryGetLocalPath()).WhereNotNull());
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
     }
 
     private async void OnSelectPdfOutputFolderClick(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        try
         {
-            Title = "画像の出力先フォルダを選択",
-            AllowMultiple = false
-        });
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "画像の出力先フォルダを選択",
+                AllowMultiple = false
+            });
 
-        var folder = folders.FirstOrDefault()?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(folder))
+            var folder = folders.FirstOrDefault()?.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                _pdfOutputFolderTextBox.Text = folder;
+            }
+        }
+        catch (Exception ex)
         {
-            _pdfOutputFolderTextBox.Text = folder;
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
     private async void OnSelectImageOutputPdfClick(object? sender, RoutedEventArgs e)
     {
-        var suggestedBaseName = FileNameHelper.BuildOutputBaseName(
-            _imageFiles.Select(item => item.Path),
-            "converted_images");
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        try
         {
-            Title = "出力PDFを保存",
-            SuggestedFileName = $"{suggestedBaseName}.pdf",
-            DefaultExtension = "pdf",
-            FileTypeChoices = new[] { PdfFileType }
-        });
+            var suggestedBaseName = FileNameHelper.BuildOutputBaseName(
+                _imageFiles.Select(item => item.Path),
+                "converted_images");
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "出力PDFを保存",
+                SuggestedFileName = $"{suggestedBaseName}.pdf",
+                DefaultExtension = "pdf",
+                FileTypeChoices = new[] { PdfFileType }
+            });
 
-        var path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path))
+            var path = file?.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                _imageOutputPdfTextBox.Text = path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+                    ? path
+                    : $"{path}.pdf";
+                _imageOutputBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(_imageOutputPdfTextBox.Text);
+            }
+        }
+        catch (Exception ex)
         {
-            _imageOutputPdfTextBox.Text = path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
-                ? path
-                : $"{path}.pdf";
-            _imageOutputBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(_imageOutputPdfTextBox.Text);
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
     private async void OnSelectPdfToolOutputPdfClick(object? sender, RoutedEventArgs e)
     {
-        var operation = GetPdfToolOperation();
-        var (suggestedName, title) = operation switch
+        try
         {
-            PdfToolOperation.DeletePages => ("deleted_pages.pdf", "ページ削除後のPDFを保存"),
-            PdfToolOperation.ExtractPages => ("extracted_pages.pdf", "選択ページのPDFを保存"),
-            PdfToolOperation.SimpleEdit => ("edited.pdf", "編集後のPDFを保存"),
-            _ => ("merged.pdf", "結合後のPDFを保存")
-        };
+            var operation = GetPdfToolOperation();
+            var (suggestedName, title) = operation switch
+            {
+                PdfToolOperation.DeletePages => ("deleted_pages.pdf", "ページ削除後のPDFを保存"),
+                PdfToolOperation.ExtractPages => ("extracted_pages.pdf", "選択ページのPDFを保存"),
+                PdfToolOperation.SimpleEdit => ("edited.pdf", "編集後のPDFを保存"),
+                _ => ("merged.pdf", "結合後のPDFを保存")
+            };
 
-        var suggestedBaseName = FileNameHelper.BuildOutputBaseName(
-            _pdfFiles.Select(item => item.Path),
-            Path.GetFileNameWithoutExtension(suggestedName));
-        suggestedName = $"{suggestedBaseName}{(".pdf")}";
+            var suggestedBaseName = FileNameHelper.BuildOutputBaseName(
+                _pdfFiles.Select(item => item.Path),
+                Path.GetFileNameWithoutExtension(suggestedName));
+            suggestedName = $"{suggestedBaseName}{(".pdf")}";
 
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = title,
+                SuggestedFileName = suggestedName,
+                DefaultExtension = "pdf",
+                FileTypeChoices = new[] { PdfFileType }
+            });
+
+            var path = file?.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                _pdfToolOutputPdfTextBox.Text = EnsurePdfExtension(path);
+                _pdfToolOutputPdfBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(_pdfToolOutputPdfTextBox.Text);
+            }
+        }
+        catch (Exception ex)
         {
-            Title = title,
-            SuggestedFileName = suggestedName,
-            DefaultExtension = "pdf",
-            FileTypeChoices = new[] { PdfFileType }
-        });
-
-        var path = file?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path))
-        {
-            _pdfToolOutputPdfTextBox.Text = EnsurePdfExtension(path);
-            _pdfToolOutputPdfBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(_pdfToolOutputPdfTextBox.Text);
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
     private async void OnSelectPdfToolOutputFolderClick(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        try
         {
-            Title = "分割したPDFの出力先フォルダを選択",
-            AllowMultiple = false
-        });
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "分割したPDFの出力先フォルダを選択",
+                AllowMultiple = false
+            });
 
-        var folder = folders.FirstOrDefault()?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(folder))
+            var folder = folders.FirstOrDefault()?.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                _pdfToolOutputFolderTextBox.Text = folder;
+            }
+        }
+        catch (Exception ex)
         {
-            _pdfToolOutputFolderTextBox.Text = folder;
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
@@ -1389,7 +1452,7 @@ public partial class MainWindow : Window
         _pdfPageSelectionTextBox.Text = FormatPageRanges(pages);
     }
 
-    private void OnPdfPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
+    private async void OnPdfPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var operation = GetPdfToolOperation();
         if (sender is not Image image
@@ -1400,11 +1463,12 @@ public partial class MainWindow : Window
 
         if (operation == PdfToolOperation.SimpleEdit)
         {
-            _ = OpenSimpleEditWindowAsync(item);
+            try { await OpenSimpleEditWindowAsync(item); }
+            catch (Exception ex) { if (!_windowClosed) await ShowMessageAsync("編集画面を開けませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }
         }
     }
 
-    private void OnPdfPreviewListItemPointerPressed(object? sender, PointerPressedEventArgs e)
+    private async void OnPdfPreviewListItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var operation = GetPdfToolOperation();
         if (sender is not Control control
@@ -1415,69 +1479,91 @@ public partial class MainWindow : Window
 
         if (operation == PdfToolOperation.SimpleEdit)
         {
-            _ = OpenSimpleEditWindowAsync(item);
+            try { await OpenSimpleEditWindowAsync(item); }
+            catch (Exception ex) { if (!_windowClosed) await ShowMessageAsync("編集画面を開けませんでした", FriendlyErrorFormatter.ToUserMessage(ex)); }
         }
     }
 
     private async void OnStartPdfConversionClick(object? sender, RoutedEventArgs e)
     {
-        var request = new PdfToImageRequest(
-            _pdfFiles.Select(item => item.Path).ToList(),
-            _pdfOutputFolderTextBox.Text?.Trim() ?? string.Empty,
-            _pdfOutputBaseNameTextBox.Text?.Trim() ?? string.Empty,
-            GetPdfImageFormat(),
-            GetPdfDpi(),
-            _pdfPageRangeTextBox.Text?.Trim() ?? string.Empty,
-            GetPdfPasswords());
+        try
+        {
+            var request = new PdfToImageRequest(
+                _pdfFiles.Select(item => item.Path).ToList(),
+                _pdfOutputFolderTextBox.Text?.Trim() ?? string.Empty,
+                _pdfOutputBaseNameTextBox.Text?.Trim() ?? string.Empty,
+                GetPdfImageFormat(),
+                GetPdfDpi(),
+                _pdfPageRangeTextBox.Text?.Trim() ?? string.Empty,
+                GetPdfPasswords());
 
-        await RunBatchAsync(request.PdfFiles,
-            (file, progress, token) => _pdfToImageService.ConvertAsync(request with { PdfFiles = new[] { file } }, progress, token));
+            await RunBatchAsync(request.PdfFiles,
+                (file, progress, token) => _pdfToImageService.ConvertAsync(request with { PdfFiles = new[] { file } }, progress, token));
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
     }
 
     private async void OnStartImageConversionClick(object? sender, RoutedEventArgs e)
     {
-        var imagePaths = _imageFiles.Select(item => item.Path).ToList();
-        var outputPdfPath = BuildOutputPdfPath(
-            _imageOutputPdfTextBox.Text?.Trim() ?? string.Empty,
-            _imageOutputBaseNameTextBox.Text?.Trim() ?? string.Empty,
-            imagePaths);
-        if (!string.IsNullOrWhiteSpace(outputPdfPath)
-            && !outputPdfPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            outputPdfPath = $"{outputPdfPath}.pdf";
-            _imageOutputPdfTextBox.Text = outputPdfPath;
+            var imagePaths = _imageFiles.Select(item => item.Path).ToList();
+            var outputPdfPath = BuildOutputPdfPath(
+                _imageOutputPdfTextBox.Text?.Trim() ?? string.Empty,
+                _imageOutputBaseNameTextBox.Text?.Trim() ?? string.Empty,
+                imagePaths);
+            if (!string.IsNullOrWhiteSpace(outputPdfPath)
+                && !outputPdfPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                outputPdfPath = $"{outputPdfPath}.pdf";
+                _imageOutputPdfTextBox.Text = outputPdfPath;
+            }
+
+            var request = new ImageToPdfRequest(
+                imagePaths,
+                outputPdfPath,
+                GetImagePageMode(),
+                _imageMarginCheckBox.IsChecked == true);
+
+            await RunConversionAsync(
+                (progress, token) => _imageToPdfService.ConvertAsync(request, progress, token),
+                "画像からPDFへの変換が完了しました。");
         }
-
-        var request = new ImageToPdfRequest(
-            imagePaths,
-            outputPdfPath,
-            GetImagePageMode(),
-            _imageMarginCheckBox.IsChecked == true);
-
-        await RunConversionAsync(
-            (progress, token) => _imageToPdfService.ConvertAsync(request, progress, token),
-            "画像からPDFへの変換が完了しました。");
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
     }
 
     private async void OnStartPdfToolClick(object? sender, RoutedEventArgs e)
     {
-        switch (GetPdfToolOperation())
+        try
         {
-            case PdfToolOperation.Merge:
-                await StartMergePdfAsync();
-                break;
-            case PdfToolOperation.Split:
-                await StartSplitPdfAsync();
-                break;
-            case PdfToolOperation.DeletePages:
-                await StartDeletePdfPagesAsync();
-                break;
-            case PdfToolOperation.ExtractPages:
-                await StartExtractPdfPagesAsync();
-                break;
-            case PdfToolOperation.SimpleEdit:
-                await StartSimpleEditPdfAsync();
-                break;
+            switch (GetPdfToolOperation())
+            {
+                case PdfToolOperation.Merge:
+                    await StartMergePdfAsync();
+                    break;
+                case PdfToolOperation.Split:
+                    await StartSplitPdfAsync();
+                    break;
+                case PdfToolOperation.DeletePages:
+                    await StartDeletePdfPagesAsync();
+                    break;
+                case PdfToolOperation.ExtractPages:
+                    await StartExtractPdfPagesAsync();
+                    break;
+                case PdfToolOperation.SimpleEdit:
+                    await StartSimpleEditPdfAsync();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
@@ -1622,6 +1708,7 @@ public partial class MainWindow : Window
         try
         {
             var result = await action(progress, _conversionCts.Token);
+            if (_closeWhenIdle) return;
             _mainProgressBar.Value = 100;
 
             if (result.HasErrors)
@@ -1658,51 +1745,61 @@ public partial class MainWindow : Window
 
             WriteTestErrorLog(ex);
 
-            await ShowMessageAsync("変換できませんでした", message);
+            if (!_closeWhenIdle) await ShowMessageAsync("変換できませんでした", message);
         }
         finally
         {
             _conversionCts.Dispose();
             _conversionCts = null;
             SetBusy(false);
+            if (_closeWhenIdle) Close();
         }
     }
 
     private void UpdateProgress(ConversionProgress progress)
     {
+        if (_windowClosed || _conversionCts == null) return;
         _mainProgressBar.Value = progress.Percent;
         SetStatus(progress.Message);
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer.Formats.Contains(DataFormat.File)
+        e.DragEffects = _conversionCts == null && e.DataTransfer.Formats.Contains(DataFormat.File)
             ? DragDropEffects.Copy
             : DragDropEffects.None;
     }
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
-        if (_conversionCts != null) return;
-        var dropped = e.DataTransfer.TryGetFiles();
-        if (dropped == null)
+        try
         {
-            return;
-        }
+            if (_conversionCts != null) return;
+            if (_conversionCts != null) return;
+            var dropped = e.DataTransfer.TryGetFiles();
+            if (dropped == null)
+            {
+                return;
+            }
 
-        var paths = ExpandDroppedPaths(dropped.Select(file => file.TryGetLocalPath()).WhereNotNull());
+            var paths = ExpandDroppedPaths(dropped.Select(file => file.TryGetLocalPath()).WhereNotNull());
 
-        if (_mode == ConversionMode.PdfToImage)
-        {
-            await AddPdfPathsAsync(paths);
+            if (_mode == ConversionMode.PdfToImage)
+            {
+                await AddPdfPathsAsync(paths);
+            }
+            else if (_mode is ConversionMode.PdfTools or ConversionMode.Ocr)
+            {
+                await AddPdfPathsAsync(paths);
+            }
+            else
+            {
+                AddImagePaths(paths);
+            }
         }
-        else if (_mode is ConversionMode.PdfTools or ConversionMode.Ocr)
+        catch (Exception ex)
         {
-            await AddPdfPathsAsync(paths);
-        }
-        else
-        {
-            AddImagePaths(paths);
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
     }
 
@@ -1915,7 +2012,7 @@ public partial class MainWindow : Window
                 IEnumerable<string> files;
                 try
                 {
-                    files = Directory.EnumerateFiles(path);
+                    files = Directory.GetFiles(path);
                 }
                 catch
                 {
@@ -2092,7 +2189,7 @@ public partial class MainWindow : Window
 
     private async void RefreshPdfToolPreview()
     {
-        if (_mode != ConversionMode.PdfTools || _pdfPagePreviewThumbnailScroll == null)
+        if (_windowClosed || _mode != ConversionMode.PdfTools || _pdfPagePreviewThumbnailScroll == null)
         {
             return;
         }
@@ -2102,6 +2199,7 @@ public partial class MainWindow : Window
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
 
+        DisposeOcrPages(_pdfPagePreviews);
         _pdfPagePreviews.Clear();
         if (_pdfFiles.Count == 0)
         {
@@ -2130,8 +2228,9 @@ public partial class MainWindow : Window
                 () => CreatePdfPagePreviews(pdfPaths, passwords, isPageSelectionMode, selectionLabel, token),
                 token);
 
-            if (token.IsCancellationRequested)
+            if (token.IsCancellationRequested || _windowClosed)
             {
+                DisposeOcrPages(previews);
                 return;
             }
 
@@ -2146,7 +2245,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _pdfPreviewHelpText.Text = FriendlyErrorFormatter.ToUserMessage(ex);
+            if (!token.IsCancellationRequested && !_windowClosed)
+                _pdfPreviewHelpText.Text = FriendlyErrorFormatter.ToUserMessage(ex);
         }
     }
 
@@ -2173,34 +2273,39 @@ public partial class MainWindow : Window
             BackgroundColor: SKColors.White,
             UseTiling: true);
 
-        foreach (var pdfPath in pdfPaths)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            using var stream = File.OpenRead(pdfPath);
-            var password = passwords.TryGetValue(pdfPath, out var value) ? value : string.Empty;
-            var pageNumber = 0;
-
-            foreach (var bitmap in Conversion.ToImages(
-                         stream,
-                         password: string.IsNullOrEmpty(password) ? null : password,
-                         options: options))
+            foreach (var pdfPath in pdfPaths)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using (bitmap)
+                using var stream = File.OpenRead(pdfPath);
+                var password = passwords.TryGetValue(pdfPath, out var value) ? value : string.Empty;
+                var pageNumber = 0;
+
+                foreach (var bitmap in Conversion.ToImages(
+                             stream,
+                             password: string.IsNullOrEmpty(password) ? null : password,
+                             options: options))
                 {
-                    pageNumber++;
-                    previews.Add(new PdfPagePreviewItem(
-                        pdfPath,
-                        pageNumber,
-                        ToAvaloniaBitmap(bitmap),
-                        bitmap.Width * 72.0 / options.Dpi,
-                        bitmap.Height * 72.0 / options.Dpi,
-                        CopyBgraPixels(bitmap),
-                        isPageSelectionMode,
-                        selectionLabel));
+                    using (bitmap)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        pageNumber++;
+                        previews.Add(new PdfPagePreviewItem(
+                            pdfPath,
+                            pageNumber,
+                            ToAvaloniaBitmap(bitmap),
+                            bitmap.Width * 72.0 / options.Dpi,
+                            bitmap.Height * 72.0 / options.Dpi,
+                            CopyBgraPixels(bitmap),
+                            isPageSelectionMode,
+                            selectionLabel));
+                    }
                 }
             }
+
         }
+        catch { DisposeOcrPages(previews); throw; }
 
         return previews;
     }

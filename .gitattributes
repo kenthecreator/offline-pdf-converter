@@ -1,2 +1,5 @@
 # OCR resources are byte-verified; never translate their line endings on checkout.
 src/OfflinePDFConverter/ocr/paddle/** -text
+
+src/OfflinePDFConverter/Assets/Fonts/*.ttf -text
+src/OfflinePDFConverter/Assets/Fonts/OFL.txt -text

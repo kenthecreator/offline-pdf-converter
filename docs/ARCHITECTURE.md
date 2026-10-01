@@ -63,13 +63,13 @@ PDF編集の文字抽出・TXT出力のUIは廃止しました。旧サービス
 
 `SearchablePdfService` が原本ページをコピーし、OCR結果を不可視の文字レイヤーとしてPDFに追加します。既に文字を持つページはスキップします。`PaddleOcrService` は言語別モデル・辞書を使い、縦書き・横書きの読み順を調整します。`BundledPaddleOcrRuntime` が内蔵リソースのSHA-256を確認し、一時領域へ展開します。Mac・Windowsともに同じCPUエンジンを使い、実行時の外部送信・ダウンロードはありません。
 
-Windowsの日本語TTCフォントは `FontCollectionReader` が先頭のフォントを単独のsfntデータへ変換してPDFsharpに渡します。フォントファイル自体の再配布は行いません。内蔵OCRリソースは `.gitattributes` で改行変換を禁止し、Windowsでも固定ハッシュを維持します。
+Windowsの日本語TTCフォントは `FontCollectionReader` が先頭のフォントを単独のsfntデータへ変換してPDFsharpに渡します。OSフォント自体の再配布は行いません。内蔵OCRリソースは `.gitattributes` で改行変換を禁止し、Windowsでも固定ハッシュを維持します。
 
 `MainWindow.OcrPreview.cs` がPdfPigの実際の文字位置から選択・コピーを提供します。`MainWindow.OcrMotion.cs` が左右の表示形式・スクロール、対象全ページのスキャン、5秒の最低表示時間、完了後の間接照明を管理します。確認画面は文字追加の編集画面と同じ左右配置・拡大縮小パネル・完了ボタンを使います。
 
 文字/テキスト追加では、画面上の編集状態を `PdfSimpleEditRequest` にまとめ、書き出し時にPDF座標へ変換して反映します。テキストボックスは最前面レイヤーとして扱い、図形は四角形、角丸四角形、丸、線を扱います。
 
-フォントはアプリに同梱せず、OS上で利用可能なフォントを参照します。配布物にフォントファイルを含めないことで、フォントライセンス上のリスクを抑えています。
+v4.2ではOCR文字層に使う日本語フォントとしてZen Kaku Gothic New Regular（SIL OFL 1.1）を未改変でexeに内蔵します。OSフォントの導入状況に依存しません。文字追加ではOS上で利用可能なフォントを参照し、見つからない場合は内蔵フォントへフォールバックします。OSフォントのファイルは再配布しません。
 
 ページプレビューはPDFium/PDFtoImageでレンダリングします。編集画面ではプレビュー画質を高め、ズーム倍率をUI操作、Ctrl+マウスホイール、トラックパッドのピンチ操作で変更できます。
 
@@ -99,3 +99,7 @@ Windowsの日本語TTCフォントは `FontCollectionReader` が先頭のフォ�
 `BundledOcrRuntime` は内蔵ZIP全体と各ファイルのSHA-256を確認し、ユーザー専用の一時領域へ展開します。外部のインストール先やPATHを検索しません。OCR画面からエンジン／認識データの場所指定を削除しています。展開は初回OCR時、後始末はアプリの通常終了時です。
 
 OCR本体はMinGW-w64でWindows x64向けに静的リンクし、PNG・zlib以外の画像ライブラリ、curl、archive、訓練ツールを組み込みません。入力はアプリが生成したPNGに限定します。Windows標準のKernel32/UCRTだけに依存します。UTF-8マニフェストを付け、日本語を含むパスを扱う構成です。ソースの版・SHA-256と構築手順はvendor/ocr-source-manifest.jsonとscripts/にあります。
+
+## v4.2のWindows配布検証
+
+`OfflineFeatureChecks`は配布exeから変換・ページ操作・文字/図形追加・4言語OCR・異常入力・取消・出力保護を実行します。`MainWindow.Verification`は明示的な`--verify-gui`起動に限り、実ウィンドウのコントロールイベント、プレビュー、OCR、選択・コピー、処理中の終了を確認します。通常起動では実行されません。検証レポートは実際のチェック一覧と失敗理由を記録します。

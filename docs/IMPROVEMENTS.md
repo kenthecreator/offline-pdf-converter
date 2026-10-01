@@ -11,11 +11,11 @@
 
 結合や画像→PDFは複数入力で1つの成果物を作るため、従来の一括結果表示を使います。失敗した入力だけで別の結合PDFを作るような再実行は行いません。
 
-## v4.1の内蔵OCR
+## v4.2の内蔵OCR
 
 Mac・Windowsの両版でPaddleOCRを内蔵し、検索・選択・コピーできるPDFを作成します。「OCR処理」でPDF、4種類の言語設定、対象ページ、保存先を選び「開始」を押します。処理前・処理後を比較し、クリックして文字を確認できます。TXT出力は廃止しました。
 
-Tesseract・Python・GPUは不要です。v4.1のWindows x64版は必要なVisual C++ DLLもexeに内蔵し、別途のランタイム導入は不要です。ネット接続や外部送信は行いません。モデルはハッシュ確認後に一時領域へ展開します。詳細は [検索可能PDF](SEARCHABLE_PDF.md) を参照してください。
+Tesseract・Python・GPUは不要です。v4.2のWindows x64版は必要なVisual C++ DLLもexeに内蔵し、別途のランタイム導入は不要です。ネット接続や外部送信は行いません。モデルはハッシュ確認後に一時領域へ展開します。詳細は [検索可能PDF](SEARCHABLE_PDF.md) を参照してください。
 
 ## 自動テスト（旧Tesseract実装の回帰検証を含む）
 
@@ -44,7 +44,7 @@ Windowsでは上書きしないファイル移動を使います。macOSでは�
 ## 単体exeの検証（Windows）
 
 ```powershell
-pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.1/OfflinePDFConverter.PaddleEdition.exe
+pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.2/OfflinePDFConverter.PaddleEdition.exe
 ```
 
 検証スクリプトは空のフォルダへexeだけをコピーし、PATHをWindows標準の場所だけに制限したうえで、アプリ内の日本語画像 → PDF → 画像レンダリング → 内蔵OCRを実行します。実際の配布exe自身が検証するため、開発機にインストール済みのTesseractや同梱し忘れたファイルには依存しません。スクリプト自体はネットワークを遮断しません。ネットワーク無効のWindows Sandboxで実行すると、初回からオフラインで動くことも確認できます。

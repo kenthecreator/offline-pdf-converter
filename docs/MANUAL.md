@@ -170,9 +170,9 @@ sample_split_page002.pdf
 
 ## 改良版の追加機能
 
-保存失敗への備え、個別再実行、解像度設定、OCRは [改良版の使い方](IMPROVEMENTS.md) を参照してください。v4.1ではMac・WindowsともにOCRを内蔵し、検索可能PDFを生成します。Windows版も必要なVisual C++ DLLを内蔵し、別途のインストールや初回ダウンロードは不要です。
+保存失敗への備え、個別再実行、解像度設定、OCRは [改良版の使い方](IMPROVEMENTS.md) を参照してください。v4.2ではMac・WindowsともにOCRを内蔵し、検索可能PDFを生成します。Windows版も必要なVisual C++ DLLを内蔵し、別途のインストールや初回ダウンロードは不要です。
 
-## v4.1：PDFのOCR処理
+## v4.2：PDFのOCR処理
 
 1. 「OCR処理」でPDFを追加します。
 2. 「PDFの言語」を日本語（横書き）／日本語（縦書き）／英語／日本語・英語 混在から選びます。

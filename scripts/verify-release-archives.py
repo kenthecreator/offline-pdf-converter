@@ -6,9 +6,9 @@ import zipfile
 from pathlib import Path
 
 folder = Path(sys.argv[1])
-for suffix, executable in [('Windows-x64', 'Offline PDF Converter (v4.1).exe'),
-                           ('macOS-arm64', 'Offline PDF Converter (v4.1).app')]:
-    name = f'Offline PDF Converter (v4.1)-{suffix}.zip'
+for suffix, executable in [('Windows-x64', 'Offline PDF Converter (v4.2).exe'),
+                           ('macOS-arm64', 'Offline PDF Converter (v4.2).app')]:
+    name = f'Offline PDF Converter (v4.2)-{suffix}.zip'
     matches = list(folder.rglob(name))
     assert len(matches) == 1, f'Missing or duplicate archive: {name}'
     archive = matches[0]
@@ -18,7 +18,8 @@ for suffix, executable in [('Windows-x64', 'Offline PDF Converter (v4.1).exe'),
         assert bundle.testzip() is None, f'Corrupt archive: {name}'
         names = bundle.namelist()
         assert not any('v4.0' in n for n in names), 'Stale package name'
-        assert 'RELEASE_DETAILS_v4.1.0.md' in names
+        assert 'RELEASE_DETAILS_v4.2.0.md' in names
+        assert 'OFL-ZenKakuGothicNew.txt' in names, 'Missing bundled font license'
         assert 'IMPROVEMENTS.md' in names, 'Missing manual linked from MANUAL.md'
         assert 'ランタイムが必要です' not in bundle.read('IMPROVEMENTS.md').decode('utf-8')
         if suffix == 'Windows-x64':
@@ -27,6 +28,6 @@ for suffix, executable in [('Windows-x64', 'Offline PDF Converter (v4.1).exe'),
             assert not any(n.lower().endswith('.dll') for n in names), 'Loose DLLs in single-exe package'
         else:
             info = plistlib.loads(bundle.read(executable + '/Contents/Info.plist'))
-            assert info['CFBundleName'] == info['CFBundleDisplayName'] == 'Offline PDF Converter (v4.1)'
-            assert info['CFBundleVersion'] == info['CFBundleShortVersionString'] == '4.1.0'
+            assert info['CFBundleName'] == info['CFBundleDisplayName'] == 'Offline PDF Converter (v4.2)'
+            assert info['CFBundleVersion'] == info['CFBundleShortVersionString'] == '4.2.0'
     print('Verified release package:', name)

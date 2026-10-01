@@ -43,7 +43,7 @@ public static class AtomicFile
             {
                 var target = FileNameHelper.GetUniquePath(destination);
                 try { Publish(temporary, target); return target; }
-                catch (IOException) when (File.Exists(target)) { }
+                catch (IOException) when (File.Exists(target) || Directory.Exists(target)) { }
             }
             throw new IOException("出力ファイル名を確保できませんでした。");
         }

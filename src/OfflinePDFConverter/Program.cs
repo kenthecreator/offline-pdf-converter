@@ -6,6 +6,9 @@ namespace OfflinePDFConverter;
 
 internal static class Program
 {
+    internal static string? GuiVerificationReport { get; private set; }
+    internal static int GuiVerificationExitCode { get; set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -14,8 +17,13 @@ internal static class Program
             Environment.ExitCode = OfflineSelfTest.RunAsync(args[1]).GetAwaiter().GetResult();
             return;
         }
+        if (args.Length == 2 && args[0] == "--verify-gui") GuiVerificationReport = args[1];
         GlobalFontSettings.FontResolver ??= new AppFontResolver();
-        try { BuildAvaloniaApp().StartWithClassicDesktopLifetime(args); }
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            if (GuiVerificationReport != null) Environment.ExitCode = GuiVerificationExitCode;
+        }
         finally
         {
 #if PADDLE_OCR
