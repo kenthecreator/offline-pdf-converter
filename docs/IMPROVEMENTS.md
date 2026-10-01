@@ -15,7 +15,7 @@
 
 Mac・Windowsの両版でPaddleOCRを内蔵し、検索・選択・コピーできるPDFを作成します。「OCR処理」でPDF、4種類の言語設定、対象ページ、保存先を選び「開始」を押します。処理前・処理後を比較し、クリックして文字を確認できます。TXT出力は廃止しました。
 
-Tesseract・Python・GPUは不要です。WindowsはVisual C++ v14（x64）ランタイムが必要です。ネット接続や外部送信は行いません。モデルはハッシュ確認後に一時領域へ展開します。詳細は [検索可能PDF](SEARCHABLE_PDF.md) を参照してください。
+Tesseract・Python・GPUは不要です。v4.1のWindows x64版は必要なVisual C++ DLLもexeに内蔵し、別途のランタイム導入は不要です。ネット接続や外部送信は行いません。モデルはハッシュ確認後に一時領域へ展開します。詳細は [検索可能PDF](SEARCHABLE_PDF.md) を参照してください。
 
 ## 自動テスト（旧Tesseract実装の回帰検証を含む）
 

@@ -19,6 +19,8 @@ for suffix, executable in [('Windows-x64', 'Offline PDF Converter (v4.1).exe'),
         names = bundle.namelist()
         assert not any('v4.0' in n for n in names), 'Stale package name'
         assert 'RELEASE_DETAILS_v4.1.0.md' in names
+        assert 'IMPROVEMENTS.md' in names, 'Missing manual linked from MANUAL.md'
+        assert 'ランタイムが必要です' not in bundle.read('IMPROVEMENTS.md').decode('utf-8')
         if suffix == 'Windows-x64':
             assert executable in names
             assert [n for n in names if n.endswith('.exe')] == [executable]

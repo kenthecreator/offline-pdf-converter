@@ -10,6 +10,11 @@ on:
       - '.github/workflows/release-v4.1.yml'
       - 'docs/RELEASE_DETAILS_v4.1.0.md'
   workflow_dispatch:
+    inputs:
+      replace_existing:
+        description: Replace the existing v4.1 release after all checks pass
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -75,21 +80,45 @@ jobs:
       - name: Publish v4.1 without modifying v4.0
         env:
           GH_TOKEN: ${{ github.token }}
+          REPLACE_EXISTING: ${{ inputs.replace_existing || contains(github.event.head_commit.message, '[replace-v4.1]') }}
         shell: bash
         run: |
           set -euo pipefail
           python scripts/verify-release-version.py
           python scripts/verify-release-archives.py release-assets
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.0.0" > /tmp/v4.0-before.json
-          if gh release view v4.1.0 >/dev/null 2>&1; then
-            echo 'v4.1.0 already exists; refusing to overwrite a release.'
-            exit 1
-          fi
-          mapfile -t assets < <(find release-assets -type f \( -name '*.zip' -o -name '*.sha256.txt' \) | sort)
+          # Match GitHub's existing asset names and make checksum filenames usable as downloaded.
+          mkdir public-assets
+          for target in Windows-x64 macOS-arm64; do
+            source="release-assets/Offline PDF Converter (v4.1)-$target.zip"
+            name="Offline.PDF.Converter.v4.1.-$target.zip"
+            cp "$source" "public-assets/$name"
+            (cd public-assets && sha256sum "$name" > "$name.sha256.txt")
+          done
+          mapfile -t assets < <(find public-assets -type f | sort)
           test "${#assets[@]}" -eq 4
-          gh release create v4.1.0 "${assets[@]}" --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.1)' --notes-file docs/RELEASE_DETAILS_v4.1.0.md --draft
-          test "$(gh release view v4.1.0 --json assets --jq '.assets | length')" -eq 4
-          gh release edit v4.1.0 --draft=false --latest
+          if gh release view v4.1.0 >/dev/null 2>&1; then
+            test "$REPLACE_EXISTING" = true || { echo 'Existing release replacement requires explicit authorization.'; exit 1; }
+            # Old build artifacts stay available in the previous successful workflow run.
+            gh release upload v4.1.0 "${assets[@]}" --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/v4.1.0" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit v4.1.0 --title 'Offline PDF Converter (v4.1)' --notes-file docs/RELEASE_DETAILS_v4.1.0.md --draft=false --latest
+          else
+            gh release create v4.1.0 "${assets[@]}" --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.1)' --notes-file docs/RELEASE_DETAILS_v4.1.0.md --draft
+            gh release edit v4.1.0 --draft=false --latest
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.1.0" > /tmp/v4.1-published.json
+          python - <<'PYVERIFY'
+          import hashlib, json
+          from pathlib import Path
+          release = json.load(open('/tmp/v4.1-published.json'))
+          expected = {p.name: 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('public-assets').iterdir()}
+          actual = {a['name']: a['digest'] for a in release['assets']}
+          assert actual == expected, 'Published asset hashes differ from verified build files'
+          assert not release['draft'] and not release['prerelease']
+          print('All four published asset hashes verified')
+          PYVERIFY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.1.0" --jq '.object.sha')" = "$GITHUB_SHA"
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.0.0" > /tmp/v4.0-after.json
           jq -S '{id,tag_name,body,assets:[.assets[]|{id,name,size,digest}]}' /tmp/v4.0-before.json > /tmp/v4.0-before-check.json
           jq -S '{id,tag_name,body,assets:[.assets[]|{id,name,size,digest}]}' /tmp/v4.0-after.json > /tmp/v4.0-after-check.json

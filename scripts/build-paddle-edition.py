@@ -61,7 +61,7 @@ def main():
             if len(files) != 1 or files[0].suffix != '.exe': raise ValueError('Expected one Windows executable')
             shutil.copy2(files[0], package/(TITLE+'.exe'))
         documents = [ROOT/'README.md', ROOT/'THIRD_PARTY_LICENSES.md'] + [ROOT/'docs'/name for name in
-                     ['MANUAL.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.1.0.md']]
+                     ['MANUAL.md', 'IMPROVEMENTS.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.1.0.md']]
         for source in documents:
             shutil.copy2(source, package/source.name)
         archive = DIST/(TITLE+'-'+('macOS-arm64' if target == 'mac' else 'Windows-x64')+'.zip')
