@@ -153,14 +153,28 @@ await Test("malformed and punctuation-only page ranges are rejected", () => {
  return Task.CompletedTask;
 });
 await Test("bundled font produces Japanese text without OS font lookup", () => {
- var resolver=new AppFontResolver();var face=resolver.ResolveTypeface("OfflinePDFConverterBundled",false,false)!;
+ var resolver=new AppFontResolver();var face=resolver.ResolveTypeface(AppFontResolver.BundledFontFamily,false,false)!;
  Check(resolver.GetFont(face.FaceName)!.Length>100000,"bundled font missing");
  var file=Pdf("bundled-japanese",1,text:true);
  using var doc=UglyToad.PdfPig.PdfDocument.Open(file);
  Check(doc.GetPage(1).Text.Contains("日本語の書類確認 ABC 12345"),"Japanese glyphs or mapping lost");
  return Task.CompletedTask;
 });
+await Test("editor numeric input rejects nonfinite or invalid dimensions", () => {
+ foreach(var value in new[]{"", "abc", "0", "-1", "NaN", "Infinity", "-Infinity", "1e999"})
+  Expect<ArgumentException>(()=>EditorNumericInput.Positive(value,"幅"));
+ foreach(var value in new[]{"", "abc", "-1", "NaN", "Infinity", "1e999"})
+  Expect<ArgumentException>(()=>EditorNumericInput.NonNegative(value,"太さ"));
+ Check(EditorNumericInput.Positive(" 160 ","幅")==160 && EditorNumericInput.NonNegative("0","太さ")==0,"valid editor input lost");
+ return Task.CompletedTask;
+});
 var source=Pdf("source",4);var other=Pdf("other",2);var service=new PdfDocumentService();
+await Test("nonfinite PDF edit geometry is rejected before output", async () => {
+ var dir=Folder("invalid-edit-geometry");
+ var edit=new PdfTextEditItem(1,0,0,double.NaN,20,"test","OfflinePDFConverterBundled",14,false,"None","#000000","Left",false,false);
+ try { await service.SimpleEditAsync(new(new[]{source},new[]{edit},Array.Empty<PdfShapeEditItem>(),Path.Combine(dir,"invalid.pdf"),passwords),progress,default); throw new Exception("invalid geometry accepted"); }
+ catch(ArgumentException) { Check(Directory.GetFiles(dir).Length==0,"invalid geometry wrote an output"); }
+});
 await Test("merge preserves page count and source",async()=>{var dir=Folder("merge");var before=File.ReadAllBytes(source);await service.MergeAsync(new(new[]{source,other},Path.Combine(dir,"merged.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==6&&File.ReadAllBytes(source).SequenceEqual(before),"merge changed source or count");});
 await Test("delete removes only requested pages",async()=>{var dir=Folder("delete");await service.DeletePagesAsync(new(new[]{source},"2,4",Path.Combine(dir,"deleted.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==2&&doc.Pages[0].Width.Point==401&&doc.Pages[1].Width.Point==403,"wrong remaining pages");});
 await Test("extract orders noncontiguous pages",async()=>{var dir=Folder("extract");await service.ExtractPagesAsync(new(new[]{source},"4,1",Path.Combine(dir,"extracted.pdf"),passwords),progress,default);using var doc=PdfReader.Open(Directory.GetFiles(dir).Single(),PdfDocumentOpenMode.Import);Check(doc.PageCount==2&&doc.Pages[0].Width.Point==401&&doc.Pages[1].Width.Point==404,"wrong selected order");});

@@ -316,6 +316,8 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
         foreach (var edit in request.Edits)
         {
+            if (!new[] { edit.X, edit.Y, edit.Width, edit.Height, edit.FontSize }.All(double.IsFinite))
+                throw new ArgumentException("文字の位置・幅・高さ・サイズは有限の数字で指定してください。");
             if (edit.PageNumber <= 0)
             {
                 throw new ArgumentException("編集するページ番号を1以上で入力してください。");
@@ -334,6 +336,8 @@ public sealed class PdfDocumentService : IPdfDocumentService
 
         foreach (var shape in request.Shapes)
         {
+            if (!new[] { shape.X, shape.Y, shape.Width, shape.Height, shape.StrokeThickness, shape.CornerRadius, shape.RotationDegrees }.All(double.IsFinite))
+                throw new ArgumentException("図形の位置・サイズ・角度は有限の数字で指定してください。");
             if (shape.PageNumber <= 0)
             {
                 throw new ArgumentException("図形を追加するページ番号を1以上で入力してください。");

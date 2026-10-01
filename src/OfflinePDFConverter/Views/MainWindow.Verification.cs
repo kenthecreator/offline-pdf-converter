@@ -92,6 +92,49 @@ public partial class MainWindow
             await ClickAndWait("StartPdfButton", "一括処理の結果");
             Check(Directory.GetFiles(images, "*.png").Length == 1, "GUI raster output missing.");
             checks.Add("PDF to image through Start and successful batch results");
+            SetMode(ConversionMode.PdfTools); _pdfToolOperationCombo.SelectedIndex = 4;
+            await Until(() => _pdfPagePreviews.Count == 1);
+            var editorTask = OpenSimpleEditWindowAsync(_pdfPagePreviews[0]);
+            await Until(() => desktop.Windows.Any(w => w != this));
+            var editor = desktop.Windows.Single(w => w != this);
+            var editFont = editor.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "EditFontSizeTextBox");
+            var addText = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "AddEditorTextButton");
+            foreach (var invalid in new[] { "abc", "0", "NaN", "Infinity" })
+            {
+                editFont.Text = invalid;
+                addText.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Check(editor.IsVisible, "Invalid editor input closed the editor.");
+                Check(editor.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "EditorInputError").IsVisible,
+                    "Invalid editor input did not show an explanation.");
+            }
+            editFont.Text = "14";
+            addText.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            editor.GetVisualDescendants().OfType<TextBox>().Single(t => t.Classes.Contains("pdf-inline-editor")).Text = "日本語 ABC 12345";
+            var stroke = editor.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "EditStrokeThicknessTextBox");
+            var addShape = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "AddShapeRectangleButton");
+            foreach (var invalid in new[] { "abc", "-1", "NaN", "Infinity" })
+            {
+                stroke.Text = invalid; addShape.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Check(editor.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "EditorInputError").IsVisible,
+                    "Invalid shape thickness did not show an explanation.");
+            }
+            stroke.Text = "2"; addShape.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            editor.GetVisualDescendants().OfType<Button>().Single(b => b.Content?.ToString() == "完了")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await editorTask;
+            Check(_pdfTextEdits.Count == 1 && _pdfTextEdits[0].FontSize == 14 && _pdfTextEdits[0].Text == "日本語 ABC 12345"
+                && _pdfShapeEdits.Count == 1 && _pdfShapeEdits[0].StrokeThickness == 2, "Editor did not recover after invalid inputs or lost inline text.");
+            checks.Add("editor rejects invalid numeric input and permits subsequent valid text addition");
+            var edited = Directory.CreateDirectory(Path.Combine(root, "edited-output")).FullName;
+            _pdfToolOutputPdfTextBox.Text = Path.Combine(edited, "edited.pdf"); _pdfToolOutputPdfBaseNameTextBox.Text = "edited";
+            await ClickAndWait("StartPdfToolButton", "完了");
+            using (var editedPdf = UglyToad.PdfPig.PdfDocument.Open(Directory.GetFiles(edited, "*.pdf").Single()))
+            {
+                var extractedText = editedPdf.GetPage(1).Text;
+                Check(extractedText.Contains("日本語 ABC 12345"), "Japanese GUI editing failed with the default embedded font. Extracted: " + extractedText);
+            }
+            checks.Add("Japanese GUI preview and PDF text/shape output using the default embedded font");
+
             SetMode(ConversionMode.Ocr);
             await Until(() => _ocrBeforePages.Count == 1);
             Required<RadioButton>("OcrMixedChoice").IsChecked = true;

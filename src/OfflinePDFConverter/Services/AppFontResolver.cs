@@ -5,6 +5,7 @@ namespace OfflinePDFConverter.Services;
 
 public sealed class AppFontResolver : IFontResolver
 {
+    public const string BundledFontFamily = "Zen Kaku Gothic New";
     private const string BundledFaceName = "OfflinePDFConverter-BundledJapanese";
     private static readonly Lazy<byte[]> BundledFont = new(() =>
     {
@@ -31,7 +32,7 @@ public sealed class AppFontResolver : IFontResolver
     public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic)
     {
         var normalized = familyName.Trim();
-        if (normalized is "OfflinePDFConverterGothic" or "OfflinePDFConverterBundled")
+        if (normalized is "OfflinePDFConverterGothic" or "OfflinePDFConverterBundled" or BundledFontFamily)
             return new FontResolverInfo(BundledFaceName, bold, italic);
 
         if (normalized.Contains("Mincho", StringComparison.OrdinalIgnoreCase)

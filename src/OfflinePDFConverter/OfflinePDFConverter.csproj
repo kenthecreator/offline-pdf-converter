@@ -24,6 +24,7 @@
     <EmbeddedResource Include="ocr/windows-x64.zip" LogicalName="OfflinePDFConverter.WindowsOcr.zip" Condition="'$(PaddleOcrEdition)' != 'true'" />
     <EmbeddedResource Include="ocr/windows-x64.sha256" LogicalName="OfflinePDFConverter.WindowsOcr.sha256" Condition="'$(PaddleOcrEdition)' != 'true'" />
     <EmbeddedResource Include="Assets/OcrSelfTest.png" LogicalName="OfflinePDFConverter.OcrSelfTest.png" />
+    <AvaloniaResource Include="Assets/Fonts/*.ttf" />
     <EmbeddedResource Include="Assets/Fonts/*" LogicalName="OfflinePDFConverter.Fonts.%(Filename)%(Extension)" />
     <AvaloniaResource Include="Assets\AppIcon.png" />
     <AvaloniaResource Include="Assets\AppIconLight.png" />

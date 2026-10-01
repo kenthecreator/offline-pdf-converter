@@ -2383,25 +2383,9 @@ public partial class MainWindow : Window
         return number;
     }
 
-    private static double ParsePositiveDouble(string? value, string label)
-    {
-        if (!double.TryParse(value?.Trim(), out var number) || number <= 0)
-        {
-            throw new ArgumentException($"{label}は1以上の数字で入力してください。");
-        }
+    private static double ParsePositiveDouble(string? value, string label) => EditorNumericInput.Positive(value, label);
 
-        return number;
-    }
-
-    private static double ParseNonNegativeDouble(string? value, string label)
-    {
-        if (!double.TryParse(value?.Trim(), out var number) || number < 0)
-        {
-            throw new ArgumentException($"{label}は0以上の数字で入力してください。");
-        }
-
-        return number;
-    }
+    private static double ParseNonNegativeDouble(string? value, string label) => EditorNumericInput.NonNegative(value, label);
 
     private static (double PdfX, double PdfY, double MarkerLeft, double MarkerTop)? MapPreviewPointToPdfPoint(
         PdfPagePreviewItem item,
@@ -2435,7 +2419,7 @@ public partial class MainWindow : Window
 
     private static void AdjustNumber(TextBox textBox, double delta)
     {
-        var current = double.TryParse(textBox.Text, out var value) ? value : 0;
+        var current = double.TryParse(textBox.Text, out var value) && double.IsFinite(value) ? value : 0;
         textBox.Text = Math.Max(1, current + delta).ToString("0.#");
     }
 
@@ -2460,13 +2444,10 @@ public partial class MainWindow : Window
             // Fall back to common OS fonts if the platform font list is unavailable.
         }
 
-        foreach (var fallback in preferred)
-        {
-            names.Add(fallback);
-        }
-
-        return preferred
-            .Where(names.Contains)
+        // An installed font list must not include platform fonts which are absent on this PC.
+        names.Remove(AppFontResolver.BundledFontFamily);
+        return new[] { AppFontResolver.BundledFontFamily }
+            .Concat(preferred.Where(names.Contains))
             .Concat(names.Where(name => !preferred.Contains(name, StringComparer.CurrentCultureIgnoreCase)))
             .ToList();
     }

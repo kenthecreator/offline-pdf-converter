@@ -24,6 +24,18 @@ internal static class Program
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
             if (GuiVerificationReport != null) Environment.ExitCode = GuiVerificationExitCode;
         }
+        catch (Exception ex) when (GuiVerificationReport != null)
+        {
+            // Initialization may fail before a window exists. Preserve a failed report for CI.
+            var report = Path.GetFullPath(GuiVerificationReport);
+            Directory.CreateDirectory(Path.GetDirectoryName(report)!);
+            File.WriteAllText(report, System.Text.Json.JsonSerializer.Serialize(new
+            {
+                passed = false, stage = "desktop initialization or verification", checks = Array.Empty<string>(),
+                error = ex.ToString(), operatingSystem = Environment.OSVersion.ToString()
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            Environment.ExitCode = 1;
+        }
         finally
         {
 #if PADDLE_OCR
