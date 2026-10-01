@@ -10,7 +10,9 @@ New-Item -ItemType Directory $testDirectory | Out-Null
 $rules = @()
 $profiles = @()
 try {
-  $isolatedExe = Join-Path $testDirectory 'Offline PDF Converter (v4.0).exe'
+  # A simple filename avoids netsh's extra command-line parsing of a program path with spaces.
+  $testName = if ($BlockNetwork) { 'OfflinePDFConverter.exe' } else { 'Offline PDF Converter (v4.0).exe' }
+  $isolatedExe = Join-Path $testDirectory $testName
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }
   $report = Join-Path $testDirectory 'report.json'
@@ -31,7 +33,8 @@ try {
       $active = Get-NetFirewallRule -DisplayName $name -PolicyStore ActiveStore
       if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block') { throw 'Network block rule is not active.' }
       $filter = $active | Get-NetFirewallApplicationFilter
-      if ($filter.Program -ne $isolatedExe) { throw 'Network block rule targets a different executable.' }
+      $ruleProgram = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($filter.Program))
+      if (-not $ruleProgram.Equals($program, [StringComparison]::OrdinalIgnoreCase)) { throw "Network block rule targets a different executable: $ruleProgram; expected $program" }
     }
     Write-Host 'NETWORK ISOLATION: active inbound/outbound block rules for the tested exe; all firewall profiles enabled.'
   }
