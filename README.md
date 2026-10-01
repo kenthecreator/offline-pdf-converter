@@ -1,20 +1,20 @@
-# Offline PDF Converter (v4.0)
+# Offline PDF Converter (v4.1)
 
 完全オフライン動作を前提にした、Windows x64／macOS Apple Silicon向けのPDF・画像変換とPDF編集のデスクトップアプリです。[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から配布ZIPを取得できます。
 
-v4.0のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
+v4.1のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
 
-## v4.0のオフラインOCR
+## v4.1のオフラインOCR
 
 スキャンしたPDFに、検索・選択・コピーできる文字レイヤーを追加します。原本のページの見た目を保ったPDFとして書き出すため、画像だけだった資料を検索できるようになります。
 
 - Mac・WindowsともにPaddleOCRの認識エンジンとモデルを内蔵し、実行時のネット接続・外部送信・追加ダウンロードを必要としません。
 - Tesseract、Python、GPU、.NETランタイムの別途インストールは不要です。
-- Windows x64ではMicrosoft Visual C++ v14（x64）ランタイムが必要です。
+- v4.1のWindows x64版はVisual C++の必要なDLLもexe内に含めます。利用者による追加インストール・初回ダウンロードは不要です。公開済みv4.0の配布物は変更されていません。
 - Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
 - ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
-[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v4.0リリース内容](docs/RELEASE_DETAILS_v4.0.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
+[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v4.1リリース内容](docs/RELEASE_DETAILS_v4.1.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
 
 ## 技術構成の提案
 
@@ -30,7 +30,7 @@ v4.0のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.m
 
 WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフォーム開発とWindows用単体exe発行の扱いやすさを重視してAvaloniaを選んでいます。MuPDF系はAGPLまたは商用ライセンスの検討が必要になりやすいため、この実装では採用していません。
 
-改良版の保存・再実行・解像度設定・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Mac・WindowsともにOCRモデルを内蔵します。WindowsのVisual C++ランタイム要件は上記のとおりです。
+改良版の保存・再実行・解像度設定・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Mac・WindowsともにOCRモデルを内蔵します。Windows単体exeの同梱構成と検証条件は [Windowsビルド手順](docs/BUILD_WINDOWS.md) を参照してください。
 
 ## 主な機能
 
@@ -80,13 +80,13 @@ offline-pdf-converter/
 
 詳細は [docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md) を参照してください。
 
-Mac・Windowsのv4.0配布物を作成:
+Mac・Windowsのv4.1配布物を作成:
 
 ```sh
 python3 scripts/build-paddle-edition.py --target both
 ```
 
-出力は `dist/paddle-edition/` の `Offline PDF Converter (v4.0)-macOS-arm64.zip` と `Offline PDF Converter (v4.0)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
+出力は `dist/paddle-edition/` の `Offline PDF Converter (v4.1)-macOS-arm64.zip` と `Offline PDF Converter (v4.1)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
 
 ## ライセンス
 

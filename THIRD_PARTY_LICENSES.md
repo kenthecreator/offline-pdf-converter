@@ -42,6 +42,14 @@
 
 ## OCR認識データ
 
+### Windowsのアプリ専用Visual C++ランタイム
+
+v4.1のWindows単体exeには、Visual Studioのrelease redistディレクトリにあるMicrosoft Visual C++ x64 CRT DLLを未改変で埋め込みます。MITライセンスではなく、使用したVisual Studio版のMicrosoft Software License Termsと再配布条件が適用されます。ビルド・配布者は当該条件を満たす必要があります。DLLの版とSHA-256はexe内の`OfflinePDFConverter.WindowsCrtManifest.json`に記録します。利用者側でのランタイムインストールは不要ですが、更新はアプリの新しい配布物で提供します。
+
+- 再配布ガイド: https://learn.microsoft.com/en-us/cpp/windows/redistributing-visual-cpp-files
+- Visual Studio 2022再配布リスト: https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+- ライセンス一覧: https://visualstudio.microsoft.com/license-terms/
+
 ### v4.0の内蔵OCR部品
 
 v4.0のMac・Windows配布物は `PaddleOcrEdition=true` でビルドし、以下の部品を使用します。

@@ -1,0 +1,96 @@
+name: Build and release v4.1
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-v4.1.yml'
+      - 'docs/RELEASE_DETAILS_v4.1.0.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v4.1.yml'
+      - 'docs/RELEASE_DETAILS_v4.1.0.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-v4.1-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: macos-14
+            target: mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify version and app display names
+        shell: bash
+        run: python scripts/verify-release-version.py
+      - name: Run existing regression tests
+        run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
+      - name: Build v4.1 distribution
+        run: python scripts/build-paddle-edition.py --target ${{ matrix.target }}
+      - name: Verify Windows OCR with communication blocked
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.1).exe' -BlockNetwork -ReportPath artifacts/release-windows-selftest.json
+      - name: Verify macOS application OCR
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          "dist/paddle-edition/macos-arm64/Offline PDF Converter (v4.1).app/Contents/MacOS/OfflinePDFConverter.PaddleEdition" --verify-offline artifacts/release-macos-selftest.json
+          python -c 'import json; assert json.load(open("artifacts/release-macos-selftest.json"))["passed"]'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v4.1-${{ matrix.target }}
+          path: |
+            dist/paddle-edition/*.zip
+            dist/paddle-edition/*.sha256.txt
+            artifacts/release-*-selftest.json
+          if-no-files-found: error
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v4.1-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish v4.1 without modifying v4.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/verify-release-version.py
+          python scripts/verify-release-archives.py release-assets
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.0.0" > /tmp/v4.0-before.json
+          if gh release view v4.1.0 >/dev/null 2>&1; then
+            echo 'v4.1.0 already exists; refusing to overwrite a release.'
+            exit 1
+          fi
+          mapfile -t assets < <(find release-assets -type f \( -name '*.zip' -o -name '*.sha256.txt' \) | sort)
+          test "${#assets[@]}" -eq 4
+          gh release create v4.1.0 "${assets[@]}" --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.1)' --notes-file docs/RELEASE_DETAILS_v4.1.0.md --draft
+          test "$(gh release view v4.1.0 --json assets --jq '.assets | length')" -eq 4
+          gh release edit v4.1.0 --draft=false --latest
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.0.0" > /tmp/v4.0-after.json
+          jq -S '{id,tag_name,body,assets:[.assets[]|{id,name,size,digest}]}' /tmp/v4.0-before.json > /tmp/v4.0-before-check.json
+          jq -S '{id,tag_name,body,assets:[.assets[]|{id,name,size,digest}]}' /tmp/v4.0-after.json > /tmp/v4.0-after-check.json
+          diff /tmp/v4.0-before-check.json /tmp/v4.0-after-check.json

@@ -1,5 +1,5 @@
 <Project>
-  <!-- v4.0 uses the bundled PaddleOCR engine by default; false keeps legacy regression builds available. -->
+  <!-- v4.1 uses the bundled PaddleOCR engine by default; false keeps legacy regression builds available. -->
   <PropertyGroup>
     <PaddleOcrEdition Condition="'$(PaddleOcrEdition)' == '' and '$(MSBuildProjectName)' == 'OfflinePDFConverter'">true</PaddleOcrEdition>
   </PropertyGroup>

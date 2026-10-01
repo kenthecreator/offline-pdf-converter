@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / 'artifacts/paddle-edition'
 DIST = ROOT / 'dist/paddle-edition'
-TITLE = 'Offline PDF Converter (v4.0)'
+TITLE = 'Offline PDF Converter (v4.1)'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -31,6 +31,8 @@ def main():
                    '-p:PublishTrimmed=false', '-p:NuGetAudit=false', '-p:UsedAvaloniaProducts=', '-p:DebugType=none', '-p:DebugSymbols=false', '-o', str(publish)]
         if target == 'windows': command.append('-p:PublishProfile=WindowsSingleFile')
         subprocess.run(command, cwd=ROOT, env=env, check=True)
+        if target == 'windows':
+            subprocess.run([os.sys.executable, str(ROOT/'scripts/verify-published-exe.py'), str(publish)], cwd=ROOT, check=True)
         package = DIST / ('macos-arm64' if target == 'mac' else 'windows-x64')
         package.mkdir(parents=True, exist_ok=True)
         if target == 'mac':
@@ -50,7 +52,7 @@ def main():
             with (contents/'Info.plist').open('wb') as stream:
                 plistlib.dump({'CFBundleName':TITLE,'CFBundleDisplayName':TITLE,'CFBundleIdentifier':'com.offlinepdfconverter.paddle',
                                'CFBundleExecutable':'OfflinePDFConverter.PaddleEdition','CFBundlePackageType':'APPL',
-                               'CFBundleShortVersionString':'4.0.0','CFBundleVersion':'4.0.0','CFBundleIconFile':'AppIcon',
+                               'CFBundleShortVersionString':'4.1.0','CFBundleVersion':'4.1.0','CFBundleIconFile':'AppIcon',
                                'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'11.0'},stream)
             subprocess.run(['codesign','--force','--deep','--sign','-',str(app)],check=True)
             subprocess.run(['codesign','--verify','--deep','--strict',str(app)],check=True)
@@ -59,7 +61,7 @@ def main():
             if len(files) != 1 or files[0].suffix != '.exe': raise ValueError('Expected one Windows executable')
             shutil.copy2(files[0], package/(TITLE+'.exe'))
         documents = [ROOT/'README.md', ROOT/'THIRD_PARTY_LICENSES.md'] + [ROOT/'docs'/name for name in
-                     ['MANUAL.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.0.0.md']]
+                     ['MANUAL.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v4.1.0.md']]
         for source in documents:
             shutil.copy2(source, package/source.name)
         archive = DIST/(TITLE+'-'+('macOS-arm64' if target == 'mac' else 'Windows-x64')+'.zip')

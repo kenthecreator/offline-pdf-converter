@@ -1,10 +1,10 @@
-# Offline PDF Converter (v4.0) — 内蔵OCR
+# Offline PDF Converter (v4.1) — 内蔵OCR
 
-v4.0のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
+v4.1のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
 
-## v4.0の使い方
+## v4.1の使い方
 
-アプリ名は「Offline PDF Converter (v4.0)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
+アプリ名は「Offline PDF Converter (v4.1)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
 
 - 日本語（横書き）: 日本語用PP-OCRv4認識モデル、横書きの読み順。
 - 日本語（縦書き）: 日本語用PP-OCRv4認識モデル、右の列から読む順序と縦方向の文字レイヤー。
@@ -15,7 +15,7 @@ v4.0のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生
 
 [検索可能PDFの仕様・検証・制限](SEARCHABLE_PDF.md)を参照してください。
 
-Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。Windows x64版は.NETと認識モデルを内蔵しますがVisual C++ v14（x64）ランタイムが必要で、Windows実機の画面操作は未確認です。
+Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。v4.1のWindows x64版は.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。Windows Server 2025でアプリの送受信を遮断した初回OCRと同梱DLLの使用を確認しました。Windows 10/11の実機・ネットワークアダプタ切断・GUI操作は未確認です。
 
 ## 構成
 
@@ -27,7 +27,7 @@ Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python�
 
 ## 旧版の2026-09-30の検証結果（TXT出力・旧言語設定）
 
-以下の精度・速度は旧版の結果で、v4.0の言語別モデルやPDF出力の精度・速度を表すものではありません。
+以下の精度・速度は旧版の結果で、v4.1の言語別モデルやPDF出力の精度・速度を表すものではありません。
 
 アプリの画像→PDF機能で評価画像9枚からPDFを作成し、実際の`OfflineOcrService`を通して、PDF画像化・認識・TXT保存まで各画像3回実行しました。比較元は同じアプリのPDF処理経路を使うTesseract 5.5.3＋同梱tessdata_fastです。以前の資料のうち「縦書き」「二段組」が実際には横書きになっていた生成設定を修正しました。今回はその2枚を描画して確認し、正しい配置で測定しています。他の7枚は以前とSHA-256が一致します。旧測定の「縦書き・二段組」評価は無効です。
 

@@ -6,17 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OfflinePDFConverter</AssemblyName>
     <RootNamespace>OfflinePDFConverter</RootNamespace>
-    <Product>Offline PDF Converter (v4.0)</Product>
-    <Version>4.0.0</Version>
-    <AssemblyVersion>4.0.0.0</AssemblyVersion>
-    <FileVersion>4.0.0.0</FileVersion>
+    <Product>Offline PDF Converter (v4.1)</Product>
+    <Version>4.1.0</Version>
+    <AssemblyVersion>4.1.0.0</AssemblyVersion>
+    <FileVersion>4.1.0.0</FileVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PaddleOcrEdition)' == 'true'">
     <AssemblyName>OfflinePDFConverter.PaddleEdition</AssemblyName>
-    <Product>Offline PDF Converter (v4.0)</Product>
+    <Product>Offline PDF Converter (v4.1)</Product>
     <DefineConstants>$(DefineConstants);PADDLE_OCR</DefineConstants>
   </PropertyGroup>
 
@@ -42,4 +42,5 @@
   <Target Name="RequirePaddleModels" BeforeTargets="PrepareForBuild" Condition="'$(PaddleOcrEdition)' == 'true'">
     <Error Condition="!Exists('ocr/paddle/manifest.json')" Text="Run python3 scripts/prepare-paddle-ocr.py before building PaddleOCR Edition." />
   </Target>
+  <Import Project="Properties/WindowsAppLocalCrt.targets" />
 </Project>
