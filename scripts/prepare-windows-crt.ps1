@@ -42,7 +42,11 @@ $records = @()
 foreach ($file in $files) {
   $target = Join-Path $Destination $file.Name
   Copy-Item $file.FullName $target -Force
-  $records += [ordered]@{ file = $file.Name; version = $file.VersionInfo.FileVersion; sha256 = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant() }
+  $algorithm = [Security.Cryptography.SHA256]::Create()
+  $stream = [IO.File]::OpenRead($target)
+  try { $hash = [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+  finally { $stream.Dispose(); $algorithm.Dispose() }
+  $records += [ordered]@{ file = $file.Name; version = $file.VersionInfo.FileVersion; sha256 = $hash }
 }
 $manifest = [ordered]@{ source = $source; files = $records } | ConvertTo-Json -Depth 4
 [IO.File]::WriteAllText((Join-Path $Destination 'manifest.json'), $manifest, (New-Object Text.UTF8Encoding($false)))
