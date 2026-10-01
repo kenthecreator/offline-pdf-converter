@@ -112,7 +112,9 @@ jobs:
           set -euo pipefail
           python scripts/verify-release-version.py
           python scripts/verify-release-archives.py release-assets
-          if gh release view v4.2.0 >/dev/null 2>&1; then echo 'v4.2 exists; refusing to replace it.'; exit 1; fi
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == "v4.2.0") | .id')
+          if [ -n "$existing" ]; then echo 'v4.2 exists; refusing to replace it.'; exit 1; fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.2.0" >/dev/null 2>&1; then echo 'v4.2 tag exists; refusing to replace it.'; exit 1; fi
           mkdir public-assets
           for target in Windows-x64 macOS-arm64; do
             source=$(find release-assets -type f -name "Offline PDF Converter (v4.2)-$target.zip")
@@ -125,16 +127,15 @@ jobs:
           cp "$(find release-assets -type f -name 'windows2025-features.json')" public-assets/verification-windows2025-features.json
           cp "$(find release-assets -type f -name 'windows2025-gui.json')" public-assets/verification-windows2025-gui.json
           gh release create v4.2.0 public-assets/* --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.2)' --notes-file docs/RELEASE_DETAILS_v4.2.0.md --draft
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v4.2.0" > /tmp/v4.2-published.json
+          # A new draft has no Git tag until publication. Retrieve it by release ID.
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == "v4.2.0" and .draft) | .id')
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > /tmp/v4.2-draft.json
+          python scripts/verify-release-upload.py /tmp/v4.2-draft.json public-assets "$GITHUB_SHA"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false -f make_latest=true > /tmp/v4.2-published.json
           python - <<'PYVERIFY'
-          import hashlib, json
-          from pathlib import Path
+          import json
           release = json.load(open('/tmp/v4.2-published.json'))
-          expected = {p.name: 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('public-assets').iterdir()}
-          actual = {a['name']: a['digest'] for a in release['assets']}
-          assert actual == expected, 'Published files differ from the verified artifacts'
-          for p in Path('public-assets').glob('verification-*.json'):
-              assert json.loads(p.read_text(encoding='utf-8-sig'))['passed'], p
+          assert not release['draft'] and release['published_at'], 'Release was not published'
           PYVERIFY
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.2.0" --jq '.object.sha')" = "$GITHUB_SHA"
-          gh release edit v4.2.0 --draft=false --latest
