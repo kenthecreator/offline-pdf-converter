@@ -82,7 +82,7 @@ Windowsの日本語TTCフォントは `FontCollectionReader` が先頭のフォ�
 ## 制限
 
 - PDFiumは1プロセス内での同時レンダリングを避けています。
-- v4.0のOCRはPaddleOCR内蔵版です。WindowsではVisual C++ v14（x64）ランタイムが必要です。
+- v4.1のOCRはPaddleOCR内蔵版です。Windows版はVisual C++の必要なDLLもexe内に同梱し、別途インストールを不要にしています。
 - 既存PDF内の文字を直接編集する機能は実装していません。文字や図形をPDF上に追加する方式です。
 - 単体exe方式ではネイティブライブラリを一時フォルダに展開します。
 

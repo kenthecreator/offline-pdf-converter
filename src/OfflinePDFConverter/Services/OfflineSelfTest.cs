@@ -43,8 +43,8 @@ internal static class OfflineSelfTest
             if (OperatingSystem.IsWindows()) VerifyAppLocalCrt(checks);
 #endif
             checks.Add("Unicode file paths");
-            if (typeof(OfflineSelfTest).Assembly.GetName().Version?.ToString() != "4.0.0.0") throw new InvalidDataException("バージョンが一致しません。");
-            checks.Add("version 4.0.0.0");
+            if (typeof(OfflineSelfTest).Assembly.GetName().Version?.ToString() != "4.1.0.0") throw new InvalidDataException("バージョンが一致しません。");
+            checks.Add("version 4.1.0.0");
         }
         catch (Exception ex) { failure = ex; }
         finally
@@ -55,7 +55,7 @@ internal static class OfflineSelfTest
             BundledOcrRuntime.Cleanup();
             Directory.Delete(root, recursive: true);
         }
-        var report = new { version = "4.0.0", edition = AppIdentity.WindowTitle, passed = failure == null, checks, error = failure?.ToString(),
+        var report = new { version = "4.1.0", edition = AppIdentity.WindowTitle, passed = failure == null, checks, error = failure?.ToString(),
             operatingSystem = Environment.OSVersion.ToString(), architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString() };
         var fullReportPath = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);

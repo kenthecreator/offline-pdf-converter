@@ -46,7 +46,7 @@ try
 {
     await Test("edition identity, embedded hashes and offline licenses", () =>
     {
-        Check(AppIdentity.WindowTitle == "Offline PDF Converter (v4.0)", "wrong edition");
+        Check(AppIdentity.WindowTitle == "Offline PDF Converter (v4.1)", "wrong edition");
         using var package = BundledPaddleOcrRuntime.ExtractEmbedded();
         Check(File.Exists(Path.Combine(package.RootDirectory, "rec.onnx")), "recognizer missing");
         Check(AppIdentity.ReadOcrLicenses().Contains("Apache License"), "license viewer missing");

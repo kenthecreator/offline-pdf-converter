@@ -1,19 +1,19 @@
-# v4.0 Windows単体exeの作成
+# v4.1 Windows単体exeの作成
 
-開発用.NET 8 SDKを使用します。利用者向けのv4.0はPaddleOCRの内蔵版です。
+開発用.NET 8 SDKを使用します。利用者向けのv4.1はPaddleOCRの内蔵版です。
 
 ```sh
-dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PaddleOcrEdition=true -p:PublishProfile=WindowsSingleFile -p:UsedAvaloniaProducts= -o artifacts/windows-v4.0
-python3 scripts/verify-published-exe.py artifacts/windows-v4.0
+dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PaddleOcrEdition=true -p:PublishProfile=WindowsSingleFile -p:UsedAvaloniaProducts= -o artifacts/windows-v4.1
+python3 scripts/verify-published-exe.py artifacts/windows-v4.1
 ```
 
-発行される `OfflinePDFConverter.PaddleEdition.exe` を配布時に `Offline PDF Converter (v4.0).exe` に変更します。自己完結、ネイティブ部品内包で、不要なデバッグ情報・インポートライブラリを除外し、exe以外が残ればエラーになります。
+発行される `OfflinePDFConverter.PaddleEdition.exe` を配布時に `Offline PDF Converter (v4.1).exe` に変更します。自己完結、ネイティブ部品内包で、不要なデバッグ情報・インポートライブラリを除外し、exe以外が残ればエラーになります。
 
 ```powershell
-pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.0/OfflinePDFConverter.PaddleEdition.exe
+pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.1/OfflinePDFConverter.PaddleEdition.exe
 ```
 
-Windows 10（1903以降）／11 x64向けです。このブランチの単体exeにはVisual C++ x64のrelease CRT DLLも埋め込みます。利用者のPCへのランタイム導入は不要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
+Windows 10（1903以降）／11 x64向けです。v4.1の単体exeにはVisual C++ x64のrelease CRT DLLも埋め込みます。利用者のPCへのランタイム導入は不要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
 
 ## ビルド時のCRT同梱
 
@@ -27,7 +27,7 @@ Windows 10（1903以降）／11 x64向けです。このブランチの単体exe
 
 1. `python scripts/verify-published-exe.py <publishフォルダ>`で、OCRモデルとCRT DLLの実データがexeに埋め込まれていることを確認します。
 2. `scripts/verify-windows-single-exe.ps1`で、新規のDLL展開先とexeだけのフォルダからOCRを実行します。自己検証はCRTのハッシュと読み込み元も調べ、システムのCRTに依存していた場合は失敗します。
-3. Visual C++再頒布可能パッケージ・.NET・Pythonを追加していないWindows 10/11の検証用VMへexeだけをコピーし、ネットワークアダプタを切断します。最初の起動から`"Offline PDF Converter (v4.0).exe" --verify-offline report.json`を実行し、`passed: true`を確認します。その後、日本語横書き・縦書き・英語・混在のGUI操作も確認します。
+3. Visual C++再頒布可能パッケージ・.NET・Pythonを追加していないWindows 10/11の検証用VMへexeだけをコピーし、ネットワークアダプタを切断します。最初の起動から`"Offline PDF Converter (v4.1).exe" --verify-offline report.json`を実行し、`passed: true`を確認します。その後、日本語横書き・縦書き・英語・混在のGUI操作も確認します。
 
 CIホストには開発用ランタイムがあるため、CI成功だけで未導入・完全オフライン環境の検証済みとは扱いません。公開済みv4.0のZIPにはこの変更は含まれていません。
 

@@ -11,7 +11,7 @@ $rules = @()
 $profiles = @()
 try {
   # A simple filename avoids netsh's extra command-line parsing of a program path with spaces.
-  $testName = if ($BlockNetwork) { 'OfflinePDFConverter.exe' } else { 'Offline PDF Converter (v4.0).exe' }
+  $testName = if ($BlockNetwork) { 'OfflinePDFConverter.exe' } else { 'Offline PDF Converter (v4.1).exe' }
   $isolatedExe = Join-Path $testDirectory $testName
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }
