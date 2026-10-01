@@ -22,9 +22,13 @@ try {
     if (@(Get-NetFirewallProfile -PolicyStore ActiveStore | Where-Object { $_.Enabled -ne 'True' }).Count) { throw 'Firewall profiles are not all enabled.' }
     foreach ($direction in @('Inbound', 'Outbound')) {
       $name = 'OfflinePDFConverter-test-' + [Guid]::NewGuid().ToString('N')
-      New-NetFirewallRule -Name $name -DisplayName $name -Program $isolatedExe -Direction $direction -Action Block -Profile Any -Enabled True | Out-Null
+      $nativeDirection = if ($direction -eq 'Inbound') { 'in' } else { 'out' }
+      $program = [IO.Path]::GetFullPath($isolatedExe)
+      Write-Host "Setting $nativeDirection block for $program"
+      & netsh.exe advfirewall firewall add rule "name=$name" "dir=$nativeDirection" action=block "program=$program" enable=yes profile=any
+      if ($LASTEXITCODE -ne 0) { throw 'Could not establish application network isolation.' }
       $rules += $name
-      $active = Get-NetFirewallRule -Name $name -PolicyStore ActiveStore
+      $active = Get-NetFirewallRule -DisplayName $name -PolicyStore ActiveStore
       if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block') { throw 'Network block rule is not active.' }
       $filter = $active | Get-NetFirewallApplicationFilter
       if ($filter.Program -ne $isolatedExe) { throw 'Network block rule targets a different executable.' }
@@ -55,7 +59,7 @@ try {
     }
   } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory }
 } finally {
-  foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction Continue }
+  foreach ($name in $rules) { Remove-NetFirewallRule -DisplayName $name -ErrorAction Continue }
   foreach ($profile in $profiles) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Continue }
   Remove-Item $testDirectory -Recurse -Force
 }
