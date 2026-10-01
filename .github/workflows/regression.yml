@@ -31,9 +31,15 @@ jobs:
       - name: Verify OCR models and native CRT DLLs are embedded in the exe
         if: runner.os == 'Windows'
         run: python scripts/verify-published-exe.py artifacts/standalone
+      - name: Verify first OCR run with application network access blocked
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/standalone/OfflinePDFConverter.PaddleEdition.exe -BlockNetwork -ReportPath artifacts/network-blocked-selftest.json
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
           name: Windows-offline-standalone-candidate
-          path: artifacts/standalone/*.exe
+          path: |
+            artifacts/standalone/*.exe
+            artifacts/network-blocked-selftest.json
           if-no-files-found: error

@@ -31,6 +31,8 @@ Windows 10（1903以降）／11 x64向けです。このブランチの単体exe
 
 CIホストには開発用ランタイムがあるため、CI成功だけで未導入・完全オフライン環境の検証済みとは扱いません。公開済みv4.0のZIPにはこの変更は含まれていません。
 
+CIでは追加で`verify-windows-single-exe.ps1 -BlockNetwork -ReportPath artifacts/network-blocked-selftest.json`を実行します。テスト対象exeに全プロファイルの送受信ブロックを適用し、有効なルールと適用先を確認してから、新しい一時フォルダでOCRを実行します。ルールとプロファイル設定は終了時に戻します。このオプションは検証用の使い捨てWindowsホストで管理者として実行します。これはアプリ単位の通信遮断テストで、ホスト全体のネットワーク切断やWindows 10/11の検証を意味しません。
+
 ## Mac・WindowsのZIP作成
 
 ```sh
