@@ -90,7 +90,7 @@ jobs:
           # Match GitHub's existing asset names and make checksum filenames usable as downloaded.
           mkdir public-assets
           for target in Windows-x64 macOS-arm64; do
-            source="release-assets/Offline PDF Converter (v4.1)-$target.zip"
+            source=$(find release-assets -type f -name "Offline PDF Converter (v4.1)-$target.zip")
             name="Offline.PDF.Converter.v4.1.-$target.zip"
             cp "$source" "public-assets/$name"
             (cd public-assets && sha256sum "$name" > "$name.sha256.txt")
