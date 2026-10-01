@@ -13,7 +13,23 @@ python3 scripts/verify-published-exe.py artifacts/windows-v4.0
 pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.0/OfflinePDFConverter.PaddleEdition.exe
 ```
 
-Windows 10（1903以降）／11 x64向けです。Microsoft Visual C++ v14（x64）ランタイムが必要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
+Windows 10（1903以降）／11 x64向けです。このブランチの単体exeにはVisual C++ x64のrelease CRT DLLも埋め込みます。利用者のPCへのランタイム導入は不要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
+
+## ビルド時のCRT同梱
+
+ビルド用Windowsには、適用されるライセンス条件を満たすVisual StudioのC++ビルド環境が必要です。`scripts/prepare-windows-crt.ps1`がVisual Studioの`VC/Redist/MSVC/<version>/x64/Microsoft.VC*.CRT`から未改変のrelease DLLを収集し、MSBuildがネイティブ部品として単体exeに埋め込みます。System32、debug_nonredist、非公式DLLサイトからは取得しません。これはビルド時のみの処理で、利用者のPCではインストーラ・ダウンロード・管理者権限を使いません。
+
+自動検出できない場合は、`-p:WindowsCrtSourceDirectory="C:/.../x64/Microsoft.VC143.CRT"`を指定してください。CRTが見つからない場合、外部ランタイムに依存するexeを黙って作らず、ビルドを失敗させます。新しいWindows配布物はWindowsでビルドしてください。DLLの版とSHA-256はexe内の`OfflinePDFConverter.WindowsCrtManifest.json`に記録します。
+
+実行時には.NETがDLLを利用者専用の一時フォルダに展開します。配布・持ち運びに必要な実行ファイルはexe一つですが、ディスクへの一時展開は必要です。Windows本体に含まれるOS部品には依存します。
+
+## リリース前の検証
+
+1. `python scripts/verify-published-exe.py <publishフォルダ>`で、OCRモデルとCRT DLLの実データがexeに埋め込まれていることを確認します。
+2. `scripts/verify-windows-single-exe.ps1`で、新規のDLL展開先とexeだけのフォルダからOCRを実行します。自己検証はCRTのハッシュと読み込み元も調べ、システムのCRTに依存していた場合は失敗します。
+3. Visual C++再頒布可能パッケージ・.NET・Pythonを追加していないWindows 10/11の検証用VMへexeだけをコピーし、ネットワークアダプタを切断します。最初の起動から`"Offline PDF Converter (v4.0).exe" --verify-offline report.json`を実行し、`passed: true`を確認します。その後、日本語横書き・縦書き・英語・混在のGUI操作も確認します。
+
+CIホストには開発用ランタイムがあるため、CI成功だけで未導入・完全オフライン環境の検証済みとは扱いません。公開済みv4.0のZIPにはこの変更は含まれていません。
 
 ## Mac・WindowsのZIP作成
 

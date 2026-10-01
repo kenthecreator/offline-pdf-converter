@@ -15,7 +15,7 @@ v4.0のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生
 
 [検索可能PDFの仕様・検証・制限](SEARCHABLE_PDF.md)を参照してください。
 
-Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。Windows x64版は.NETと認識モデルを内蔵しますがVisual C++ v14（x64）ランタイムが必要で、Windows実機の画面操作は未確認です。
+Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。このブランチのWindows x64ビルドは.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。新構成の完全オフライン・未導入Windowsでの検証と、Windows実機の画面操作確認はリリース前に必要です。
 
 ## 構成
 

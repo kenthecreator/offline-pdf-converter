@@ -7,7 +7,7 @@
 | macOS Apple Silicon | Offline PDF Converter (v4.0)-macOS-arm64.zip | Offline PDF Converter (v4.0).app |
 | Windows 10（1903以降）／11 x64 | Offline PDF Converter (v4.0)-Windows-x64.zip | Offline PDF Converter (v4.0).exe |
 
-両版にOCRエンジン・認識モデル・.NET実行基盤を内蔵します。Tesseract、Python、GPUは不要です。WindowsではMicrosoft Visual C++ v14（x64）ランタイムが必要です。配布物にはREADME、マニュアル、リリースノート、OCR説明、第三者ライセンスを同梱します。ZIPのSHA-256も公開します。
+両版にOCRエンジン・認識モデル・.NET実行基盤を内蔵します。Tesseract、Python、GPUは不要です。このブランチで新規ビルドするWindows版はVisual C++の必要なDLLもexe内に含めます。公開済みv4.0のZIPは変更されていません。配布物にはREADME、マニュアル、リリースノート、OCR説明、第三者ライセンスを同梱します。ZIPのSHA-256も公開します。
 
 Windowsのアプリは単体exeです。ネイティブ部品・モデルを一時領域に自動展開するため、一時フォルダへの書き込みが必要です。MacはZIPを展開して.appを起動してください。ad-hoc署名で、Appleの公証は未実施です。
 

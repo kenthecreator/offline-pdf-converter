@@ -31,6 +31,8 @@ def main():
                    '-p:PublishTrimmed=false', '-p:NuGetAudit=false', '-p:UsedAvaloniaProducts=', '-p:DebugType=none', '-p:DebugSymbols=false', '-o', str(publish)]
         if target == 'windows': command.append('-p:PublishProfile=WindowsSingleFile')
         subprocess.run(command, cwd=ROOT, env=env, check=True)
+        if target == 'windows':
+            subprocess.run([os.sys.executable, str(ROOT/'scripts/verify-published-exe.py'), str(publish)], cwd=ROOT, check=True)
         package = DIST / ('macos-arm64' if target == 'mac' else 'windows-x64')
         package.mkdir(parents=True, exist_ok=True)
         if target == 'mac':

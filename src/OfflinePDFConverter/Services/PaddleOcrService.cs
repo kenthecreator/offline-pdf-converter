@@ -74,7 +74,7 @@ public static class PaddleOcrService
         try { OrtEnv.Instance().DisableTelemetryEvents(); }
         catch (Exception ex) when (OperatingSystem.IsWindows() && ex is DllNotFoundException or TypeInitializationException)
         {
-            throw new PaddleOcrDependencyException("PaddleOCRの実行部品を読み込めません。Microsoft公式のVisual C++ v14（x64）ランタイムを確認し、アプリを再起動してください。", ex);
+            throw new PaddleOcrDependencyException("内蔵OCRの実行部品を読み込めません。アプリを再起動し、改善しない場合は配布元のアプリを取得し直してください。セキュリティソフトの保護履歴も確認してください。", ex);
         }
         var package = runtime ??= BundledPaddleOcrRuntime.ExtractEmbedded(token);
         var candidate = new RapidOcr();

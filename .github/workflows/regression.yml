@@ -15,6 +15,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.12'
       - name: Run PDF and file safety regression tests
         run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
       - name: Publish Windows standalone executable
@@ -24,3 +28,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/standalone/OfflinePDFConverter.PaddleEdition.exe
+      - name: Verify OCR models and native CRT DLLs are embedded in the exe
+        if: runner.os == 'Windows'
+        run: python scripts/verify-published-exe.py artifacts/standalone
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: Windows-offline-standalone-candidate
+          path: artifacts/standalone/*.exe
+          if-no-files-found: error

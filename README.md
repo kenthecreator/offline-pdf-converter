@@ -10,7 +10,7 @@ v4.0のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.m
 
 - Mac・WindowsともにPaddleOCRの認識エンジンとモデルを内蔵し、実行時のネット接続・外部送信・追加ダウンロードを必要としません。
 - Tesseract、Python、GPU、.NETランタイムの別途インストールは不要です。
-- Windows x64ではMicrosoft Visual C++ v14（x64）ランタイムが必要です。
+- このブランチのWindows x64ビルドはVisual C++の必要なDLLもexe内に含めます。利用者による追加インストール・初回ダウンロードは不要です。公開済みv4.0の配布物は変更されていません。
 - Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
 - ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
@@ -30,7 +30,7 @@ v4.0のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.m
 
 WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフォーム開発とWindows用単体exe発行の扱いやすさを重視してAvaloniaを選んでいます。MuPDF系はAGPLまたは商用ライセンスの検討が必要になりやすいため、この実装では採用していません。
 
-改良版の保存・再実行・解像度設定・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Mac・WindowsともにOCRモデルを内蔵します。WindowsのVisual C++ランタイム要件は上記のとおりです。
+改良版の保存・再実行・解像度設定・オフラインOCRについては [改良版の使い方](docs/IMPROVEMENTS.md) を参照してください。Mac・WindowsともにOCRモデルを内蔵します。Windows単体exeの同梱構成と検証条件は [Windowsビルド手順](docs/BUILD_WINDOWS.md) を参照してください。
 
 ## 主な機能
 

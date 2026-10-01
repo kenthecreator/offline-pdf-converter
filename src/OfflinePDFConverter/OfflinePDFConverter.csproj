@@ -42,4 +42,5 @@
   <Target Name="RequirePaddleModels" BeforeTargets="PrepareForBuild" Condition="'$(PaddleOcrEdition)' == 'true'">
     <Error Condition="!Exists('ocr/paddle/manifest.json')" Text="Run python3 scripts/prepare-paddle-ocr.py before building PaddleOCR Edition." />
   </Target>
+  <Import Project="Properties/WindowsAppLocalCrt.targets" />
 </Project>

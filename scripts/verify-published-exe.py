@@ -11,6 +11,13 @@ for entry in manifest['files']:
  payload=(root/'src/OfflinePDFConverter/ocr/paddle'/entry['file']).read_bytes()
  assert hashlib.sha256(payload).hexdigest()==entry['sha256'], 'Model hash mismatch'
  assert payload in data, 'Embedded OCR resource missing: '+entry['file']
+crt_folder=root/'artifacts/windows-crt'
+crt_manifest=json.loads((crt_folder/'manifest.json').read_text(encoding='utf-8-sig'))
+assert {'msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll'} <= {e['file'] for e in crt_manifest['files']}, 'Incomplete CRT manifest'
+for entry in crt_manifest['files']:
+ payload=(crt_folder/entry['file']).read_bytes()
+ assert hashlib.sha256(payload).hexdigest()==entry['sha256'], 'CRT hash mismatch: '+entry['file']
+ assert payload in data, 'Native CRT DLL not embedded in exe: '+entry['file']
 pe=struct.unpack_from('<I',data,0x3c)[0]
 assert data[pe:pe+4]==b'PE\0\0' and struct.unpack_from('<H',data,pe+4)[0]==0x8664, 'Not Windows x64'
 count=struct.unpack_from('<H',data,pe+6)[0]; optional_size=struct.unpack_from('<H',data,pe+20)[0]

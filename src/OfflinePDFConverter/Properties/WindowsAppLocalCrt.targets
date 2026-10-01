@@ -1,0 +1,20 @@
+<Project>
+  <PropertyGroup>
+    <WindowsCrtStageDirectory>$(MSBuildThisFileDirectory)../../../artifacts/windows-crt/</WindowsCrtStageDirectory>
+  </PropertyGroup>
+  <!-- Both dotnet publish and the distribution script must embed the CRT. -->
+  <Target Name="PrepareWindowsAppLocalCrt" BeforeTargets="AssignTargetPaths"
+          Condition="'$(PaddleOcrEdition)' == 'true' and '$(RuntimeIdentifier)' == 'win-x64'">
+    <Error Condition="'$(OS)' != 'Windows_NT'" Text="Build the standalone Windows OCR package on Windows with Visual Studio C++ redist files." />
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)../../../scripts/prepare-windows-crt.ps1&quot; -Destination &quot;$(WindowsCrtStageDirectory)&quot; -SourceDirectory &quot;$(WindowsCrtSourceDirectory)&quot;" />
+    <ItemGroup>
+      <Content Include="$(WindowsCrtStageDirectory)*.dll">
+        <Link>%(Filename)%(Extension)</Link>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+      </Content>
+      <EmbeddedResource Include="$(WindowsCrtStageDirectory)manifest.json" LogicalName="OfflinePDFConverter.WindowsCrtManifest.json" />
+    </ItemGroup>
+  </Target>
+</Project>
