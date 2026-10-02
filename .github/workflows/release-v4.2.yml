@@ -1,11 +1,7 @@
 name: Verify and release v4.2
 on:
-  pull_request:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/release-v4.2.yml'
-      - 'docs/RELEASE_DETAILS_v4.2.0.md'
+  # v4.2 is already released. New pull requests use the current v4.3 gates;
+  # the original v4.2 workflow and source remain available at tag v4.2.0.
   workflow_dispatch:
 permissions:
   contents: read
