@@ -1,4 +1,4 @@
-name: Build v4.3 distribution
+name: Build v4.4 distribution
 on:
   workflow_dispatch:
 permissions:
@@ -30,10 +30,10 @@ jobs:
       - name: Verify Windows standalone OCR
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe'
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.4).exe'
       - uses: actions/upload-artifact@v4
         with:
-          name: Offline-PDF-Converter-v4.3-${{ matrix.target }}
+          name: Offline-PDF-Converter-v4.4-${{ matrix.target }}
           path: |
             dist/paddle-edition/*.zip
             dist/paddle-edition/*.sha256.txt

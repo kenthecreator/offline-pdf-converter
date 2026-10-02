@@ -1,19 +1,19 @@
-# v4.3 Windows単体exeの作成
+# v4.4 Windows単体exeの作成
 
-開発用.NET 8 SDKを使用します。利用者向けのv4.3はPaddleOCRの内蔵版です。
+開発用.NET 8 SDKを使用します。利用者向けのv4.4はPaddleOCRの内蔵版です。
 
 ```sh
-dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PaddleOcrEdition=true -p:PublishProfile=WindowsSingleFile -p:UsedAvaloniaProducts= -o artifacts/windows-v4.3
-python3 scripts/verify-published-exe.py artifacts/windows-v4.3
+dotnet publish src/OfflinePDFConverter/OfflinePDFConverter.csproj -p:PaddleOcrEdition=true -p:PublishProfile=WindowsSingleFile -p:UsedAvaloniaProducts= -o artifacts/windows-v4.4
+python3 scripts/verify-published-exe.py artifacts/windows-v4.4
 ```
 
-発行される `OfflinePDFConverter.PaddleEdition.exe` を配布時に `Offline PDF Converter (v4.3).exe` に変更します。自己完結、ネイティブ部品内包で、不要なデバッグ情報・インポートライブラリを除外し、exe以外が残ればエラーになります。
+発行される `OfflinePDFConverter.PaddleEdition.exe` を配布時に `Offline PDF Converter (v4.4).exe` に変更します。自己完結、ネイティブ部品内包で、不要なデバッグ情報・インポートライブラリを除外し、exe以外が残ればエラーになります。
 
 ```powershell
-pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.3/OfflinePDFConverter.PaddleEdition.exe
+pwsh -File scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.4/OfflinePDFConverter.PaddleEdition.exe
 ```
 
-Windows 10（1903以降）／11 x64向けです。v4.3の単体exeにはVisual C++ x64のrelease CRT DLLも埋め込みます。利用者のPCへのランタイム導入は不要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
+Windows 10（1903以降）／11 x64向けです。v4.4の単体exeにはVisual C++ x64のrelease CRT DLLも埋め込みます。利用者のPCへのランタイム導入は不要です。.NET、Tesseract、Python、GPUの追加インストールやOCRモデルの実行時ダウンロードは不要です。
 
 ## ビルド時のCRT同梱
 
@@ -27,7 +27,7 @@ Windows 10（1903以降）／11 x64向けです。v4.3の単体exeにはVisual C
 
 1. `python scripts/verify-published-exe.py <publishフォルダ>`で、OCRモデルとCRT DLLの実データがexeに埋め込まれていることを確認します。
 2. `scripts/verify-windows-single-exe.ps1`で、新規のDLL展開先とexeだけのフォルダからOCRを実行します。自己検証はCRTのハッシュと読み込み元も調べ、システムのCRTに依存していた場合は失敗します。
-3. Visual C++再頒布可能パッケージ・.NET・Pythonを追加していないWindows 10/11の検証用VMへexeだけをコピーし、ネットワークアダプタを切断します。最初の起動から`"Offline PDF Converter (v4.3).exe" --verify-offline report.json`を実行し、`passed: true`を確認します。その後、日本語横書き・縦書き・英語・混在のGUI操作も確認します。
+3. Visual C++再頒布可能パッケージ・.NET・Pythonを追加していないWindows 10/11の検証用VMへexeだけをコピーし、ネットワークアダプタを切断します。最初の起動から`"Offline PDF Converter (v4.4).exe" --verify-offline report.json`を実行し、`passed: true`を確認します。その後、日本語横書き・縦書き・英語・混在のGUI操作も確認します。
 
 CIホストには開発用ランタイムがあるため、CI成功だけで未導入・完全オフライン環境の検証済みとは扱いません。公開済みv4.0のZIPにはこの変更は含まれていません。
 
@@ -41,16 +41,16 @@ python3 scripts/build-paddle-edition.py --target both
 
 モデル取得・更新は開発時だけの作業です。`scripts/prepare-paddle-ocr.py`、`scripts/prepare-ocr-language-models.py` と内蔵manifestに取得元・固定ハッシュを記録しています。旧Tesseractの構築スクリプトは旧実装の回帰検証用に残しています。
 
-## v4.3機能・GUI検証
+## v4.4機能・GUI検証
 
 ```powershell
-./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.3/OfflinePDFConverter.PaddleEdition.exe -BlockNetwork -ReportPath artifacts/windows-features.json
-./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.3/OfflinePDFConverter.PaddleEdition.exe -BlockNetwork -VerifyGui -ReportPath artifacts/windows-gui.json
+./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.4/OfflinePDFConverter.PaddleEdition.exe -BlockNetwork -ReportPath artifacts/windows-features.json
+./scripts/verify-windows-single-exe.ps1 -ExePath artifacts/windows-v4.4/OfflinePDFConverter.PaddleEdition.exe -BlockNetwork -VerifyGui -ReportPath artifacts/windows-gui.json
 ```
 
 Firewallを変更するこのスクリプトは検証用のWindows CI/VMで管理者として実行します。正常終了・失敗ともルールを削除してプロファイル設定を復元します。配布exeの通常実行ではFirewallを変更しません。結果JSONとGUIスクリーンショットを保存します。
 
-## v4.3の小文字OCRとビルド用フォント準備
+## v4.4の小文字OCRとビルド用フォント準備
 
 ページ番号だけが文字のページもOCR対象とします。通常のA4は300dpi、検出前長辺上限は4096pxです。文字層にはNoto Sans Japaneseを内蔵します。ビルドの前に、固定版のフォント生成依存を準備します。これは開発用の手順で、利用者には不要です。
 

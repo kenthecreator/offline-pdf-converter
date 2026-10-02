@@ -1,10 +1,10 @@
-# Offline PDF Converter (v4.3)
+# Offline PDF Converter (v4.4)
 
 完全オフライン動作を前提にした、Windows x64／macOS Apple Silicon向けのPDF・画像変換とPDF編集のデスクトップアプリです。[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から配布ZIPを取得できます。
 
-v4.3のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
+v4.4のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
 
-## v4.3のオフラインOCR
+## v4.4のオフラインOCR
 
 スキャンしたPDFに、検索・選択・コピーできる文字レイヤーを追加します。原本のページの見た目を保ったPDFとして書き出すため、画像だけだった資料を検索できるようになります。
 
@@ -14,9 +14,9 @@ v4.3のOCR画面と変更点は [検索可能PDFの説明](docs/SEARCHABLE_PDF.m
 - Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
 - ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
-[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v4.3リリース内容](docs/RELEASE_DETAILS_v4.3.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
+[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v4.4リリース内容](docs/RELEASE_DETAILS_v4.4.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
 
-v4.3では、ページ番号のみが文字で本文が画像・輪郭線のPDFもOCRできるようにし、小さい日本語を検出前の縮小で失わないよう改善しました。非表示文字層にはNoto Sans Japaneseを内蔵します。実際の配布exeから主要機能と実ウィンドウを検証します。検証条件と未確認事項は[v4.3リリース内容](docs/RELEASE_DETAILS_v4.3.0.md)を参照してください。
+v4.4では、トリミング範囲外の文字によって本文のOCRが省略される問題と、長い日本語が保存時に折り返されない問題を修正しました。v4.3から引き継いだ改善として、ページ番号のみが文字で本文が画像・輪郭線のPDFもOCRできるようにし、小さい日本語を検出前の縮小で失わないよう改善しました。非表示文字層にはNoto Sans Japaneseを内蔵します。実際の配布exeから主要機能と実ウィンドウを検証します。検証条件と未確認事項は[v4.4リリース内容](docs/RELEASE_DETAILS_v4.4.0.md)を参照してください。
 
 ## 技術構成の提案
 
@@ -82,13 +82,13 @@ offline-pdf-converter/
 
 詳細は [docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md) を参照してください。
 
-Mac・Windowsのv4.3配布物を作成:
+Mac・Windowsのv4.4配布物を作成:
 
 ```sh
 python3 scripts/build-paddle-edition.py --target both
 ```
 
-出力は `dist/paddle-edition/` の `Offline PDF Converter (v4.3)-macOS-arm64.zip` と `Offline PDF Converter (v4.3)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
+出力は `dist/paddle-edition/` の `Offline PDF Converter (v4.4)-macOS-arm64.zip` と `Offline PDF Converter (v4.4)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
 
 ## ライセンス
 

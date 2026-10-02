@@ -12,7 +12,7 @@ $rules = @()
 $profiles = @()
 try {
   # Verify the actual distribution filename, including spaces and parentheses.
-  $testName = 'Offline PDF Converter (v4.3).exe'
+  $testName = 'Offline PDF Converter (v4.4).exe'
   $isolatedExe = Join-Path $testDirectory $testName
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }

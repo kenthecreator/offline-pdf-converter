@@ -1,12 +1,17 @@
 # Preserve upstream font license bytes on Windows; see .gitattributes.
-name: Verify and release v4.3
+name: Verify and release v4.4
 on:
-  # Archived release; current changes use the v4.4 gates.
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v4.4.yml'
+      - 'docs/RELEASE_DETAILS_v4.4.0.md'
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: release-v4.3-${{ github.ref }}
+  group: release-v4.4-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   build:
@@ -49,20 +54,20 @@ jobs:
       - name: Shipped Windows exe, fresh extraction, all features, blocked communication
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe' -BlockNetwork -ReportPath artifacts/windows-features.json
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.4).exe' -BlockNetwork -ReportPath artifacts/windows-features.json
       - name: Shipped Windows exe, real windows and controls, blocked communication
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows-gui.json
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.4).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows-gui.json
       - name: Verify shipped macOS app
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          "dist/paddle-edition/macos-arm64/Offline PDF Converter (v4.3).app/Contents/MacOS/OfflinePDFConverter.PaddleEdition" --verify-offline artifacts/macos-features.json
+          "dist/paddle-edition/macos-arm64/Offline PDF Converter (v4.4).app/Contents/MacOS/OfflinePDFConverter.PaddleEdition" --verify-offline artifacts/macos-features.json
           python -c 'import json; assert json.load(open("artifacts/macos-features.json"))["passed"]'
       - uses: actions/upload-artifact@v4
         with:
-          name: v4.3-${{ matrix.target }}
+          name: v4.4-${{ matrix.target }}
           path: |
             dist/paddle-edition/*.zip
             dist/paddle-edition/*.sha256.txt
@@ -78,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: v4.3-windows
+          name: v4.4-windows
           path: candidate
       - name: Extract the exact Windows ZIP built on Windows Server 2022
         shell: pwsh
@@ -88,13 +93,13 @@ jobs:
           Expand-Archive $archive[0].FullName isolated
       - name: Feature tests on the identical exe on Windows Server 2025
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.3).exe' -BlockNetwork -ReportPath artifacts/windows2025-features.json
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.4).exe' -BlockNetwork -ReportPath artifacts/windows2025-features.json
       - name: GUI tests on the identical exe on Windows Server 2025
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.3).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows2025-gui.json
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.4).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows2025-gui.json
       - uses: actions/upload-artifact@v4
         with:
-          name: v4.3-windows2025-evidence
+          name: v4.4-windows2025-evidence
           path: artifacts/windows2025-*
           if-no-files-found: error
   publish:
@@ -107,10 +112,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: v4.3-*
+          pattern: v4.4-*
           path: release-assets
           merge-multiple: true
-      - name: Publish new v4.3 only after every gate passes
+      - name: Publish new v4.4 only after every gate passes
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -118,13 +123,13 @@ jobs:
           set -euo pipefail
           python scripts/verify-release-version.py
           python scripts/verify-release-archives.py release-assets
-          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == "v4.3.0") | .id')
-          if [ -n "$existing" ]; then echo 'v4.3 exists; refusing to replace it.'; exit 1; fi
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.3.0" >/dev/null 2>&1; then echo 'v4.3 tag exists; refusing to replace it.'; exit 1; fi
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == "v4.4.0") | .id')
+          if [ -n "$existing" ]; then echo 'v4.4 exists; refusing to replace it.'; exit 1; fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.4.0" >/dev/null 2>&1; then echo 'v4.4 tag exists; refusing to replace it.'; exit 1; fi
           mkdir public-assets
           for target in Windows-x64 macOS-arm64; do
-            source=$(find release-assets -type f -name "Offline PDF Converter (v4.3)-$target.zip")
-            name="Offline.PDF.Converter.v4.3.-$target.zip"
+            source=$(find release-assets -type f -name "Offline PDF Converter (v4.4)-$target.zip")
+            name="Offline.PDF.Converter.v4.4.-$target.zip"
             cp "$source" "public-assets/$name"
             (cd public-assets && sha256sum "$name" > "$name.sha256.txt")
           done
@@ -132,16 +137,16 @@ jobs:
           cp "$(find release-assets -type f -name 'windows-gui.json')" public-assets/verification-windows2022-gui.json
           cp "$(find release-assets -type f -name 'windows2025-features.json')" public-assets/verification-windows2025-features.json
           cp "$(find release-assets -type f -name 'windows2025-gui.json')" public-assets/verification-windows2025-gui.json
-          gh release create v4.3.0 public-assets/* --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.3)' --notes-file docs/RELEASE_DETAILS_v4.3.0.md --draft
+          gh release create v4.4.0 public-assets/* --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.4)' --notes-file docs/RELEASE_DETAILS_v4.4.0.md --draft
           # A new draft has no Git tag until publication. Retrieve it by release ID.
-          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == "v4.3.0" and .draft) | .id')
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == "v4.4.0" and .draft) | .id')
           test -n "$release_id"
-          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > /tmp/v4.3-draft.json
-          python scripts/verify-release-upload.py /tmp/v4.3-draft.json public-assets "$GITHUB_SHA"
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false -f make_latest=true > /tmp/v4.3-published.json
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > /tmp/v4.4-draft.json
+          python scripts/verify-release-upload.py /tmp/v4.4-draft.json public-assets "$GITHUB_SHA"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false -f make_latest=true > /tmp/v4.4-published.json
           python - <<'PYVERIFY'
           import json
-          release = json.load(open('/tmp/v4.3-published.json'))
+          release = json.load(open('/tmp/v4.4-published.json'))
           assert not release['draft'] and release['published_at'], 'Release was not published'
           PYVERIFY
-          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.3.0" --jq '.object.sha')" = "$GITHUB_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.4.0" --jq '.object.sha')" = "$GITHUB_SHA"
