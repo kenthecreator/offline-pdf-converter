@@ -41,7 +41,11 @@ public static class SearchablePdfService
             {
                 token.ThrowIfCancellationRequested();
                 var textPage = textDocument.GetPage(number);
-                var existingLetters = textPage.Letters.Where(letter => !string.IsNullOrWhiteSpace(letter.Value)).ToArray();
+                // PdfPig retains letters outside CropBox; those hidden letters must not
+                // make the visible image body look like an already searchable page.
+                var existingLetters = textPage.Letters.Where(letter => !string.IsNullOrWhiteSpace(letter.Value)
+                    && letter.BoundingBox.Right > 0 && letter.BoundingBox.Left < textPage.Width
+                    && letter.BoundingBox.Top > 0 && letter.BoundingBox.Bottom < textPage.Height).ToArray();
                 // A page number or short running header is not a body text layer.
                 var marginOnly = existingLetters.Length <= 64 && existingLetters.All(letter =>
                     letter.BoundingBox.Top <= textPage.Height * 0.1 || letter.BoundingBox.Bottom >= textPage.Height * 0.9);

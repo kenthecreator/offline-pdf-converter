@@ -428,22 +428,13 @@ public sealed class PdfDocumentService : IPdfDocumentService
                             edit.FontSize,
                             fontStyle,
                             fontOptions);
-                        var format = new XStringFormat
-                        {
-                            Alignment = edit.TextAlignment switch
-                            {
-                                "Center" => XStringAlignment.Center,
-                                "Right" => XStringAlignment.Far,
-                                _ => XStringAlignment.Near
-                            },
-                            LineAlignment = XLineAlignment.Near
-                        };
-                        graphics.DrawString(
+                        PdfTextBoxRenderer.Draw(
+                            graphics,
                             edit.Text,
                             font,
                             new XSolidBrush(ToPdfColor(edit.TextColorHex)),
                             new XRect(edit.X, edit.Y, edit.Width, edit.Height),
-                            format);
+                            edit.TextAlignment);
                     }
                 }
             }

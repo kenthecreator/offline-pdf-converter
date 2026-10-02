@@ -169,6 +169,69 @@ await Test("editor numeric input rejects nonfinite or invalid dimensions", () =>
  return Task.CompletedTask;
 });
 var source=Pdf("source",4);var other=Pdf("other",2);var service=new PdfDocumentService();
+await Test("OCR coordinates match the displayed crop at every page rotation", () => {
+ foreach(var rotation in new[]{0,90,180,270}) {
+  var file=Path.Combine(root,"geometry-"+rotation+".pdf");
+  using(var doc=new PdfDocument()) {
+   var page=doc.AddPage();page.Width=XUnit.FromPoint(600);page.Height=XUnit.FromPoint(800);
+   page.CropBox=new PdfRectangle(new XPoint(40,60),new XPoint(540,740));page.Rotate=rotation;
+   var width=rotation is 90 or 270?680:500;var height=rotation is 90 or 270?500:680;
+   SearchablePdfService.AddTextLayer(page,new[]{new OcrTextBlock("日本語",20,30,60,20)},width,height,false);
+   doc.Save(file);
+  }
+  using var read=UglyToad.PdfPig.PdfDocument.Open(file);var actual=read.GetPage(1);
+  Check(actual.Text=="日本語","OCR text missing at rotation "+rotation);
+  Check(actual.Letters.All(l=>l.BoundingBox.Left>=18 && l.BoundingBox.Right<=83
+   && l.BoundingBox.Top<=actual.Height-25 && l.BoundingBox.Bottom>=actual.Height-55),
+   "OCR position differs from rendered crop at rotation "+rotation+": "+string.Join(";",actual.Letters.Select(l=>l.BoundingBox)));
+ }
+ return Task.CompletedTask;
+});
+await Test("Japanese editor text wraps inside the saved text box", async () => {
+ var dir=Folder("wrapped-edit");
+ var edit=new PdfTextEditItem(1,30,40,70,140,"日本語の書類確認と手続きの説明","OfflinePDFConverterBundled",14,false,"None","#000000","Left",false,false);
+ await service.SimpleEditAsync(new(new[]{source},new[]{edit},Array.Empty<PdfShapeEditItem>(),Path.Combine(dir,"edited.pdf"),passwords),progress,default);
+ using var read=UglyToad.PdfPig.PdfDocument.Open(Directory.GetFiles(dir).Single());var page=read.GetPage(1);
+ Check(page.Text==edit.Text,"editor text lost");
+ Check(page.Letters.All(l=>l.BoundingBox.Right<=101),"saved editor text overflows the box width");
+ Check(page.Letters.Select(l=>Math.Round(l.StartBaseLine.Y)).Distinct().Count()>1,"saved text did not wrap");
+});
+await Test("OCR ignores text outside the visible crop", async () => {
+ foreach(var rotation in new[]{0,90,180,270}) {
+ var input=Path.Combine(root,"cropped-hidden-text-"+rotation+".pdf");
+ using(var doc=new PdfDocument()) {
+  var p=doc.AddPage();p.Width=XUnit.FromPoint(600);p.Height=XUnit.FromPoint(800);
+  using(var g=XGraphics.FromPdfPage(p)) g.DrawString("Hidden",new XFont("OfflinePDFConverterBundled",14),XBrushes.Black,new XPoint(20,400));
+  p.CropBox=new PdfRectangle(new XPoint(200,100),new XPoint(550,700));p.Rotate=rotation;doc.Save(input);
+ }
+ var called=false;var output=Path.Combine(root,"cropped-ocr-"+rotation+".pdf");
+ await SearchablePdfService.CreateAsync(input,output,"jpn","","",progress,default,(image,token)=> {
+  called=true;return Task.FromResult<IReadOnlyList<OcrTextBlock>>(new[]{new OcrTextBlock("日本語",100,150,100,30)});
+ });
+ Check(called,"hidden text outside CropBox prevented visible body OCR");
+ using var result=UglyToad.PdfPig.PdfDocument.Open(output);Check(result.GetPage(1).Text.Contains("日本語"),"visible OCR body missing");
+ using var a=File.OpenRead(input);using var b=File.OpenRead(output);
+ using var before=PDFtoImage.Conversion.ToImages(a,new[]{0},options:new PDFtoImage.RenderOptions(Dpi:100)).First();
+ using var after=PDFtoImage.Conversion.ToImages(b,new[]{0},options:new PDFtoImage.RenderOptions(Dpi:100)).First();
+ Check(before.Bytes.SequenceEqual(after.Bytes),"cropped OCR changed page appearance at rotation "+rotation);
+ }
+});
+await Test("editor preserves explicit line breaks and per-line alignment", async () => {
+ foreach(var alignment in new[]{"Left","Center","Right"}) {
+  var dir=Folder("line-breaks-"+alignment);
+  var edit=new PdfTextEditItem(1,30,40,140,100,"日本語\r\n\r\nABC","OfflinePDFConverterBundled",14,false,"None","#000000",alignment,false,false);
+  await service.SimpleEditAsync(new(new[]{source},new[]{edit},Array.Empty<PdfShapeEditItem>(),Path.Combine(dir,"edited.pdf"),passwords),progress,default);
+  using var read=UglyToad.PdfPig.PdfDocument.Open(Directory.GetFiles(dir).Single());var letters=read.GetPage(1).Letters;
+  Check(read.GetPage(1).Text=="日本語ABC","line breaks introduced spurious characters");
+  Check(letters[0].StartBaseLine.Y-letters[3].StartBaseLine.Y>30,"empty line or explicit break lost");
+  foreach(var row in new[]{letters.Take(3).ToArray(),letters.Skip(3).ToArray()}) {
+   var left=row.Min(l=>l.StartBaseLine.X);var right=row.Max(l=>l.EndBaseLine.X);
+   var anchor=alignment=="Center"?(left+right)/2:alignment=="Right"?right:left;
+   var expected=alignment=="Center"?100:alignment=="Right"?170:30;
+   Check(Math.Abs(anchor-expected)<1,"saved per-line alignment wrong: "+alignment);
+  }
+ }
+});
 await Test("nonfinite PDF edit geometry is rejected before output", async () => {
  var dir=Folder("invalid-edit-geometry");
  var edit=new PdfTextEditItem(1,0,0,double.NaN,20,"test","OfflinePDFConverterBundled",14,false,"None","#000000","Left",false,false);
