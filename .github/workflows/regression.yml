@@ -16,9 +16,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - uses: actions/setup-python@v5
-        if: runner.os == 'Windows'
         with:
           python-version: '3.12'
+      - name: Prepare pinned bundled Noto Sans Japanese font
+        run: |
+          python -m pip install fonttools==4.61.1
+          python scripts/prepare-ocr-font.py
       - name: Run PDF and file safety regression tests
         run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false
       - name: Publish Windows standalone executable

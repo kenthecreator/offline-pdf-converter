@@ -12,6 +12,21 @@
       "gitBlob": "c05130c2195586600c9bc245c88a67d1154369a8",
       "sha256": "0fac78a235c98d640cb06332eb5362c211d86fa03c011df438c35005d22ad2c7",
       "bytes": 4401
+    },
+    {
+      "file": "NotoSansJP-Regular.ttf",
+      "sha256": "57458d02bb14502d7ae98abe1e2f79b52783ceda9e4628df145faae23a3d31d2",
+      "bytes": 5766884,
+      "source": "https://github.com/google/fonts/tree/295d98a7a0c17c68f1341eaeea354e7960ea70d3/ofl/notosansjp",
+      "derivation": "fontTools 4.61.1 static wght=400, updateFontNames=True, recalcTimestamp=False"
+    },
+    {
+      "file": "OFL-NotoSansJP.txt",
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+      "bytes": 4388,
+      "source": "https://github.com/google/fonts/tree/295d98a7a0c17c68f1341eaeea354e7960ea70d3/ofl/notosansjp",
+      "derivation": "Unmodified upstream SIL OFL 1.1"
     }
-  ]
+  ],
+  "notoUpstreamVariableSha256": "c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f"
 }

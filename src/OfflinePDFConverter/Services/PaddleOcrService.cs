@@ -11,6 +11,8 @@ public static class PaddleOcrService
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, RapidOcr> Engines = new();
     private static BundledPaddleOcrRuntime? runtime;
+    // Keep small Japanese strokes in a 300 dpi A4 render instead of shrinking to 2000 px.
+    private static readonly RapidOcrOptions DocumentOptions = RapidOcrOptions.PPOCRv6 with { MaxSideLen = 4096 };
 
     public static async Task<string> RecognizeImageAsync(string imagePath, string language,
         CancellationToken token, TimeSpan? pageTimeout = null)
@@ -28,7 +30,7 @@ public static class PaddleOcrService
             await Gate.WaitAsync(timeout.Token);
             entered = true;
             var engine = await Task.Run(() => EnsureEngine(language, timeout.Token), timeout.Token);
-            var result = await engine.DetectAsync(imagePath, RapidOcrOptions.PPOCRv6, null, timeout.Token);
+            var result = await engine.DetectAsync(imagePath, DocumentOptions, null, timeout.Token);
             timeout.Token.ThrowIfCancellationRequested();
             // Vertical Japanese reads down a column and then from right to left.
             // Sorting uses detected geometry only; it never uses expected text.

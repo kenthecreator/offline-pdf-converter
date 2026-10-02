@@ -1,10 +1,10 @@
-# Offline PDF Converter (v4.2) — 内蔵OCR
+# Offline PDF Converter (v4.3) — 内蔵OCR
 
-v4.2のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
+v4.3のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
 
-## v4.2の使い方
+## v4.3の使い方
 
-アプリ名は「Offline PDF Converter (v4.2)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
+アプリ名は「Offline PDF Converter (v4.3)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
 
 - 日本語（横書き）: 日本語用PP-OCRv4認識モデル、横書きの読み順。
 - 日本語（縦書き）: 日本語用PP-OCRv4認識モデル、右の列から読む順序と縦方向の文字レイヤー。
@@ -15,7 +15,7 @@ v4.2のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生
 
 [検索可能PDFの仕様・検証・制限](SEARCHABLE_PDF.md)を参照してください。
 
-Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。v4.2のWindows x64版は.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。v4.2の公開ゲートはWindows Server 2022/2025で同じexeの通信遮断下の主要機能・実ウィンドウ検証を実行します。Windows 10/11の実機、Visual C++未導入VM、PC全体の通信切断、OSのファイル選択ダイアログと全マウス操作の網羅は未確認です。結果JSONはリリースに添付します。
+Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。v4.3のWindows x64版は.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。v4.3の公開ゲートはWindows Server 2022/2025で同じexeの通信遮断下の主要機能・実ウィンドウ検証を実行します。Windows 10/11の実機、Visual C++未導入VM、PC全体の通信切断、OSのファイル選択ダイアログと全マウス操作の網羅は未確認です。結果JSONはリリースに添付します。
 
 ## 構成
 
@@ -27,7 +27,7 @@ Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python�
 
 ## 旧版の2026-09-30の検証結果（TXT出力・旧言語設定）
 
-以下の精度・速度は旧版の結果で、v4.2の言語別モデルやPDF出力の精度・速度を表すものではありません。
+以下の精度・速度は旧版の結果で、v4.3の言語別モデルやPDF出力の精度・速度を表すものではありません。
 
 アプリの画像→PDF機能で評価画像9枚からPDFを作成し、実際の`OfflineOcrService`を通して、PDF画像化・認識・TXT保存まで各画像3回実行しました。比較元は同じアプリのPDF処理経路を使うTesseract 5.5.3＋同梱tessdata_fastです。以前の資料のうち「縦書き」「二段組」が実際には横書きになっていた生成設定を修正しました。今回はその2枚を描画して確認し、正しい配置で測定しています。他の7枚は以前とSHA-256が一致します。旧測定の「縦書き・二段組」評価は無効です。
 
@@ -65,3 +65,14 @@ dotnet artifacts/paddle-edition/bin/PaddleEditionTests/Release/net8.0/PaddleEdit
 ```
 
 先に`scripts/ocr-benchmark-fixtures.py`で評価画像を作成します（開発用PillowとMacのシステムフォントが必要）。認識の再現には正解テキストをOCRへ渡しません。配布アプリは`--verify-offline <report.json>`で主要機能と異常入力・取消を含む自己検証を行えます。`--verify-gui <report.json>`は実ウィンドウの自動検証です。通常起動ではこれらを実行しません。
+
+## v4.3の小文字OCRとビルド用フォント準備
+
+ページ番号だけが文字のページもOCR対象とします。通常のA4は300dpi、検出前長辺上限は4096pxです。文字層にはNoto Sans Japaneseを内蔵します。ビルドの前に、固定版のフォント生成依存を準備します。これは開発用の手順で、利用者には不要です。
+
+```sh
+python -m pip install fonttools==4.61.1
+python scripts/prepare-ocr-font.py
+```
+
+フォントは固定コミットとSHA-256で確認し、exe／app内に埋め込みます。利用時の追加取得はありません。

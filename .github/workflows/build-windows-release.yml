@@ -1,4 +1,4 @@
-name: Build v4.2 distribution
+name: Build v4.3 distribution
 on:
   workflow_dispatch:
 permissions:
@@ -21,15 +21,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Prepare pinned bundled Noto Sans Japanese font
+        run: |
+          python -m pip install fonttools==4.61.1
+          python scripts/prepare-ocr-font.py
       - name: Build bundled OCR distribution
         run: python scripts/build-paddle-edition.py --target ${{ matrix.target }}
       - name: Verify Windows standalone OCR
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.2).exe'
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe'
       - uses: actions/upload-artifact@v4
         with:
-          name: Offline-PDF-Converter-v4.2-${{ matrix.target }}
+          name: Offline-PDF-Converter-v4.3-${{ matrix.target }}
           path: |
             dist/paddle-edition/*.zip
             dist/paddle-edition/*.sha256.txt

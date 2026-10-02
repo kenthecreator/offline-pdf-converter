@@ -1,0 +1,151 @@
+name: Verify and release v4.3
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v4.3.yml'
+      - 'docs/RELEASE_DETAILS_v4.3.0.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-v4.3-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            target: windows
+          - os: macos-14
+            target: mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare pinned bundled Noto Sans Japanese font
+        run: |
+          python -m pip install fonttools==4.61.1
+          python scripts/prepare-ocr-font.py
+      - run: python scripts/verify-release-version.py
+      - name: PDF, cancellation and file safety regressions
+        run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false -p:UsedAvaloniaProducts=
+      - name: Searchable PDF, four languages and appearance preservation
+        shell: bash
+        run: |
+          dotnet build tests/SearchablePdfTests -c Release -p:PaddleOcrEdition=true -p:UsedAvaloniaProducts=
+          dotnet artifacts/paddle-edition/bin/SearchablePdfTests/Release/net8.0/SearchablePdfTests.dll . artifacts/searchable-verification
+      - name: Small Japanese table text and page-number-only text layers
+        shell: bash
+        run: |
+          dotnet build tests/SmallTextOcrTests -c Release -p:PaddleOcrEdition=true -p:UsedAvaloniaProducts=
+          dotnet artifacts/paddle-edition/bin/SmallTextOcrTests/Release/net8.0/SmallTextOcrTests.dll . artifacts/small-text-verification
+      - name: Build exact release packages
+        run: python scripts/build-paddle-edition.py --target ${{ matrix.target }}
+      - name: Shipped Windows exe, fresh extraction, all features, blocked communication
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe' -BlockNetwork -ReportPath artifacts/windows-features.json
+      - name: Shipped Windows exe, real windows and controls, blocked communication
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'dist/paddle-edition/windows-x64/Offline PDF Converter (v4.3).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows-gui.json
+      - name: Verify shipped macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          "dist/paddle-edition/macos-arm64/Offline PDF Converter (v4.3).app/Contents/MacOS/OfflinePDFConverter.PaddleEdition" --verify-offline artifacts/macos-features.json
+          python -c 'import json; assert json.load(open("artifacts/macos-features.json"))["passed"]'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v4.3-${{ matrix.target }}
+          path: |
+            dist/paddle-edition/*.zip
+            dist/paddle-edition/*.sha256.txt
+            artifacts/*-features.json
+            artifacts/windows-gui.*
+            artifacts/searchable-verification/checks.json
+            artifacts/small-text-verification/checks.json
+          if-no-files-found: error
+  windows-2025:
+    needs: build
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: v4.3-windows
+          path: candidate
+      - name: Extract the exact Windows ZIP built on Windows Server 2022
+        shell: pwsh
+        run: |
+          $archive = @(Get-ChildItem candidate -Recurse -Filter '*.zip')
+          if ($archive.Count -ne 1) { throw 'Expected one release archive.' }
+          Expand-Archive $archive[0].FullName isolated
+      - name: Feature tests on the identical exe on Windows Server 2025
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.3).exe' -BlockNetwork -ReportPath artifacts/windows2025-features.json
+      - name: GUI tests on the identical exe on Windows Server 2025
+        shell: pwsh
+        run: ./scripts/verify-windows-single-exe.ps1 -ExePath 'isolated/Offline PDF Converter (v4.3).exe' -BlockNetwork -VerifyGui -ReportPath artifacts/windows2025-gui.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v4.3-windows2025-evidence
+          path: artifacts/windows2025-*
+          if-no-files-found: error
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [build, windows-2025]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v4.3-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish new v4.3 only after every gate passes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/verify-release-version.py
+          python scripts/verify-release-archives.py release-assets
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[] | select(.tag_name == "v4.3.0") | .id')
+          if [ -n "$existing" ]; then echo 'v4.3 exists; refusing to replace it.'; exit 1; fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.3.0" >/dev/null 2>&1; then echo 'v4.3 tag exists; refusing to replace it.'; exit 1; fi
+          mkdir public-assets
+          for target in Windows-x64 macOS-arm64; do
+            source=$(find release-assets -type f -name "Offline PDF Converter (v4.3)-$target.zip")
+            name="Offline.PDF.Converter.v4.3.-$target.zip"
+            cp "$source" "public-assets/$name"
+            (cd public-assets && sha256sum "$name" > "$name.sha256.txt")
+          done
+          cp "$(find release-assets -type f -name 'windows-features.json')" public-assets/verification-windows2022-features.json
+          cp "$(find release-assets -type f -name 'windows-gui.json')" public-assets/verification-windows2022-gui.json
+          cp "$(find release-assets -type f -name 'windows2025-features.json')" public-assets/verification-windows2025-features.json
+          cp "$(find release-assets -type f -name 'windows2025-gui.json')" public-assets/verification-windows2025-gui.json
+          gh release create v4.3.0 public-assets/* --target "$GITHUB_SHA" --title 'Offline PDF Converter (v4.3)' --notes-file docs/RELEASE_DETAILS_v4.3.0.md --draft
+          # A new draft has no Git tag until publication. Retrieve it by release ID.
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == "v4.3.0" and .draft) | .id')
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > /tmp/v4.3-draft.json
+          python scripts/verify-release-upload.py /tmp/v4.3-draft.json public-assets "$GITHUB_SHA"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false -f make_latest=true > /tmp/v4.3-published.json
+          python - <<'PYVERIFY'
+          import json
+          release = json.load(open('/tmp/v4.3-published.json'))
+          assert not release['draft'] and release['published_at'], 'Release was not published'
+          PYVERIFY
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v4.3.0" --jq '.object.sha')" = "$GITHUB_SHA"

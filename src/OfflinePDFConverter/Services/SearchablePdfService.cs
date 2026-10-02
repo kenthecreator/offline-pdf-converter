@@ -40,19 +40,25 @@ public static class SearchablePdfService
             foreach (var number in pages)
             {
                 token.ThrowIfCancellationRequested();
-                // Do not duplicate an existing text layer (including an earlier OCR result).
-                if (textDocument.GetPage(number).Letters.Any(letter => !string.IsNullOrWhiteSpace(letter.Value)))
+                var textPage = textDocument.GetPage(number);
+                var existingLetters = textPage.Letters.Where(letter => !string.IsNullOrWhiteSpace(letter.Value)).ToArray();
+                // A page number or short running header is not a body text layer.
+                var marginOnly = existingLetters.Length <= 64 && existingLetters.All(letter =>
+                    letter.BoundingBox.Top <= textPage.Height * 0.1 || letter.BoundingBox.Bottom >= textPage.Height * 0.9);
+                if (existingLetters.Length > 0 && !marginOnly)
                 {
                     progress.Report(new(++completed, pages.Length, $"{number}ページ目は既存の文字を保持しました"));
                     continue;
                 }
                 progress.Report(new(completed, pages.Length, $"{Path.GetFileName(source)}: {number}ページ目を文字認識しています"));
                 var imagePath = Path.Combine(directory, "page.png");
+                // Bound raster memory for large pages while keeping A4 at 300 dpi.
+                var renderDpi = Math.Min(300, 4096 * 72 / Math.Max(textPage.Width, textPage.Height));
                 int width, height;
                 using (var stream = File.OpenRead(source))
                 using (var bitmap = Conversion.ToImages(stream, new[] { number - 1 },
                     password: string.IsNullOrEmpty(password) ? null : password,
-                    options: new RenderOptions(Dpi: 300, WithAnnotations: true, BackgroundColor: SKColors.White, UseTiling: true)).First())
+                    options: new RenderOptions(Dpi: (int)Math.Max(1, renderDpi), WithAnnotations: true, BackgroundColor: SKColors.White, UseTiling: true)).First())
                 {
                     width = bitmap.Width; height = bitmap.Height;
                     using var image = File.Create(imagePath);
@@ -60,6 +66,25 @@ public static class SearchablePdfService
                 }
                 var blocks = await recognize(imagePath, token);
                 token.ThrowIfCancellationRequested();
+                // Omit duplicate recognized header/footer text; keep its original digital letters.
+                if (existingLetters.Length > 0)
+                {
+                    blocks = blocks.Where(block =>
+                    {
+                        var left = block.X * textPage.Width / width;
+                        var right = (block.X + block.Width) * textPage.Width / width;
+                        var top = textPage.Height - block.Y * textPage.Height / height;
+                        var bottom = textPage.Height - (block.Y + block.Height) * textPage.Height / height;
+                        var overlapping = existingLetters.Where(letter =>
+                        {
+                            var box = letter.BoundingBox;
+                            var area = Math.Max(0, Math.Min(right, box.Right) - Math.Max(left, box.Left))
+                                * Math.Max(0, Math.Min(top, box.Top) - Math.Max(bottom, box.Bottom));
+                            return area >= Math.Max(0.01, box.Width * box.Height) * 0.5;
+                        }).ToArray();
+                        return NormalizeText(block.Text) != NormalizeText(string.Concat(overlapping.Select(letter => letter.Value)));
+                    }).ToArray();
+                }
                 AddTextLayer(document.Pages[number - 1], blocks, width, height, language.StartsWith("jpn_vert", StringComparison.Ordinal), token);
                 progress.Report(new(++completed, pages.Length, $"{completed}/{pages.Length}ページの処理が完了しました"));
             }
@@ -70,6 +95,9 @@ public static class SearchablePdfService
         }
         finally { Directory.Delete(directory, true); }
     }
+
+    private static string NormalizeText(string text) => string.Concat(text.Normalize(NormalizationForm.FormKC)
+        .Where(character => !char.IsWhiteSpace(character)));
 
     public static IReadOnlyList<OcrTextBlock> ParseTsv(string tsv)
     {
@@ -113,7 +141,7 @@ public static class SearchablePdfService
         }
         using (var graphics = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append))
         {
-            var font = new XFont("OfflinePDFConverterGothic", 10, XFontStyleEx.Regular,
+            var font = new XFont("OfflinePDFConverterOcr", 10, XFontStyleEx.Regular,
                 new XPdfFontOptions(PdfFontEncoding.Unicode));
             foreach (var block in blocks)
             {

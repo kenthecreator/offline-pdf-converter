@@ -50,5 +50,5 @@ for kind,relative in resource_entries(0):
      ms,ls=struct.unpack_from('<II',version_data,signature+8)
      versions.append(f'{ms>>16}.{ms&65535}.{ls>>16}.{ls&65535}')
 version=versions[0] if len(versions)==1 else None
-assert version=='4.2.0.0', f'Wrong PE file version: {version}'
-print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'4.2.0.0'},indent=2))
+assert version=='4.3.0.0', f'Wrong PE file version: {version}'
+print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'4.3.0.0'},indent=2))

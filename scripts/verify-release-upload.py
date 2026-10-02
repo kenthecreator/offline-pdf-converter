@@ -7,7 +7,7 @@ from pathlib import Path
 release = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 folder = Path(sys.argv[2])
 commit = sys.argv[3]
-assert release['tag_name'] == 'v4.2.0' and release['draft'], 'Expected the new v4.2 draft'
+assert release['tag_name'] == 'v4.3.0' and release['draft'], 'Expected the new v4.3 draft'
 assert release['target_commitish'] == commit, 'Draft targets a different source commit'
 expected = {p.name: 'sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()
             for p in folder.iterdir() if p.is_file()}

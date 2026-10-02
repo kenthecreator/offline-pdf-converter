@@ -7,6 +7,15 @@ public sealed class AppFontResolver : IFontResolver
 {
     public const string BundledFontFamily = "Zen Kaku Gothic New";
     private const string BundledFaceName = "OfflinePDFConverter-BundledJapanese";
+    private const string OcrFaceName = "OfflinePDFConverter-NotoSansJP";
+    private static readonly Lazy<byte[]> OcrFont = new(() =>
+    {
+        using var stream = typeof(AppFontResolver).Assembly.GetManifestResourceStream("OfflinePDFConverter.Fonts.NotoSansJP-Regular.ttf")
+            ?? throw new InvalidDataException("内蔵OCRフォントが見つかりません。");
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
+    });
     private static readonly Lazy<byte[]> BundledFont = new(() =>
     {
         using var stream = typeof(AppFontResolver).Assembly.GetManifestResourceStream("OfflinePDFConverter.Fonts.ZenKakuGothicNew-Regular.ttf")
@@ -32,6 +41,7 @@ public sealed class AppFontResolver : IFontResolver
     public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic)
     {
         var normalized = familyName.Trim();
+        if (normalized == "OfflinePDFConverterOcr") return new FontResolverInfo(OcrFaceName);
         if (normalized is "OfflinePDFConverterGothic" or "OfflinePDFConverterBundled" or BundledFontFamily)
             return new FontResolverInfo(BundledFaceName, bold, italic);
 
@@ -67,6 +77,7 @@ public sealed class AppFontResolver : IFontResolver
 
     public byte[]? GetFont(string faceName)
     {
+        if (faceName == OcrFaceName) return OcrFont.Value;
         if (faceName == BundledFaceName) return BundledFont.Value;
         var path = SystemFontFamilies.TryGetValue(faceName, out var systemFamilyName)
             ? FindSystemFontPath(systemFamilyName)

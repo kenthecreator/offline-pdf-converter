@@ -68,4 +68,8 @@ v4.0のMac・Windows配布物は `PaddleOcrEdition=true` でビルドし、以�
 
 ## v4.2内蔵日本語フォント
 
-Zen Kaku Gothic New Regularを未改変でexeに内蔵します。Copyright 2022 The Zen Kaku Gothic Project Authors。SIL Open Font License 1.1です。日本語OCRの文字層はOSの日本語フォント導入状況に依存しません。ライセンス全文は同梱の`OFL-ZenKakuGothicNew.txt`とexeの内蔵リソースに含めます。取得元と固定ハッシュは`Assets/Fonts/manifest.json`に記録しています。
+Zen Kaku Gothic New Regularを未改変でexeに内蔵します。Copyright 2022 The Zen Kaku Gothic Project Authors。SIL Open Font License 1.1です。v4.2の日本語OCR文字層と編集時の内蔵フォントに利用します。ライセンス全文は同梱の`OFL-ZenKakuGothicNew.txt`とexeの内蔵リソースに含めます。取得元と固定ハッシュは`Assets/Fonts/manifest.json`に記録しています。
+
+## v4.3内蔵OCR用フォント
+
+Noto Sans Japanese（Noto Sans JP）のRegularをOCRの非表示文字層に使用します。Google Fontsの固定コミット295d98a7a0c17c68f1341eaeea354e7960ea70d3のNotoSansJP[wght].ttfからfontTools 4.61.1でwght=400の静的インスタンスをビルド時に生成します。Copyright 2014-2021 Adobe、Reserved Font Name Source。SIL Open Font License 1.1です。全文は`OFL-NotoSansJP.txt`とexeに内蔵します。取得元、元フォントのSHA-256、生成方法、同梱フォントのSHA-256は`Assets/Fonts/manifest.json`に記録します。ビルド時のフォント取得と利用時の処理は別であり、利用時のネット接続・ダウンロードはありません。認識モデル・OCRエンジンのライセンスは従来と同じです。
