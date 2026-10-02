@@ -3,3 +3,4 @@ src/OfflinePDFConverter/ocr/paddle/** -text
 
 src/OfflinePDFConverter/Assets/Fonts/*.ttf -text
 src/OfflinePDFConverter/Assets/Fonts/OFL.txt -text
+src/OfflinePDFConverter/Assets/Fonts/OFL-NotoSansJP.txt -text

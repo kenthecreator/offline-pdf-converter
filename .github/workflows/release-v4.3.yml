@@ -1,3 +1,4 @@
+# Preserve upstream font license bytes on Windows; see .gitattributes.
 name: Verify and release v4.3
 on:
   pull_request:
