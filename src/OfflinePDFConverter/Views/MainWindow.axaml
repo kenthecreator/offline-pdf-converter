@@ -6,8 +6,8 @@
         Title="{x:Static services:AppIdentity.WindowTitle}"
         Width="1120"
         Height="760"
-        MinWidth="1040"
-        MinHeight="760"
+        MinWidth="320"
+        MinHeight="300"
         Background="Transparent"
         TransparencyLevelHint="AcrylicBlur"
         UseLayoutRounding="True"
@@ -398,7 +398,8 @@
     </Style>
   </Window.Styles>
 
-  <Grid Background="{DynamicResource AppBackgroundBrush}">
+  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+  <Grid MinWidth="1040" MinHeight="760" Background="{DynamicResource AppBackgroundBrush}">
     <Grid x:Name="ThemeTransitionRoot"
           RowDefinitions="Auto,*,Auto"
           Background="{DynamicResource AppBackgroundBrush}">
@@ -1596,4 +1597,5 @@
 
     </Grid>
   </Grid>
+  </ScrollViewer>
 </Window>
