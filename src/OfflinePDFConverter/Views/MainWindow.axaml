@@ -398,8 +398,8 @@
     </Style>
   </Window.Styles>
 
-  <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-  <Grid MinWidth="1040" MinHeight="760" Background="{DynamicResource AppBackgroundBrush}">
+  <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+  <Grid Width="1120" Height="760" Background="{DynamicResource AppBackgroundBrush}">
     <Grid x:Name="ThemeTransitionRoot"
           RowDefinitions="Auto,*,Auto"
           Background="{DynamicResource AppBackgroundBrush}">
@@ -1597,5 +1597,5 @@
 
     </Grid>
   </Grid>
-  </ScrollViewer>
+  </Viewbox>
 </Window>
