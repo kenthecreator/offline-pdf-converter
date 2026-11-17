@@ -13,7 +13,7 @@ jobs:
         include:
           - os: windows-2022
             target: windows
-          - os: macos-14
+          - os: macos-15
             target: mac
     runs-on: ${{ matrix.os }}
     steps:
