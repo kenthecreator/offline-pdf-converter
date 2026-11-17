@@ -398,6 +398,7 @@
     </Style>
   </Window.Styles>
 
+  <Grid Background="{DynamicResource AppBackgroundBrush}">
   <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
   <Grid Width="1120" Height="760" Background="{DynamicResource AppBackgroundBrush}">
     <Grid x:Name="ThemeTransitionRoot"
@@ -1598,4 +1599,5 @@
     </Grid>
   </Grid>
   </Viewbox>
+  </Grid>
 </Window>
