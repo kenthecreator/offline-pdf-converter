@@ -81,15 +81,12 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private void SaveNativePdf(string source, string destination, CancellationToken token)
     {
-        IntPtr document;
         var extension = Path.GetExtension(source);
         Program.TraceGuiVerification($"Loading an Office document ({extension})");
-        using (OperatingSystem.IsWindows() && extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
-            ? WakeWindowsSpreadsheetImport() : null)
-        {
-            document = GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
-                "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
-        }
+        IntPtr Load() => GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
+            "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
+        var document = OperatingSystem.IsWindows() && extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
+            ? LoadOnWindowsOfficeThread(Load) : Load();
         Program.TraceGuiVerification("Native document load returned");
         if (document == IntPtr.Zero)
             throw new InvalidDataException($"Officeファイルを開けませんでした。{LastError()}");
@@ -169,23 +166,58 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private const uint PrivateFont = 0x10;
 
-    private static Timer? WakeWindowsSpreadsheetImport()
+    private static IntPtr LoadOnWindowsOfficeThread(Func<IntPtr> load)
     {
-        // Calc's parallel worksheet import waits for the WinSal event loop while called
-        // from a worker. Wake that loop if its last notification arrived before the wait.
+        // Calc yields to its event loop while worker threads import sheets. Run the load
+        // on the bundled VCL thread so that it can dispatch those events directly.
+        const int getMessageHook = 3;
+        const nuint removeMessage = 1;
         var window = IntPtr.Zero;
+        uint thread = 0;
         while ((window = FindWindowEx(IntPtr.Zero, window, "SALCOMWND", null)) != IntPtr.Zero)
         {
-            GetWindowThreadProcessId(window, out var processId);
-            if (processId != (uint)Environment.ProcessId)
-                continue;
-
-            Program.TraceGuiVerification("Keeping the Windows spreadsheet import event loop awake");
-            var officeWindow = window;
-            return new Timer(_ => PostMessage(officeWindow, 0, IntPtr.Zero, IntPtr.Zero),
-                null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+            thread = GetWindowThreadProcessId(window, out var processId);
+            if (thread != 0 && processId == (uint)Environment.ProcessId)
+                break;
         }
-        return null;
+        if (window == IntPtr.Zero)
+            throw new InvalidOperationException("Office変換エンジンのイベントループが見つかりません。");
+        var requestMessage = RegisterWindowMessage("OfflinePDFConverter.OfficeKit.LoadWorkbook");
+        if (requestMessage == 0)
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError());
+
+        var result = new TaskCompletionSource<IntPtr>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = 0;
+        GetMessageCallback callback = (code, action, address) =>
+        {
+            var next = CallNextHookEx(IntPtr.Zero, code, action, address);
+            if (code != 0 || action != removeMessage)
+                return next;
+            var message = Marshal.PtrToStructure<WindowsMessage>(address);
+            if (message.Window != window || message.Id != requestMessage || Interlocked.Exchange(ref started, 1) != 0)
+                return next;
+            try
+            {
+                Program.TraceGuiVerification("Loading spreadsheet on the native Windows Office event loop");
+                result.SetResult(load());
+            }
+            catch (Exception ex) { result.SetException(ex); }
+            return next;
+        };
+        var hook = SetWindowsHookEx(getMessageHook, callback, IntPtr.Zero, thread);
+        if (hook == IntPtr.Zero)
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError());
+        try
+        {
+            if (!PostMessage(window, requestMessage, IntPtr.Zero, IntPtr.Zero))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError());
+            return result.Task.GetAwaiter().GetResult();
+        }
+        finally
+        {
+            UnhookWindowsHookEx(hook);
+            GC.KeepAlive(callback);
+        }
     }
 
     private void UnregisterWindowsFont()
@@ -254,8 +286,26 @@ internal sealed class OfficeKitRuntime : IDisposable
     private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr previous, string className, string? windowName);
     [DllImport("user32", ExactSpelling = true)]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
-    [DllImport("user32", EntryPoint = "PostMessageW", ExactSpelling = true)]
+    [DllImport("user32", EntryPoint = "RegisterWindowMessageW", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string name);
+    [DllImport("user32", EntryPoint = "PostMessageW", ExactSpelling = true, SetLastError = true)]
     private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32", EntryPoint = "SetWindowsHookExW", ExactSpelling = true, SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int kind, GetMessageCallback callback, IntPtr module, uint threadId);
+    [DllImport("user32", ExactSpelling = true)]
+    private static extern IntPtr CallNextHookEx(IntPtr hook, int code, nuint wParam, IntPtr lParam);
+    [DllImport("user32", ExactSpelling = true)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hook);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowsMessage
+    {
+        public IntPtr Window;
+        public uint Id;
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate IntPtr GetMessageCallback(int code, nuint wParam, IntPtr lParam);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate IntPtr Initialize(
