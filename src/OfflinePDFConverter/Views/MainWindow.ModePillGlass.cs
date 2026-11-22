@@ -32,6 +32,11 @@ public partial class MainWindow
             return;
         PillOptics = effect;
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
+        var dpiTrack = Required<Border>("PdfDpiTrack");
+        if (dpiTrack.Child is Panel dpiTrackLayers)
+            dpiTrackLayers.Children.Insert(0, ButtonGlass.ForBorder(dpiTrack, effect));
+        _pdfDpiRange.Child = ButtonGlass.ForBorder(_pdfDpiRange, effect);
+        _pdfDpiThumb.Child = ButtonGlass.ForBorder(_pdfDpiThumb, effect);
 
         var lenses = new List<ModePillGlass>();
         foreach (var (pillName, trackName) in GlassSelectors)
@@ -62,12 +67,12 @@ public partial class MainWindow
 
         // Attach inside Fluent's borders so its native width, clipping and animations drive the effect.
         if (args.NameScope.Find("ProgressBarRoot") is Border { Child: Panel track } background)
-            track.Children.Insert(0, ButtonGlass.ForProgressBorder(background, optics));
+            track.Children.Insert(0, ButtonGlass.ForBorder(background, optics));
 
         foreach (var part in new[] { "PART_Indicator", "IndeterminateProgressBarIndicator", "IndeterminateProgressBarIndicator2" })
         {
             if (args.NameScope.Find(part) is Border { Child: null } indicator)
-                indicator.Child = ButtonGlass.ForProgressBorder(indicator, optics);
+                indicator.Child = ButtonGlass.ForBorder(indicator, optics);
         }
     }
 

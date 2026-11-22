@@ -48,7 +48,7 @@ internal sealed class ButtonGlass : Control
         ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
 
-    internal static ButtonGlass ForProgressBorder(Border surface, GlassOptics optics)
+    internal static ButtonGlass ForBorder(Border surface, GlassOptics optics)
     {
         var rim = new ButtonGlass(optics, surface);
         rim.Bind(CornerRadiusProperty, new Binding(nameof(Border.CornerRadius)) { Source = surface });

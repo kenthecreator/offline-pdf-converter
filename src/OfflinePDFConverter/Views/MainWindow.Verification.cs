@@ -142,6 +142,37 @@ public partial class MainWindow
             Check(Directory.GetFiles(split, "*.pdf").Length == 1, "GUI split output missing.");
             checks.Add("PDF preview icon/list switching, 20 operation changes and PDF split through Start");
             SetMode(ConversionMode.PdfToImage);
+            var dpiTrack = Required<Border>("PdfDpiTrack");
+            var dpiTrackGlass = (dpiTrack.Child as Panel)?.Children.OfType<ButtonGlass>().SingleOrDefault();
+            var dpiRangeGlass = _pdfDpiRange.Child as ButtonGlass;
+            var dpiThumbGlass = _pdfDpiThumb.Child as ButtonGlass;
+            Check(new[] { dpiTrackGlass, dpiRangeGlass, dpiThumbGlass }.All(glass => (glass is not null) == glassEnabled),
+                "Incorrect glass decoration on the PDF resolution slider.");
+            for (var index = 0; index < PdfDpiValues.Length; index++)
+            {
+                SetPdfDpiIndex(index);
+                var target = PdfDpiThumbPositions[index];
+                var width = PdfDpiRangeWidths[index];
+                await Until(() => Math.Abs(_pdfDpiThumbTransform.X - target) < 1 &&
+                    Math.Abs(_pdfDpiRange.Bounds.Width - width) < 2);
+                Check(GetPdfDpi() == PdfDpiValues[index] && _pdfDpiCurrentHint.Text ==
+                    $"{PdfDpiLabels[index]} · {PdfDpiValues[index]} dpi" && _pdfDpiTicks[index].Classes.Contains("selected"),
+                    "Incorrect resolution selection or label.");
+            }
+            if (glassEnabled)
+            {
+                await Until(() => dpiTrackGlass!.HasRendered && dpiRangeGlass!.HasRendered && dpiThumbGlass!.HasRendered);
+                SetPdfDpiIndex(1);
+                await Until(() => Math.Abs(_pdfDpiRange.Bounds.Width - PdfDpiRangeWidths[1]) < 2);
+                SaveSnapshot(Path.ChangeExtension(report, ".dpi-dark.png"));
+                FinishThemeDrag(1);
+                await Until(() => !_themeTransitionActive);
+                SaveSnapshot(Path.ChangeExtension(report, ".dpi-light.png"));
+                FinishThemeDrag(2);
+                await Until(() => !_themeTransitionActive);
+            }
+            SetPdfDpiIndex(0);
+            checks.Add("PDF resolution slider glass and the 200, 300 and 600 DPI selections");
             var images = Directory.CreateDirectory(Path.Combine(root, "pdf-output")).FullName;
             _pdfOutputFolderTextBox.Text = images;
             await ClickAndWait("StartPdfButton", "一括処理の結果");
