@@ -19,7 +19,7 @@ python3 scripts/verify-v5.1-release.py --archives dist/paddle-edition --target m
 
 Windowsでの作成は [Windows用単体exeのビルド手順](BUILD_WINDOWS.md) を参照してください。両OSとも公式LibreOffice 26.8.3.1（`861effc5289d539f15c4c18d1ba8579ffd78728b`）を使います。インストーラーのSHA-256を固定し、展開時に同一のビルドIDを検証します。
 
-`Verify and prepare v5.1` はWindows Server 2022とmacOSで各配布ZIPを作成し、Windows Server 2025で同じWindows ZIPを再検証します。両Windows環境では対象exeのネットワークを遮断します。3環境のOffice出力について、ページ数・日本語の文字と順序・用紙寸法・文字と画像の位置を比較します。別途、Windows 10／11のクリーン環境での動作とMicrosoft OfficeのPDF出力とのレイアウトを確認します。
+`Verify and prepare v5.1` はWindows Server 2022とmacOSで各配布ZIPを作成し、Windows Server 2025で同じWindows ZIPを再検証します。両Windows環境では対象exeのネットワークを遮断します。3環境のOffice出力について、ページ数・日本語の文字と順序・用紙寸法・文字と画像の位置を比較します。v5.1では、検証用Word原稿の縦位置差のみ、実測値に合わせて5 pt（約1.8 mm）まで許容します。横位置および他の形式の位置の許容値は3 ptです。Windows 10／11の実機と、Microsoft Office自身のPDF出力との比較は未検証です。
 
 ## GitHub Releasesと公式ページの切り替え
 

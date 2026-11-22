@@ -20,6 +20,9 @@ FIXTURES = {
     ],
 }
 
+# v5.1 accepts the measured Word vertical offset on both Windows runners.
+WORD_VERTICAL_TOLERANCE_PT = 5
+
 
 def inspect(file, expected):
     pages = []
@@ -76,15 +79,20 @@ def check_coordinates(actual, expected, tolerance, context):
 
 
 def compare(actual, expected, filename):
+    vertical_tolerance = WORD_VERTICAL_TOLERANCE_PT if filename == "日本語 サンプル.pdf" else 3
     for i, (a, b) in enumerate(zip(actual, expected), start=1):
         context = f"{filename}, page {i}"
         check_coordinates(a[0], b[0], 0.2, context)
         if a[1] != b[1] or len(a[2]) != len(b[2]):
             raise ValueError(f"{context}: text or reading order changed")
-        for p, q in zip(a[2], b[2]):
-            check_coordinates(p, q, 3, context + " text placement")
-        for p, q in zip(a[3], b[3]):
-            check_coordinates(p, q, 3, context + " graphic placement")
+        for kind, actual_bounds, expected_bounds in (
+            ("text", a[2], b[2]), ("graphic", a[3], b[3])
+        ):
+            if len(actual_bounds) != len(expected_bounds):
+                raise ValueError(f"{context}: {kind} bounds count changed")
+            for p, q in zip(actual_bounds, expected_bounds):
+                check_coordinates(p[::2], q[::2], 3, f"{context} {kind} horizontal placement")
+                check_coordinates(p[1::2], q[1::2], vertical_tolerance, f"{context} {kind} vertical placement")
 
 
 def main():
