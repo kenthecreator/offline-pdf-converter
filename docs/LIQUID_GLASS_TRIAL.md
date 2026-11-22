@@ -1,5 +1,38 @@
 # v4.4 選択ピルの Liquid Glass 風描画試験
 
+## 屈折を追加した試験
+
+`codex/liquid-glass-v4.4` の静的な試作 `b57870f` に続き、.NET 8／Avalonia 11.3.12／SkiaSharp 3.119.2 のまま、選択ピルに SkSL の屈折を組み込んだ。試験用トラックの淡い斜めの光とレンズのサンプル元を同じ関数で描く。丸い縁の法線に沿って背景のサンプル位置を曲げ、薄く拡散させる。レンズの内縁に影、外周寄りに鏡面反射を加えた。ラベルと操作は既存の Avalonia コントロールが担当する。
+
+背景の入力はヘッダーに描いた模様とテーマの色に限る。既存の SkiaSharp で計算が完結する。再描画は既存のピル移動、テーマ色、レイアウトの変化に追従する。シェーダーや描画の初期化に失敗した場合は、試験用のトラックとピル装飾を外し、既存表示に戻る。
+
+試験版は `dist/paddle-edition/Offline PDF Converter (v4.4)-macOS-arm64.zip`。展開後の実行ファイルを `--trial-liquid-glass` 付きで起動する。引数なしで従来表示に戻り、`--trial-liquid-glass=simulate-failure` ではシェーダーのコンパイルを意図的に失敗させて復帰を確認できる。Windows の発行手順は下記を参照。
+
+検証環境は Apple M3、macOS 27.2.1、外部ディスプレイの倍率 1.0。結果、比較画像、再現用の測定データは `artifacts/liquid-glass-verification/refraction/` に保存した。
+
+| 項目 | 結果 |
+| --- | --- |
+| Mac 配布版 | arm64 の ZIP を発行し、展開後の ad-hoc 署名を検証。通信を遮断したプロセスでオン・オフ・強制フォールバックの GUI 検証各9項目、オフライン自己検証各15項目が通過。 |
+| 比較画像 | Light と Dark でオフと強制フォールバックのヘッダーが画素単位で一致。基準版との比較でも一致。オンの差はモード切替領域の内側。 |
+| 屈折の画素検証 | 本体の SkSL と、サンプル位置の変位だけをゼロにした版を3つのピル位置・1倍と2倍で比較。各条件で縁付近に画素差があり、平坦な中央は一致。2倍はオフスクリーンで検証。 |
+| 実ウィンドウの入力 | モーション軽減を有効にして、クリック、領域外へのドラッグ解除、再フォーカス後の右矢印、縮小と復元を確認。 |
+| 依存と Windows | `osx-arm64` と `win-x64` の復元グラフは元の v4.4 と一致。Windows x64 での発行・描画・実行は、配布用 CRT を用意できる Windows ホストがないため未実施。 |
+
+Mac 実機でオンとオフを各3回計測した。ネイティブ資産は毎回新規展開し、同じ画面で3秒待機してから、15回のモード切替・ドラッグ・矢印キー・リサイズを約7秒で行った。
+
+| 指標 | オフの中央値 | オンの中央値 |
+| --- | ---: | ---: |
+| ウィンドウが出るまで（秒） | 0.984 | 1.019 |
+| 待機中（CPU 秒） | 0.17 | 0.19 |
+| 操作中（CPU 秒） | 2.04 | 2.11 |
+| 待機後／操作後 RSS（KiB） | 279,296／290,608 | 280,128／291,072 |
+
+生データは `performance.jsonl`。GPU とフレーム時間、実ディスプレイでの2倍表示は未測定。Mac の試験 ZIP はソースのローカルコミット前に同じ差分で発行し、内部の情報バージョンには基点の SHA が付く。
+
+## 静的な装飾を試した初回の記録
+
+以下は `b57870f` 時点の結果。静的試作の ZIP は `artifacts/liquid-glass-verification/static-trial/` に退避した。
+
 ## 基準と試験範囲
 
 2026年11月22日に取得した GitHub `main` の先頭は `b88ecc80821e5aca2579502976bd6dc2db933d22`。公開タグ `v4.4.0` は `9bdc05ba7cb95dbf90191eae56d92e6a71117977`。ツリー差分は `MainWindow.axaml` の縮小対応と周囲の背景色のみ。試験は確認した `main` を基準に、独立したローカルクローンの `codex/liquid-glass-v4.4` で実施した。
@@ -80,6 +113,6 @@ Apple M3（8 GB）、macOS 27.2.1（26B131）、外部ディスプレイ 1920 ×
 
 ## 結果と再現資料
 
-結果の保存先はクローン直下の `artifacts/liquid-glass-verification/`。 `baseline/` と `trial/` に署名ログ、両 RID の復元資産、自己検証 JSON、実ウィンドウ画像、回帰テストのログを保存した。 `candidate/` に隔離サンプルと起動時の例外ログがある。 `mac-pill-light-off-on.png` と `mac-pill-dark-off-on.png` は上段がオフ、下段がオン。 `mac-pill-input-sequence.png` は初期状態、OCR クリック、領域外へドラッグ、再フォーカス後の右矢印の順。 `mac-package-diff.json`、`live-image-diffs.json`、`live-performance.jsonl`、`live-performance-summary.json` に比較の数値を記録した。 `dist/paddle-edition/` の試験 ZIP はローカルコミットを作成する前に、この試験の差分を含めて発行した。
+結果の保存先はクローン直下の `artifacts/liquid-glass-verification/`。 `baseline/` と `trial/` に署名ログ、両 RID の復元資産、自己検証 JSON、実ウィンドウ画像、回帰テストのログを保存した。 `candidate/` に隔離サンプルと起動時の例外ログがある。 `mac-pill-light-off-on.png` と `mac-pill-dark-off-on.png` は上段がオフ、下段がオン。 `mac-pill-input-sequence.png` は初期状態、OCR クリック、領域外へドラッグ、再フォーカス後の右矢印の順。 `mac-package-diff.json`、`live-image-diffs.json`、`live-performance.jsonl`、`live-performance-summary.json` に比較の数値を記録した。初回の試験 ZIP はローカルコミットを作成する前に、当時の差分を含めて発行した。
 
 静的装飾のみをローカル試作に採用した。Windows の発行と実機確認が終わるまで、両 OS の完成条件の判定は保留。屈折を試す場合の次候補は、現行 Avalonia と SkiaSharp に合わせ、許可されたヘッダーの装飾だけをサンプリングする最小の SkSL 描画。

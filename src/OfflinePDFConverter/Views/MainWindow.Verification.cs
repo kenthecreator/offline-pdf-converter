@@ -57,11 +57,19 @@ public partial class MainWindow
         {
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
             var modePillDecoration = Required<Border>("ModeSelectionPill").Child;
+            var modeTrackDecoration = Required<Border>("ModeSelectorTrack").Child;
             if (Program.GlassTrial == ModePillGlassTrial.On)
-                Check(modePillDecoration is Border { IsHitTestVisible: false, Focusable: false },
-                    "The mode selection decoration is absent or intercepts input.");
+            {
+                Check(modePillDecoration is { IsHitTestVisible: false, Focusable: false } &&
+                      modeTrackDecoration is { IsHitTestVisible: false, Focusable: false },
+                    "The glass decorations are absent or intercept input.");
+                await Until(() => _modePillGlass is not { IsAvailable: true, HasRendered: false });
+                Check(_modePillGlass is { IsAvailable: true, HasRendered: true },
+                    "Skia did not draw the mode selection refraction.");
+            }
             else
-                Check(modePillDecoration is null, "The mode selection decoration should be absent.");
+                Check(modePillDecoration is null && modeTrackDecoration is null,
+                    "Both glass decorations should be absent.");
             checks.Add($"mode selection pill decoration state: {Program.GlassTrial}");
             for (var theme = 0; theme < 3; theme++)
             {
@@ -164,6 +172,8 @@ public partial class MainWindow
             checks.Add("OCR through Start, before/after previews and real PDF text selection/copy");
             using (var snapshot = new RenderTargetBitmap(new PixelSize((int)Bounds.Width, (int)Bounds.Height), new Vector(96, 96)))
             { snapshot.Render(this); snapshot.Save(Path.ChangeExtension(report, ".png")); }
+            if (Program.GlassTrial == ModePillGlassTrial.On)
+                Check(_modePillGlass is { IsAvailable: true }, "The refraction fell back during GUI verification.");
             // Closing an active conversion must cancel it and finish without displaying a modal result.
             SetMode(ConversionMode.PdfToImage); SetPdfDpiIndex(2);
             Required<Button>("StartPdfButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

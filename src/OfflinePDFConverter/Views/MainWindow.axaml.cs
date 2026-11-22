@@ -301,7 +301,7 @@ public partial class MainWindow : Window
         _modeSelectionTransform = modeSelectionPill.RenderTransform as TranslateTransform
             ?? throw new InvalidOperationException("モード選択インジケーターの移動設定が見つかりません。");
         if (Program.GlassTrial != ModePillGlassTrial.Off)
-            modeSelectionPill.Child = CreateModePillGlass(modeSelectionPill, Program.GlassTrial);
+            InitializeModePillGlass(modeSelectionPill);
         _modeSelectionTransitions = _modeSelectionTransform.Transitions;
         _themeToggleTransitions = _themeToggleTransform.Transitions;
         _directionSelectorHost = Required<Grid>("DirectionSelectorHost");

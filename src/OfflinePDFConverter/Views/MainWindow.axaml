@@ -441,7 +441,7 @@
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnModeSelectorKeyDown">
           <Grid Width="432" Height="68" ColumnDefinitions="144,144,144">
-            <Border Grid.ColumnSpan="3"
+            <Border x:Name="ModeSelectorTrack" Grid.ColumnSpan="3"
                     Height="64"
                     Margin="1,0"
                     CornerRadius="32"
