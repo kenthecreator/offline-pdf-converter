@@ -81,9 +81,15 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private void SaveNativePdf(string source, string destination, CancellationToken token)
     {
-        Program.TraceGuiVerification($"Loading an Office document ({Path.GetExtension(source)})");
-        var document = GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
-            "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
+        IntPtr document;
+        var extension = Path.GetExtension(source);
+        Program.TraceGuiVerification($"Loading an Office document ({extension})");
+        using (OperatingSystem.IsWindows() && extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
+            ? WakeWindowsSpreadsheetImport() : null)
+        {
+            document = GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
+                "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
+        }
         Program.TraceGuiVerification("Native document load returned");
         if (document == IntPtr.Zero)
             throw new InvalidDataException($"Officeファイルを開けませんでした。{LastError()}");
@@ -163,6 +169,25 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private const uint PrivateFont = 0x10;
 
+    private static Timer? WakeWindowsSpreadsheetImport()
+    {
+        // Calc's parallel worksheet import waits for the WinSal event loop while called
+        // from a worker. Wake that loop if its last notification arrived before the wait.
+        var window = IntPtr.Zero;
+        while ((window = FindWindowEx(IntPtr.Zero, window, "SALCOMWND", null)) != IntPtr.Zero)
+        {
+            GetWindowThreadProcessId(window, out var processId);
+            if (processId != (uint)Environment.ProcessId)
+                continue;
+
+            Program.TraceGuiVerification("Keeping the Windows spreadsheet import event loop awake");
+            var officeWindow = window;
+            return new Timer(_ => PostMessage(officeWindow, 0, IntPtr.Zero, IntPtr.Zero),
+                null, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(200));
+        }
+        return null;
+    }
+
     private void UnregisterWindowsFont()
     {
         if (_windowsFont is not null)
@@ -224,6 +249,13 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     [DllImport("kernel32", EntryPoint = "LoadLibraryExW", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr LoadLibraryEx(string fileName, IntPtr file, uint flags);
+
+    [DllImport("user32", EntryPoint = "FindWindowExW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr previous, string className, string? windowName);
+    [DllImport("user32", ExactSpelling = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32", EntryPoint = "PostMessageW", ExactSpelling = true)]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate IntPtr Initialize(
