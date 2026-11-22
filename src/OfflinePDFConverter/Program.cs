@@ -13,7 +13,7 @@ internal enum ModePillGlassTrial
 
 internal static class Program
 {
-    internal static ModePillGlassTrial GlassTrial { get; private set; }
+    internal static ModePillGlassTrial GlassTrial { get; private set; } = ModePillGlassTrial.On;
     internal static string? GuiVerificationReport { get; private set; }
     internal static int GuiVerificationExitCode { get; set; }
 
@@ -21,14 +21,16 @@ internal static class Program
     public static void Main(string[] args)
     {
         const string glassFlag = "--trial-liquid-glass";
+        const string offFlag = "--trial-liquid-glass=off";
         const string fallbackFlag = "--trial-liquid-glass=simulate-failure";
         if (args.Contains(fallbackFlag))
             GlassTrial = ModePillGlassTrial.SimulateFailure;
+        else if (args.Contains(offFlag))
+            GlassTrial = ModePillGlassTrial.Off;
         else if (args.Contains(glassFlag))
             GlassTrial = ModePillGlassTrial.On;
 
-        if (GlassTrial != ModePillGlassTrial.Off)
-            args = args.Where(arg => arg != glassFlag && arg != fallbackFlag).ToArray();
+        args = args.Where(arg => arg != glassFlag && arg != offFlag && arg != fallbackFlag).ToArray();
 
         if (args.Length == 2 && args[0] == "--verify-offline")
         {
