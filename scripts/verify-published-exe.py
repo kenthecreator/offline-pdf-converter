@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import hashlib,json,sys,struct
+import xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parent.parent
 folder=Path(sys.argv[1])
 files=[p for p in folder.rglob('*') if p.is_file()]
@@ -50,5 +51,12 @@ for kind,relative in resource_entries(0):
      ms,ls=struct.unpack_from('<II',version_data,signature+8)
      versions.append(f'{ms>>16}.{ms&65535}.{ls>>16}.{ls&65535}')
 version=versions[0] if len(versions)==1 else None
-assert version=='5.0.0.0', f'Wrong PE file version: {version}'
-print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':'5.0.0.0'},indent=2))
+project = root / 'src/OfflinePDFConverter/OfflinePDFConverter.csproj'
+expected_version = ET.parse(project).findtext('.//FileVersion')
+assert version == expected_version, f'Wrong PE file version: expected {expected_version}, got {version}'
+icon = (project.parent / 'Assets/AppIcon.ico').read_bytes()
+icon_count = struct.unpack_from('<H', icon, 4)[0]
+for index in range(icon_count):
+    size, offset = struct.unpack_from('<II', icon, 6 + index * 16 + 8)
+    assert size > 0 and icon[offset:offset + size] in data, 'Windows app icon image is missing from the executable'
+print(json.dumps({'file':exe.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'singleFile':True,'exactOcrPayloadEmbedded':True,'fileVersion':version},indent=2))
