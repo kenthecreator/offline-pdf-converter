@@ -85,8 +85,7 @@ internal sealed class OfficeKitRuntime : IDisposable
         Program.TraceGuiVerification($"Loading an Office document ({extension})");
         IntPtr Load() => GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
             "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
-        var document = OperatingSystem.IsWindows() && extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
-            ? LoadOnWindowsOfficeThread(Load) : Load();
+        var document = OperatingSystem.IsWindows() ? LoadOnWindowsOfficeThread(Load) : Load();
         Program.TraceGuiVerification("Native document load returned");
         if (document == IntPtr.Zero)
             throw new InvalidDataException($"Officeファイルを開けませんでした。{LastError()}");
@@ -168,7 +167,7 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private static IntPtr LoadOnWindowsOfficeThread(Func<IntPtr> load)
     {
-        // Calc yields to its event loop while worker threads import sheets. Run the load
+        // Office filters can yield to VCL while importing a document. Run the load
         // on the bundled VCL thread so that it can dispatch those events directly.
         const int getMessageHook = 3;
         const nuint removeMessage = 1;
@@ -182,7 +181,7 @@ internal sealed class OfficeKitRuntime : IDisposable
         }
         if (window == IntPtr.Zero)
             throw new InvalidOperationException("Office変換エンジンのイベントループが見つかりません。");
-        var requestMessage = RegisterWindowMessage("OfflinePDFConverter.OfficeKit.LoadWorkbook");
+        var requestMessage = RegisterWindowMessage("OfflinePDFConverter.OfficeKit.LoadDocument");
         if (requestMessage == 0)
             throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError());
 
@@ -198,7 +197,7 @@ internal sealed class OfficeKitRuntime : IDisposable
                 return next;
             try
             {
-                Program.TraceGuiVerification("Loading spreadsheet on the native Windows Office event loop");
+                Program.TraceGuiVerification("Loading document on the native Windows Office event loop");
                 result.SetResult(load());
             }
             catch (Exception ex) { result.SetException(ex); }
