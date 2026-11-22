@@ -56,6 +56,13 @@ public partial class MainWindow
         try
         {
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
+            var modePillDecoration = Required<Border>("ModeSelectionPill").Child;
+            if (Program.GlassTrial == ModePillGlassTrial.On)
+                Check(modePillDecoration is Border { IsHitTestVisible: false, Focusable: false },
+                    "The mode selection decoration is absent or intercepts input.");
+            else
+                Check(modePillDecoration is null, "The mode selection decoration should be absent.");
+            checks.Add($"mode selection pill decoration state: {Program.GlassTrial}");
             for (var theme = 0; theme < 3; theme++)
             {
                 FinishThemeDrag(theme);

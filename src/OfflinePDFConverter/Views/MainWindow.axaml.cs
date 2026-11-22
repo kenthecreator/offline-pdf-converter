@@ -297,8 +297,11 @@ public partial class MainWindow : Window
         _pdfToolsModeButton = Required<RadioButton>("PdfToolsModeButton");
         _pdfModeLabel = Required<TextBlock>("PdfModeLabel");
         _pdfToolsModeLabel = Required<TextBlock>("PdfToolsModeLabel");
-        _modeSelectionTransform = Required<Border>("ModeSelectionPill").RenderTransform as TranslateTransform
+        var modeSelectionPill = Required<Border>("ModeSelectionPill");
+        _modeSelectionTransform = modeSelectionPill.RenderTransform as TranslateTransform
             ?? throw new InvalidOperationException("モード選択インジケーターの移動設定が見つかりません。");
+        if (Program.GlassTrial != ModePillGlassTrial.Off)
+            modeSelectionPill.Child = CreateModePillGlass(modeSelectionPill, Program.GlassTrial);
         _modeSelectionTransitions = _modeSelectionTransform.Transitions;
         _themeToggleTransitions = _themeToggleTransform.Transitions;
         _directionSelectorHost = Required<Grid>("DirectionSelectorHost");
