@@ -109,7 +109,6 @@ public partial class MainWindow : Window
     private readonly IPdfToImageService _pdfToImageService = new PdfToImageService();
     private readonly IImageToPdfService _imageToPdfService = new ImageToPdfService();
     private readonly IPdfDocumentService _pdfDocumentService = new PdfDocumentService();
-    private Image _appHeaderIcon = null!;
     private Grid _themeTransitionRoot = null!;
     private Border _modeSelectorSwitch = null!;
     private Border _themeToggleSwitch = null!;
@@ -214,8 +213,6 @@ public partial class MainWindow : Window
     private bool _isDarkTheme;
     private bool _themeTransitionActive;
     private bool _reduceMotion;
-    private readonly Bitmap _lightHeaderIcon;
-    private readonly Bitmap _darkHeaderIcon;
 
     public MainWindow()
         : this(Application.Current?.ActualThemeVariant == ThemeVariant.Dark)
@@ -225,8 +222,6 @@ public partial class MainWindow : Window
     public MainWindow(bool isInitialDarkTheme)
     {
         InitializeComponent();
-        _lightHeaderIcon = LoadAssetBitmap($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/AppIconLight.png");
-        _darkHeaderIcon = LoadAssetBitmap($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/AppIconDark.png");
         _reduceMotion = ShouldReduceMotion();
         BindControls();
         if (Program.GlassTrial != ModePillGlassTrial.Off)
@@ -276,8 +271,6 @@ public partial class MainWindow : Window
             _previewCts = null;
             DisposeOcrPages(_pdfPagePreviews);
             _pdfPagePreviews.Clear();
-            _lightHeaderIcon.Dispose();
-            _darkHeaderIcon.Dispose();
         };
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -285,7 +278,6 @@ public partial class MainWindow : Window
 
     private void BindControls()
     {
-        _appHeaderIcon = Required<Image>("AppHeaderIcon");
         _themeTransitionRoot = Required<Grid>("ThemeTransitionRoot");
         _modeSelectorSwitch = Required<Border>("ModeSelectorSwitch");
         _themeToggleSwitch = Required<Border>("ThemeToggleSwitch");
@@ -982,7 +974,6 @@ public partial class MainWindow : Window
         _themeAutoLabel.Classes.Set("selected", _themeMode == 0);
         _themeLightLabel.Classes.Set("selected", _themeMode == 1);
         _themeDarkLabel.Classes.Set("selected", _themeMode == 2);
-        _appHeaderIcon.Source = isDarkTheme ? _darkHeaderIcon : _lightHeaderIcon;
     }
 
     private static Color InterpolateColor(Color start, Color target, double progress)
@@ -997,11 +988,6 @@ public partial class MainWindow : Window
             Mix(start.R, target.R, progress),
             Mix(start.G, target.G, progress),
             Mix(start.B, target.B, progress));
-    }
-
-    private static Bitmap LoadAssetBitmap(string uri)
-    {
-        return new Bitmap(AssetLoader.Open(new Uri(uri)));
     }
 
     private void SetMode(ConversionMode mode)

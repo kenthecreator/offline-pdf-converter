@@ -406,7 +406,7 @@
           Background="{DynamicResource AppBackgroundBrush}">
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="34,24,34,14">
       <Image x:Name="AppHeaderIcon"
-             Source="/Assets/AppIconLight.png"
+             Source="/Assets/AppHeaderIcon.png"
              Width="70"
              Height="70"
              HorizontalAlignment="Center"

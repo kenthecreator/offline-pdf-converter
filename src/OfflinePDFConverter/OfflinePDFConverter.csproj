@@ -36,8 +36,7 @@
     <AvaloniaResource Include="Assets/Fonts/*.ttf" />
     <EmbeddedResource Include="Assets/Fonts/*" LogicalName="OfflinePDFConverter.Fonts.%(Filename)%(Extension)" />
     <AvaloniaResource Include="Assets\AppIcon.png" />
-    <AvaloniaResource Include="Assets\AppIconLight.png" />
-    <AvaloniaResource Include="Assets\AppIconDark.png" />
+    <AvaloniaResource Include="Assets\AppHeaderIcon.png" />
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />

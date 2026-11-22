@@ -108,16 +108,20 @@ public partial class MainWindow
             if (glassEnabled)
                 await Until(() => trackRim!.HasRendered && fillRim!.HasRendered);
             checks.Add("bottom progress bar width at 0%, 42% and 100%, with the correct glass state");
+            var headerIcon = Required<Image>("AppHeaderIcon");
+            var headerSource = headerIcon.Source;
+            Check(headerSource != null && headerIcon.IsEffectivelyVisible, "Header icon is missing.");
             for (var theme = 0; theme < 3; theme++)
             {
                 FinishThemeDrag(theme);
                 await Until(() => !_themeTransitionActive);
                 Check(_themeMode == theme, "Theme switch failed.");
+                Check(ReferenceEquals(headerIcon.Source, headerSource), "The header icon changed with the theme.");
                 if (glassEnabled && theme != 0)
                     SaveSnapshot(Path.ChangeExtension(report, theme == 1 ? ".progress-light.png" : ".progress-dark.png"));
             }
             _mainProgressBar.Value = 0;
-            checks.Add("real desktop startup and Auto/Light/Dark theme controls");
+            checks.Add("real desktop startup and the same header icon in Auto, Light and Dark");
             var image = Path.Combine(root, "日本語 image.png");
             using (var resource = typeof(MainWindow).Assembly.GetManifestResourceStream("OfflinePDFConverter.OcrSelfTest.png")!)
             using (var file = File.Create(image)) await resource.CopyToAsync(file);
