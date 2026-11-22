@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = "kenthecreator/offline-pdf-converter"
 TAG = "v5.1.0"
 TITLE = "Offline PDF Converter (v5.1)"
+PAGES_FILES = ("app-icon-v5.1.png", "index.html")
 PLATFORMS = ("Windows-x64", "macOS-arm64")
 REPORTS = ("macos-features", "macos-gui", "windows2022-features", "windows2022-gui",
            "windows2025-features", "windows2025-gui")
@@ -49,7 +50,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--publish", action="store_true", help="Publish the release and update gh-pages")
     args = parser.parse_args()
-    page = ROOT / "docs/download-page/index.html"
     releases = gh("api", f"repos/{REPO}/releases", "--paginate", "--jq",
                   f'.[] | select(.tag_name == "{TAG}") | .id').split()
     if len(releases) != 1:
@@ -62,11 +62,14 @@ def main():
     target = release["target_commitish"]
     if parity["passed"] is not True or parity["commit"] != target:
         raise ValueError("No Office parity evidence for the release commit")
-    # Publish only the Pages revision stored in the exact commit verified by CI.
-    verified_file = api(f"contents/docs/download-page/index.html?ref={target}")
-    if base64.b64decode(verified_file["content"]) != page.read_bytes():
-        raise ValueError("Local download page differs from the verified release commit")
-    current = api("contents/index.html?ref=gh-pages")
+    verified_files = {}
+    for name in PAGES_FILES:
+        verified_file = api(f"contents/docs/download-page/{name}?ref={target}")
+        content = base64.b64decode(verified_file["content"])
+        if content != (ROOT / "docs/download-page" / name).read_bytes():
+            raise ValueError(f"Local {name} differs from the verified release commit")
+        verified_files[name] = content
+    current_files = {file["name"]: file["sha"] for file in api("contents?ref=gh-pages")}
     if not args.publish:
         print(f"{TAG} assets and target verified. Pages would be updated from {target}.")
         return
@@ -77,13 +80,19 @@ def main():
     tag = api(f"git/ref/tags/{TAG}")
     if public["tag_name"] != TAG or tag["object"]["sha"] != target:
         raise ValueError(f"The verified {TAG} is not the latest public release")
-    if base64.b64decode(current["content"]) != page.read_bytes():
-        api("contents/index.html", "--method", "PUT", "--input", "-", data=json.dumps({
-            "message": f"Point the official download page at v5.1 ({target[:12]})",
+    # Upload the versioned icon first so either page revision can load its own image.
+    for name, content in verified_files.items():
+        current_sha = current_files.get(name)
+        if current_sha and base64.b64decode(api(f"contents/{name}?ref=gh-pages")["content"]) == content:
+            continue
+        update = {
+            "message": f"Deploy v5.1 download page asset {name} ({target[:12]})",
             "branch": "gh-pages",
-            "sha": current["sha"],
-            "content": base64.b64encode(page.read_bytes()).decode("ascii"),
-        }))
+            "content": base64.b64encode(content).decode("ascii"),
+        }
+        if current_sha:
+            update["sha"] = current_sha
+        api(f"contents/{name}", "--method", "PUT", "--input", "-", data=json.dumps(update))
     print(f"{TAG} published and gh-pages updated. Confirm the public Pages deployment.")
 
 

@@ -26,7 +26,7 @@ Windowsでの作成は [Windows用単体exeのビルド手順](BUILD_WINDOWS.md)
 1. `codex/release-v5.1` のCI結果を確認します。公開候補のコミットを `main` に反映した後、`Verify and prepare v5.1` を `main` で `prepare_draft` を有効にして実行します。
 2. 両OSのビルド・GUI・Office出力比較が成功すると、検証結果とZIPを含む `v5.1.0` のリリース下書きができます。
 3. 管理者のGitHub CLI認証で `python3 scripts/publish-v5.1.py` を実行すると、下書きのZIP・SHA-256・検証結果と、CIで検証したコミットのダウンロードページを読み取りで照合します。
-4. 公開を実行する際は、同じスクリプトに `--publish` を付けます。v5.1を公開してタグと最新版を確認した後、`gh-pages` の `index.html` を更新します。Pagesのデプロイが反映されたら、公式ページの2つのZIPとSHA-256、使い方リンクを開いて確認します。
+4. 公開を実行する際は、同じスクリプトに `--publish` を付けます。v5.1を公開してタグと最新版を確認した後、`gh-pages` にv5.1のアイコンと `index.html` を反映します。Pagesのデプロイ後に、アイコン、2つのZIPとSHA-256、使い方リンクを確認します。
 5. 作業フォルダのREADMEと公開版の記録も、実際に確認したタグと配布パスに更新します。
 
 ## Office文書の組み込み変換

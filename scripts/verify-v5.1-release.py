@@ -45,6 +45,8 @@ def verify_metadata():
     assert f"{REPO}/releases/tag/v{VERSION}" in parser.links
     assert f"{REPO}/blob/v{VERSION}/docs/MANUAL.md" in parser.links
     assert "v5.0" not in page
+    assert 'href="app-icon-v5.1.png"' in page and 'src="app-icon-v5.1.png"' in page
+    assert (ROOT / "docs/download-page/app-icon-v5.1.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     print("v5.1 version fields, release notes and Pages links verified")
 
 
@@ -70,6 +72,8 @@ def verify_archive(folder, target):
             info = plistlib.loads(bundle.read(contents + "Info.plist"))
             assert info["CFBundleName"] == info["CFBundleDisplayName"] == TITLE
             assert info["CFBundleVersion"] == info["CFBundleShortVersionString"] == VERSION
+            assert info["CFBundleIconFile"] == "AppIcon"
+            assert contents + "Resources/AppIcon.icns" in names
             assert contents + "Resources/OfficeEngine/LibreOffice.app/Contents/Frameworks/libmergedlo.dylib" in names
             assert any(name.startswith(contents + "Resources/OfficeEngine/LICENSEs/") for name in names)
     print("Verified", archive.name)
