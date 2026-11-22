@@ -24,6 +24,12 @@ public partial class MainWindow
         var report = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(report)!);
         static void Check(bool value, string message) { if (!value) throw new InvalidDataException(message); }
+        void SaveSnapshot(string path)
+        {
+            using var snapshot = new RenderTargetBitmap(new PixelSize((int)Bounds.Width, (int)Bounds.Height), new Vector(96, 96));
+            snapshot.Render(this);
+            snapshot.Save(path);
+        }
         async Task Until(Func<bool> condition)
         {
             var watch = Stopwatch.StartNew();
@@ -86,12 +92,31 @@ public partial class MainWindow
                 .Any(border => border.Name == "Background" && border.Child is ButtonGlass) == glassEnabled,
                 "Incorrect glass decoration on the operation dropdown.");
             checks.Add($"five selector pills and six labeled action buttons: {Program.GlassTrial}");
+            var progressParts = _mainProgressBar.GetVisualDescendants().OfType<Border>().ToArray();
+            var track = progressParts.Single(border => border.Name == "ProgressBarRoot");
+            var indicator = progressParts.Single(border => border.Name == "PART_Indicator");
+            var trackRim = (track.Child as Panel)?.Children.OfType<ButtonGlass>().SingleOrDefault();
+            var fillRim = indicator.Child as ButtonGlass;
+            Check((trackRim is not null) == glassEnabled && (fillRim is not null) == glassEnabled,
+                "Incorrect glass decoration on the bottom progress bar.");
+            _mainProgressBar.Value = 100;
+            await Until(() => indicator.Bounds.Width >= track.Bounds.Width - 4);
+            _mainProgressBar.Value = 0;
+            await Until(() => indicator.Bounds.Width < 1);
+            _mainProgressBar.Value = 42;
+            await Until(() => Math.Abs(indicator.Bounds.Width - track.Bounds.Width * 0.42) < 4);
+            if (glassEnabled)
+                await Until(() => trackRim!.HasRendered && fillRim!.HasRendered);
+            checks.Add("bottom progress bar width at 0%, 42% and 100%, with the correct glass state");
             for (var theme = 0; theme < 3; theme++)
             {
                 FinishThemeDrag(theme);
                 await Until(() => !_themeTransitionActive);
                 Check(_themeMode == theme, "Theme switch failed.");
+                if (glassEnabled && theme != 0)
+                    SaveSnapshot(Path.ChangeExtension(report, theme == 1 ? ".progress-light.png" : ".progress-dark.png"));
             }
+            _mainProgressBar.Value = 0;
             checks.Add("real desktop startup and Auto/Light/Dark theme controls");
             var image = Path.Combine(root, "日本語 image.png");
             using (var resource = typeof(MainWindow).Assembly.GetManifestResourceStream("OfflinePDFConverter.OcrSelfTest.png")!)
@@ -193,8 +218,7 @@ public partial class MainWindow
             Check((await viewer.Clipboard!.TryGetTextAsync())?.Contains("日本語") == true, "PDF selection/copy did not reach the clipboard.");
             viewer.Close(); await viewerTask;
             checks.Add("OCR through Start, before/after previews and real PDF text selection/copy");
-            using (var snapshot = new RenderTargetBitmap(new PixelSize((int)Bounds.Width, (int)Bounds.Height), new Vector(96, 96)))
-            { snapshot.Render(this); snapshot.Save(Path.ChangeExtension(report, ".png")); }
+            SaveSnapshot(Path.ChangeExtension(report, ".png"));
             if (Program.GlassTrial == ModePillGlassTrial.On)
                 Check(_modePillGlass is { IsAvailable: true }, "The refraction fell back during GUI verification.");
             // Closing an active conversion must cancel it and finish without displaying a modal result.

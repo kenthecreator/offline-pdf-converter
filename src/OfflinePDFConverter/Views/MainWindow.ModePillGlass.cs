@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
 
@@ -30,6 +31,7 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial) is not { } effect)
             return;
         PillOptics = effect;
+        _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
 
         var lenses = new List<ModePillGlass>();
         foreach (var (pillName, trackName) in GlassSelectors)
@@ -45,11 +47,28 @@ public partial class MainWindow
         }
         Closed += (_, _) =>
         {
+            _mainProgressBar.TemplateApplied -= OnProgressTemplateApplied;
             foreach (var lens in lenses)
                 lens.Dispose();
             PillOptics = null;
             effect.Dispose();
         };
+    }
+
+    private void OnProgressTemplateApplied(object? sender, TemplateAppliedEventArgs args)
+    {
+        if (PillOptics is not { } optics)
+            return;
+
+        // Attach inside Fluent's borders so its native width, clipping and animations drive the effect.
+        if (args.NameScope.Find("ProgressBarRoot") is Border { Child: Panel track } background)
+            track.Children.Insert(0, ButtonGlass.ForProgressBorder(background, optics));
+
+        foreach (var part in new[] { "PART_Indicator", "IndeterminateProgressBarIndicator", "IndeterminateProgressBarIndicator2" })
+        {
+            if (args.NameScope.Find(part) is Border { Child: null } indicator)
+                indicator.Child = ButtonGlass.ForProgressBorder(indicator, optics);
+        }
     }
 
     private sealed class ModePillGlass : IDisposable

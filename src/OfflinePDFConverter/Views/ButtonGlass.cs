@@ -35,14 +35,28 @@ internal sealed class ButtonGlass : Control
     }
 
     private readonly GlassOptics? _optics;
+    private readonly Border? _surfaceOwner;
     private int _lensFailed;
     private int _lensDrawn;
 
-    private ButtonGlass(GlassOptics? optics = null)
+    private ButtonGlass(GlassOptics? optics = null, Border? surfaceOwner = null)
     {
         _optics = optics;
+        _surfaceOwner = surfaceOwner;
+        IsHitTestVisible = false;
+        Focusable = false;
         ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
+
+    internal static ButtonGlass ForProgressBorder(Border surface, GlassOptics optics)
+    {
+        var rim = new ButtonGlass(optics, surface);
+        rim.Bind(CornerRadiusProperty, new Binding(nameof(Border.CornerRadius)) { Source = surface });
+        rim.Bind(SurfaceBrushProperty, new Binding(nameof(Border.Background)) { Source = surface });
+        return rim;
+    }
+
+    internal bool HasRendered => Volatile.Read(ref _lensDrawn) != 0 && Volatile.Read(ref _lensFailed) == 0;
 
     internal static IEnumerable<Style> CreateStyles(GlassOptics optics)
     {
@@ -134,7 +148,7 @@ internal sealed class ButtonGlass : Control
     internal static bool HasRenderedPill(Button button) =>
         button.GetVisualChildren().OfType<Grid>()
             .SelectMany(grid => grid.Children.OfType<ButtonGlass>())
-            .Any(rim => Volatile.Read(ref rim._lensDrawn) != 0 && Volatile.Read(ref rim._lensFailed) == 0);
+            .Any(rim => rim.HasRendered);
 
     private bool HasDrawableBounds => Bounds.Width >= 8 && Bounds.Height >= 8;
 
@@ -177,6 +191,9 @@ internal sealed class ButtonGlass : Control
         var background = ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(25, 25, 25) : Color.FromRgb(242, 242, 242);
         foreach (var visual in this.GetVisualAncestors().Reverse())
         {
+            if (visual == _surfaceOwner)
+                continue;
+
             var brush = visual switch
             {
                 Border border => border.Background,
