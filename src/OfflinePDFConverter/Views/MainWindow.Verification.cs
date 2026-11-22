@@ -56,21 +56,23 @@ public partial class MainWindow
         try
         {
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
-            var modePillDecoration = Required<Border>("ModeSelectionPill").Child;
-            var modeTrackDecoration = Required<Border>("ModeSelectorTrack").Child;
+            var glassEnabled = Program.GlassTrial == ModePillGlassTrial.On;
+            foreach (var (pillName, trackName) in GlassSelectors)
+            {
+                Check(Required<Border>(trackName).Child is null, "The existing track must remain undecorated: " + trackName);
+                var decoration = Required<Border>(pillName).Child;
+                Check(glassEnabled ? decoration is { IsHitTestVisible: false, Focusable: false } : decoration is null,
+                    "Incorrect glass decoration: " + pillName);
+            }
             if (Program.GlassTrial == ModePillGlassTrial.On)
             {
-                Check(modePillDecoration is { IsHitTestVisible: false, Focusable: false } &&
-                      modeTrackDecoration is { IsHitTestVisible: false, Focusable: false },
-                    "The glass decorations are absent or intercept input.");
                 await Until(() => _modePillGlass is not { IsAvailable: true, HasRendered: false });
                 Check(_modePillGlass is { IsAvailable: true, HasRendered: true },
                     "Skia did not draw the mode selection refraction.");
             }
-            else
-                Check(modePillDecoration is null && modeTrackDecoration is null,
-                    "Both glass decorations should be absent.");
-            checks.Add($"mode selection pill decoration state: {Program.GlassTrial}");
+            Check(PillButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
+                "Incorrect glass decoration on the main Start button.");
+            checks.Add($"five selector pills and the main Start button: {Program.GlassTrial}");
             for (var theme = 0; theme < 3; theme++)
             {
                 FinishThemeDrag(theme);
@@ -112,6 +114,10 @@ public partial class MainWindow
             var editorTask = OpenSimpleEditWindowAsync(_pdfPagePreviews[0]);
             await Until(() => desktop.Windows.Any(w => w != this));
             var editor = desktop.Windows.Single(w => w != this);
+            var done = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Content?.ToString() == "完了");
+            await Until(() => done.Bounds.Width > 0);
+            Check(PillButtonGlass.IsAppliedTo(done) == glassEnabled,
+                "Incorrect glass decoration on the editor Done button.");
             var editFont = editor.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "EditFontSizeTextBox");
             var addText = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "AddEditorTextButton");
             foreach (var invalid in new[] { "abc", "0", "NaN", "Infinity" })
@@ -134,8 +140,7 @@ public partial class MainWindow
                     "Invalid shape thickness did not show an explanation.");
             }
             stroke.Text = "2"; addShape.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            editor.GetVisualDescendants().OfType<Button>().Single(b => b.Content?.ToString() == "完了")
-                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            done.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await editorTask;
             Check(_pdfTextEdits.Count == 1 && _pdfTextEdits[0].FontSize == 14 && _pdfTextEdits[0].Text == "日本語 ABC 12345"
                 && _pdfShapeEdits.Count == 1 && _pdfShapeEdits[0].StrokeThickness == 2, "Editor did not recover after invalid inputs or lost inline text.");
@@ -152,6 +157,10 @@ public partial class MainWindow
 
             SetMode(ConversionMode.Ocr);
             await Until(() => _ocrBeforePages.Count == 1);
+            Check(!this.GetVisualDescendants().OfType<Button>().Any(button =>
+                    button.CornerRadius.TopLeft == 12 && button.Bounds.Height > 26 &&
+                    PillButtonGlass.IsAppliedTo(button)),
+                "Glass was applied to a rounded-rectangle preview button.");
             Required<RadioButton>("OcrMixedChoice").IsChecked = true;
             var ocr = Directory.CreateDirectory(Path.Combine(root, "ocr-output")).FullName;
             Required<TextBox>("OcrOutputFolderTextBox").Text = ocr;

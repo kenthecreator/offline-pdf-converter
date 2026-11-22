@@ -229,6 +229,8 @@ public partial class MainWindow : Window
         _darkHeaderIcon = LoadAssetBitmap($"avares://{typeof(MainWindow).Assembly.GetName().Name}/Assets/AppIconDark.png");
         _reduceMotion = ShouldReduceMotion();
         BindControls();
+        if (Program.GlassTrial != ModePillGlassTrial.Off)
+            InitializePillGlass();
         ApplyTheme(isInitialDarkTheme);
         if (Application.Current?.PlatformSettings is { } settings)
         {
@@ -300,8 +302,6 @@ public partial class MainWindow : Window
         var modeSelectionPill = Required<Border>("ModeSelectionPill");
         _modeSelectionTransform = modeSelectionPill.RenderTransform as TranslateTransform
             ?? throw new InvalidOperationException("モード選択インジケーターの移動設定が見つかりません。");
-        if (Program.GlassTrial != ModePillGlassTrial.Off)
-            InitializeModePillGlass(modeSelectionPill);
         _modeSelectionTransitions = _modeSelectionTransform.Transitions;
         _themeToggleTransitions = _themeToggleTransform.Transitions;
         _directionSelectorHost = Required<Grid>("DirectionSelectorHost");

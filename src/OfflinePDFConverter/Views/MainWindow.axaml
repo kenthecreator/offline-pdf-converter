@@ -519,7 +519,7 @@
                 AutomationProperties.HelpText="Autoでデバイス設定、中央でライト、右でダークを選びます。クリック、ドラッグ、左右キーで切り替えられます"
                 KeyDown="OnThemeSelectorKeyDown">
           <Grid Width="150" Height="36" ColumnDefinitions="50,50,50">
-            <Border Grid.ColumnSpan="3"
+            <Border x:Name="ThemeSelectorTrack" Grid.ColumnSpan="3"
                     Height="34"
                     Margin="1,0"
                     CornerRadius="17"
@@ -917,7 +917,7 @@
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnDirectionSelectorKeyDown">
           <Grid Width="266" Height="46" ColumnDefinitions="133,133">
-            <Border Grid.ColumnSpan="2"
+            <Border x:Name="DirectionSelectorTrack" Grid.ColumnSpan="2"
                     Height="43"
                     Margin="1,0"
                     CornerRadius="21.5"
@@ -1058,7 +1058,7 @@
                       AutomationProperties.HelpText="クリックまたは左右へドラッグして表示形式を切り替えます"
                       AutomationProperties.ControlTypeOverride="Group">
                 <Grid Width="160" Height="38" ColumnDefinitions="80,80">
-                  <Border Grid.ColumnSpan="2"
+                  <Border x:Name="PdfPreviewSelectorTrack" Grid.ColumnSpan="2"
                           Height="36"
                           Margin="1,0"
                           CornerRadius="18"
@@ -1359,7 +1359,7 @@
                       AutomationProperties.HelpText="クリックまたは左右へドラッグして表示形式を切り替えます"
                       AutomationProperties.ControlTypeOverride="Group">
                 <Grid Width="160" Height="38" ColumnDefinitions="80,80">
-                  <Border Grid.ColumnSpan="2"
+                  <Border x:Name="OcrPreviewSelectorTrack" Grid.ColumnSpan="2"
                           Height="36"
                           Margin="1,0"
                           CornerRadius="18"

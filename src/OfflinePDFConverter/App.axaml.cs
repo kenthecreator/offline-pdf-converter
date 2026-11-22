@@ -22,6 +22,8 @@ public partial class App : Application
                                     == PlatformThemeVariant.Dark;
             RequestedThemeVariant = isSystemDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
             var window = new MainWindow(isSystemDarkTheme);
+            if (window.PillGlassEnabled)
+                Styles.Add(PillButtonGlass.CreateStyle());
             desktop.MainWindow = window;
             if (Program.GuiVerificationReport is { } report)
             {

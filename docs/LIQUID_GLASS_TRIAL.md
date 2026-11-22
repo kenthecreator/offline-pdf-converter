@@ -1,12 +1,28 @@
 # v4.4 選択ピルの Liquid Glass 風描画試験
 
-## 屈折を追加した試験
+## ピル型ボタン全体への試験適用
+
+モード、テーマ、変換方向、PDF プレビュー、OCR プレビューの5つのセレクターでは、選択ピルの縁を通して元のトラックが屈折する。通常の横長ピル型ボタンでは、既存の塗りと内容に沿って無彩色の内縁反射と影を描く。メイン画面と別ウィンドウにある「開始」「追加」「完了」などが対象。形状は描画時に幅・高さと角丸半径で判定する。サムネイルや四角いボタンは既存の描画を使う。
+
+試験版は `dist/paddle-edition/Offline PDF Converter (v4.4)-macOS-arm64.zip`。展開したアプリの実行ファイルに `--trial-liquid-glass` を渡す。引数なしで既定表示、`--trial-liquid-glass=simulate-failure` で従来表示への復帰を試せる。検証画像とログの保存先は `artifacts/liquid-glass-verification/pill-controls/verified/`。
+
+Mac Apple Silicon で ZIP 展開後の署名を検証した。通信を遮断した状態で、オン・オフ・強制フォールバックの GUI 検証各9項目とオフライン自己検証各15項目が通過。GUI 検証で5つのセレクター、「開始」、編集画面の「完了」の適用状態を調べ、変換・編集・OCR の操作を実行した。実画面で Light／Dark、モード切り替え、領域外でのドラッグ解除、キー操作、リサイズを確認した。両 RID の依存関係は元の v4.4 と一致。Windows x64 での発行・実行と、今回の対象拡張後の GPU 負荷は未確認。
+
+## 元の背景に戻したモード切替の試験
+
+モード切替トラックを既存の配色と形状に戻した。選択ピルだけが、トラックとヘッダーの実際の色と境界をサンプリングする。ガラスの縁に薄い拡散、無彩色の反射と影を加えた。均一な色の上では光の曲がりが目立ちにくく、トラックの境界にかかるところで現れる。
+
+この段階の ZIP は `artifacts/liquid-glass-verification/plain-glass/previous-package/`。検証ログは親ディレクトリにある。
+
+## 斜めの模様を使った前回の屈折試験
+
+以下は `130e728` 時点の記録。前回の ZIP は `artifacts/liquid-glass-verification/refraction/previous-package/` に退避した。
 
 `codex/liquid-glass-v4.4` の静的な試作 `b57870f` に続き、.NET 8／Avalonia 11.3.12／SkiaSharp 3.119.2 のまま、選択ピルに SkSL の屈折を組み込んだ。試験用トラックの淡い斜めの光とレンズのサンプル元を同じ関数で描く。丸い縁の法線に沿って背景のサンプル位置を曲げ、薄く拡散させる。レンズの内縁に影、外周寄りに鏡面反射を加えた。ラベルと操作は既存の Avalonia コントロールが担当する。
 
 背景の入力はヘッダーに描いた模様とテーマの色に限る。既存の SkiaSharp で計算が完結する。再描画は既存のピル移動、テーマ色、レイアウトの変化に追従する。シェーダーや描画の初期化に失敗した場合は、試験用のトラックとピル装飾を外し、既存表示に戻る。
 
-試験版は `dist/paddle-edition/Offline PDF Converter (v4.4)-macOS-arm64.zip`。展開後の実行ファイルを `--trial-liquid-glass` 付きで起動する。引数なしで従来表示に戻り、`--trial-liquid-glass=simulate-failure` ではシェーダーのコンパイルを意図的に失敗させて復帰を確認できる。Windows の発行手順は下記を参照。
+展開後の実行ファイルを `--trial-liquid-glass` 付きで起動する。引数なしで従来表示に戻り、`--trial-liquid-glass=simulate-failure` ではシェーダーのコンパイルを意図的に失敗させて復帰を確認できる。Windows の発行手順は下記を参照。
 
 検証環境は Apple M3、macOS 27.2.1、外部ディスプレイの倍率 1.0。結果、比較画像、再現用の測定データは `artifacts/liquid-glass-verification/refraction/` に保存した。
 
