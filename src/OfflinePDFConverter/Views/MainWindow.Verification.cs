@@ -72,10 +72,20 @@ public partial class MainWindow
             }
             Check(ButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
                 "Incorrect glass decoration on the main Start button.");
+            foreach (var caption in new[] { "追加", "削除", "すべて削除", "上へ", "下へ", "選択" })
+            {
+                var action = this.GetVisualDescendants().OfType<Button>()
+                    .FirstOrDefault(button => button.IsEffectivelyVisible && Equals(button.Content, caption));
+                Check(action is not null, "Missing visible action button: " + caption);
+                if (glassEnabled)
+                    await Until(() => ButtonGlass.HasRenderedPill(action!));
+                else
+                    Check(!ButtonGlass.HasRenderedPill(action!), "Unexpected action button lens: " + caption);
+            }
             Check(_pdfToolOperationCombo.GetVisualDescendants().OfType<Border>()
                 .Any(border => border.Name == "Background" && border.Child is ButtonGlass) == glassEnabled,
                 "Incorrect glass decoration on the operation dropdown.");
-            checks.Add($"five selector pills and the main Start button: {Program.GlassTrial}");
+            checks.Add($"five selector pills and six labeled action buttons: {Program.GlassTrial}");
             for (var theme = 0; theme < 3; theme++)
             {
                 FinishThemeDrag(theme);
