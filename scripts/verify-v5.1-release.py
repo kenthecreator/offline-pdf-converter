@@ -64,7 +64,8 @@ def verify_archive(folder, target):
         assert bundle.testzip() is None, archive.name
         names = set(bundle.namelist())
         assert {f"RELEASE_DETAILS_v{VERSION}.md", "LICENSE", "THIRD_PARTY_LICENSES.md",
-                "OFL-NotoSansJP.txt", "OFL-ZenKakuGothicNew.txt", "MANUAL.md", "IMPROVEMENTS.md"} <= names
+                "OFL-NotoSansJP.txt", "OFL-ZenKakuGothicNew.txt", "OFL-NotoSerifCJKjp.txt",
+                "OFL-Carlito.txt", "OFL-Caladea.txt", "MANUAL.md", "IMPROVEMENTS.md"} <= names
         if target == "Windows-x64":
             assert {name for name in names if name.lower().endswith((".exe", ".dll"))} == {TITLE + ".exe"}
         else:

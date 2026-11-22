@@ -77,3 +77,5 @@ Noto Sans Japanese（Noto Sans JP）のRegularをOCRの非表示文字層に使�
 ## v5.1のOffice変換コンポーネント
 
 LibreOfficeKitはThe Document FoundationのLibreOfficeの一部です。LibreOfficeと同梱されるコンポーネントにはそれぞれのライセンスが適用されます。v5.1に同梱する LibreOffice 26.8.3.1 のソースはコミット `861effc5289d539f15c4c18d1ba8579ffd78728b` に対応します。[ライセンス情報](https://www.libreoffice.org/about-us/licenses/) · [対応ソース](https://github.com/LibreOffice/core/tree/861effc5289d539f15c4c18d1ba8579ffd78728b)
+
+Office変換には、同版のLibreOfficeから抽出したCalibriおよびCambriaの互換書体CarlitoとCaladea、Noto Sans JP、日本語の明朝体Noto Serif CJK JP 2.003を使用します。Carlito、Caladea、Noto Serif CJK JPのSIL Open Font License全文は各配布ZIPに含めています。[Noto Serif CJK JPの配布元](https://github.com/notofonts/noto-cjk/tree/Serif2.003/Serif/OTF/Japanese)

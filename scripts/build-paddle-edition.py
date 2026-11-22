@@ -108,6 +108,9 @@ def main():
             shutil.copy2(source, package/source.name)
         shutil.copy2(ROOT/'src/OfflinePDFConverter/Assets/Fonts/OFL.txt', package/'OFL-ZenKakuGothicNew.txt')
         shutil.copy2(ROOT/'src/OfflinePDFConverter/Assets/Fonts/OFL-NotoSansJP.txt', package/'OFL-NotoSansJP.txt')
+        office_font_licenses = sorted((ROOT/'src/OfflinePDFConverter/Assets/Fonts/Office').glob('OFL-*.txt'))
+        for source in office_font_licenses:
+            shutil.copy2(source, package/source.name)
         archive = dist/(title+'-'+('macOS-arm64' if target == 'mac' else 'Windows-x64')+'.zip')
         deliverable = package / (title + ('.app' if target == 'mac' else '.exe'))
         if target == 'mac' and args.office_macos_app:
@@ -118,6 +121,7 @@ def main():
             files = list(deliverable.rglob('*')) if target == 'mac' else [deliverable]
             zip_mode = 'w'
         files += [package/source.name for source in documents] + [package/'OFL-ZenKakuGothicNew.txt', package/'OFL-NotoSansJP.txt']
+        files += [package/source.name for source in office_font_licenses]
         with zipfile.ZipFile(archive, zip_mode, zipfile.ZIP_DEFLATED, compresslevel=6) as bundle:
             for file in sorted(files):
                 if file.is_file(): bundle.write(file, file.relative_to(package))

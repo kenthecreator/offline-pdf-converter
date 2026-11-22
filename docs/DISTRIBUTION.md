@@ -31,6 +31,6 @@ Windowsでの作成は [Windows用単体exeのビルド手順](BUILD_WINDOWS.md)
 
 ## Office文書の組み込み変換
 
-Word（`.docx`）、Excel（`.xlsx`）、PowerPoint（`.pptx`）を元ファイルと同じフォルダーに透かしなしで保存します。原稿に指定されたフォントを利用できない場合は代替フォントが選ばれ、改行や配置に差が出ることがあります。日本語用の代替フォントとしてNoto Sans JPを同梱します。
+Word（`.docx`）、Excel（`.xlsx`）、PowerPoint（`.pptx`）を元ファイルと同じフォルダーに透かしなしで保存します。両OSで共通の書体を使うため、CalibriとCambriaにはそれぞれCarlitoとCaladeaを、MSゴシックとMS明朝にはそれぞれNoto Sans JPとNoto Serif CJK JPを使います。原稿が使う書体や機能によっては、変換後の改行や配置に差が出ることがあります。
 
 [LibreOfficeKit](https://docs.libreoffice.org/libreofficekit.html) · [LibreOfficeのライセンス](https://www.libreoffice.org/about-us/licenses/)

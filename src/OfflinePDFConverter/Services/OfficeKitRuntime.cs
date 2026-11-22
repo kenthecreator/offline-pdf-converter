@@ -9,7 +9,7 @@ internal sealed class OfficeKitRuntime : IDisposable
     private readonly IntPtr _office;
     private readonly DirectoryInfo _work;
     private readonly SetKitActive? _resetMacKitMode;
-    private string? _windowsFont;
+    private readonly List<string> _windowsFonts = new();
 
     public OfficeKitRuntime()
     {
@@ -19,15 +19,44 @@ internal sealed class OfficeKitRuntime : IDisposable
             Program.TraceGuiVerification("Preparing bundled Office engine");
             var (library, bootstrap) = GetRuntime();
             var profile = Directory.CreateDirectory(Path.Combine(_work.FullName, "profile", "user"));
-            File.WriteAllText(Path.Combine(profile.FullName, "registrymodifications.xcu"), """
+            var configuration = XDocument.Parse("""
                 <?xml version="1.0" encoding="UTF-8"?>
                 <oor:items xmlns:oor="http://openoffice.org/2001/registry">
                   <item oor:path="/org.openoffice.Office.Common/Security/Scripting">
                     <prop oor:name="MacroSecurityLevel" oor:op="fuse"><value>3</value></prop>
                     <prop oor:name="DisableMacrosExecution" oor:op="fuse"><value>true</value></prop>
                   </item>
+                  <item oor:path="/org.openoffice.Office.Common/Font/Substitution">
+                    <prop oor:name="Replacement" oor:op="fuse"><value>true</value></prop>
+                  </item>
+                  <item oor:path="/org.openoffice.Office.Writer/DefaultFontCJK">
+                    <prop oor:name="Standard" oor:op="fuse"><value>Noto Serif CJK JP</value></prop>
+                    <prop oor:name="Heading" oor:op="fuse"><value>Noto Sans JP</value></prop>
+                  </item>
                 </oor:items>
                 """);
+            XNamespace registry = "http://openoffice.org/2001/registry";
+            var pairs = new XElement("item", new XAttribute(registry + "path",
+                "/org.openoffice.Office.Common/Font/Substitution/FontPairs"));
+            (string Source, string Replacement)[] replacements =
+            {
+                ("Calibri", "Carlito"), ("Cambria", "Caladea"),
+                ("MS Gothic", "Noto Sans JP"), ("ＭＳ ゴシック", "Noto Sans JP"),
+                ("MS Mincho", "Noto Serif CJK JP"), ("ＭＳ 明朝", "Noto Serif CJK JP")
+            };
+            XElement Property(string name, string value) => new("prop",
+                new XAttribute(registry + "name", name), new XAttribute(registry + "op", "fuse"),
+                new XElement("value", value));
+            for (var index = 0; index < replacements.Length; index++)
+            {
+                var (source, replacement) = replacements[index];
+                pairs.Add(new XElement("node", new XAttribute(registry + "name", "_" + index),
+                    new XAttribute(registry + "op", "replace"),
+                    Property("ReplaceFont", source), Property("SubstituteFont", replacement),
+                    Property("Always", "true"), Property("OnScreenOnly", "false")));
+            }
+            configuration.Root!.Add(pairs);
+            configuration.Save(Path.Combine(profile.FullName, "registrymodifications.xcu"));
 
             ConfigureFonts(bootstrap);
             var module = LoadRuntimeLibrary(library);
@@ -135,19 +164,28 @@ internal sealed class OfficeKitRuntime : IDisposable
     private void ConfigureFonts(string bootstrap)
     {
         var directory = Directory.CreateDirectory(Path.Combine(_work.FullName, "fonts"));
-        var fallback = Path.Combine(directory.FullName, "NotoSansJP-Regular.ttf");
-        using (var font = typeof(OfficeKitRuntime).Assembly.GetManifestResourceStream("OfflinePDFConverter.Fonts.NotoSansJP-Regular.ttf")
-            ?? throw new InvalidDataException("Office変換用の日本語フォントが含まれていません。"))
-        using (var file = File.Create(fallback))
-            font.CopyTo(file);
+        const string officePrefix = "OfflinePDFConverter.OfficeFonts.";
+        var assembly = typeof(OfficeKitRuntime).Assembly;
+        var fontResources = assembly.GetManifestResourceNames()
+            .Where(name => name.StartsWith(officePrefix, StringComparison.Ordinal))
+            .Select(name => (Resource: name, FileName: name[officePrefix.Length..]))
+            .Prepend(("OfflinePDFConverter.Fonts.NotoSansJP-Regular.ttf", "NotoSansJP-Regular.ttf"));
+        foreach (var (resource, fileName) in fontResources)
+        {
+            var path = Path.Combine(directory.FullName, fileName);
+            using (var font = assembly.GetManifestResourceStream(resource)
+                ?? throw new InvalidDataException($"Office変換用フォントが見つかりません。{fileName}"))
+            using (var file = File.Create(path))
+                font.CopyTo(file);
+            if (!OperatingSystem.IsWindows())
+                continue;
+            if (AddPrivateFont(path, PrivateFont, IntPtr.Zero) == 0)
+                throw new InvalidOperationException($"Office変換用フォントを読み込めませんでした。{fileName}");
+            _windowsFonts.Add(path);
+        }
 
         if (OperatingSystem.IsWindows())
-        {
-            if (AddPrivateFont(fallback, PrivateFont, IntPtr.Zero) == 0)
-                throw new InvalidOperationException("Office変換用の日本語フォントを読み込めませんでした。");
-            _windowsFont = fallback;
             return;
-        }
 
         var config = Path.Combine(_work.FullName, "fonts.conf");
         var cache = Directory.CreateDirectory(Path.Combine(_work.FullName, "font-cache"));
@@ -221,8 +259,8 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private void UnregisterWindowsFont()
     {
-        if (_windowsFont is not null)
-            RemovePrivateFont(_windowsFont, PrivateFont, IntPtr.Zero);
+        foreach (var path in _windowsFonts)
+            RemovePrivateFont(path, PrivateFont, IntPtr.Zero);
     }
 
     private static string FindLibrary(string directory, params string[] candidates) =>
