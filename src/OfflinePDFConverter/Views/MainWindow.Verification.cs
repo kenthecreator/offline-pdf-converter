@@ -61,6 +61,7 @@ public partial class MainWindow
         }
         try
         {
+            Program.TraceGuiVerification("Main window opened");
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
             var glassEnabled = Program.GlassTrial == ModePillGlassTrial.On;
             foreach (var (pillName, trackName) in GlassSelectors)
@@ -122,6 +123,7 @@ public partial class MainWindow
             }
             _mainProgressBar.Value = 0;
             checks.Add("real desktop startup and the same header icon in Auto, Light and Dark");
+            Program.TraceGuiVerification("Theme verification finished");
             var image = Path.Combine(root, "日本語 image.png");
             using (var resource = typeof(MainWindow).Assembly.GetManifestResourceStream("OfflinePDFConverter.OcrSelfTest.png")!)
             using (var file = File.Create(image)) await resource.CopyToAsync(file);
@@ -133,6 +135,7 @@ public partial class MainWindow
             using (var doc = UglyToad.PdfPig.PdfDocument.Open(pdf)) Check(doc.NumberOfPages == 1, "GUI image PDF output invalid.");
             checks.Add("image to PDF through the actual Start control and completion dialog");
             await VerifyV51Async(root, report, checks, Until);
+            Program.TraceGuiVerification("v5.1 controls and conversions verified");
             await AddPdfPathsAsync(new[] { pdf }); SetMode(ConversionMode.PdfTools);
             await Until(() => _pdfPagePreviews.Count == 1);
             SetPdfPreviewDisplay(true); Check(_pdfPagePreviewListScroll.IsVisible, "List preview not visible.");

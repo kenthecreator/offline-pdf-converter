@@ -16,6 +16,7 @@ internal sealed class OfficeKitRuntime : IDisposable
         _work = Directory.CreateTempSubdirectory("opc-office-");
         try
         {
+            Program.TraceGuiVerification("Preparing bundled Office engine");
             var (library, bootstrap) = GetRuntime();
             var profile = Directory.CreateDirectory(Path.Combine(_work.FullName, "profile", "user"));
             File.WriteAllText(Path.Combine(profile.FullName, "registrymodifications.xcu"), """
@@ -41,7 +42,9 @@ internal sealed class OfficeKitRuntime : IDisposable
 
             var initialize = Marshal.GetDelegateForFunctionPointer<Initialize>(
                 NativeLibrary.GetExport(module, "libreofficekit_hook_2"));
+            Program.TraceGuiVerification("Calling the native Office initialization hook");
             _office = initialize(bootstrap, FileUri(profile.Parent!.FullName));
+            Program.TraceGuiVerification("Native Office initialization returned");
             if (_office == IntPtr.Zero)
                 throw new InvalidOperationException("Office変換エンジンを初期化できませんでした。");
         }
@@ -78,8 +81,10 @@ internal sealed class OfficeKitRuntime : IDisposable
 
     private void SaveNativePdf(string source, string destination, CancellationToken token)
     {
+        Program.TraceGuiVerification($"Loading an Office document ({Path.GetExtension(source)})");
         var document = GetMethod<LoadDocument>(_office, 4)(_office, FileUri(source),
             "Batch=true,MacroSecurityLevel=3,EnableMacrosExecution=false");
+        Program.TraceGuiVerification("Native document load returned");
         if (document == IntPtr.Zero)
             throw new InvalidDataException($"Officeファイルを開けませんでした。{LastError()}");
 
@@ -88,6 +93,7 @@ internal sealed class OfficeKitRuntime : IDisposable
             token.ThrowIfCancellationRequested();
             if (GetMethod<SaveDocument>(document, 2)(document, FileUri(destination), "pdf", IntPtr.Zero) == 0)
                 throw new IOException($"PDFに変換できませんでした。{LastError()}");
+            Program.TraceGuiVerification("Native PDF export returned");
         }
         finally { GetMethod<Destroy>(document, 1)(document); }
     }

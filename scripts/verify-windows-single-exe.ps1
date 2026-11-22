@@ -51,7 +51,14 @@ try {
     $env:OPC_OFFICE_VERIFY_FIXTURES = $resolvedOfficeFixtures
     $mode = if ($VerifyGui) { '--verify-gui' } else { '--verify-offline' }
     $process = Start-Process $isolatedExe -WorkingDirectory $testDirectory -ArgumentList @($mode, ('"' + $report + '"')) -PassThru
-    if (-not $process.WaitForExit(300000)) { $process.Kill(); throw 'Self-test timed out.' }
+    $exited = $process.WaitForExit(300000)
+    $trace = [IO.Path]::ChangeExtension($report, ".trace.txt")
+    if (Test-Path $trace) { Get-Content $trace | Write-Host }
+    if (-not $exited) {
+      $process.Kill()
+      if (Test-Path $report) { Get-Content $report -Raw | Write-Host }
+      throw "$mode timed out."
+    }
     if (-not (Test-Path $report)) { throw 'No self-test report was produced.' }
     $result = Get-Content $report -Raw | ConvertFrom-Json
     if ($process.ExitCode -ne 0 -or -not $result.passed) { throw (Get-Content $report -Raw) }

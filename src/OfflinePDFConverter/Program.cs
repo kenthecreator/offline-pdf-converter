@@ -17,6 +17,12 @@ internal static class Program
     internal static string? GuiVerificationReport { get; private set; }
     internal static int GuiVerificationExitCode { get; set; }
 
+    internal static void TraceGuiVerification(string message)
+    {
+        if (GuiVerificationReport is { } report)
+            File.AppendAllText(Path.ChangeExtension(report, ".trace.txt"), $"{DateTime.UtcNow:O} {message}\n");
+    }
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -42,6 +48,7 @@ internal static class Program
         try
         {
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            TraceGuiVerification("Desktop lifetime ended");
             if (GuiVerificationReport != null) Environment.ExitCode = GuiVerificationExitCode;
         }
         catch (Exception ex) when (GuiVerificationReport != null)
@@ -62,7 +69,9 @@ internal static class Program
             PaddleOcrService.Cleanup();
 #endif
             BundledOcrRuntime.Cleanup();
+            TraceGuiVerification("Closing Office runtime");
             OfficePdfService.Cleanup();
+            TraceGuiVerification("Office runtime closed");
         }
     }
 

@@ -168,6 +168,7 @@ public partial class MainWindow
             Require(output.Pages[0].Rotate == 0 && output.Pages[1].Rotate == 90 && output.PageCount == totalPages,
                 "Saved rotations do not match single-page and all-page controls.");
         checks.Add("PDF Edit rotation of selected and all pages through the actual buttons, verified in the saved PDF");
+        Program.TraceGuiVerification("PDF layout and rotation verified");
 
         var fixtures = Environment.GetEnvironmentVariable("OPC_OFFICE_VERIFY_FIXTURES");
         if (!string.IsNullOrEmpty(fixtures))
@@ -196,6 +197,7 @@ public partial class MainWindow
             await File.WriteAllTextAsync(corruptPath, "This is not an Office file.");
             await AddToDropAsync(corruptPath);
 
+            Program.TraceGuiVerification("Starting Office file-drop batch");
             RaiseEvent(new DragEventArgs(DragDrop.DropEvent, drop, this, new Point(100, 160), KeyModifiers.None));
             await DismissResultAsync("変換結果", "作成したファイル: 3", "broken.docx");
             Require(!File.Exists(Path.ChangeExtension(corruptPath, ".pdf")), "An invalid input left a PDF behind.");
