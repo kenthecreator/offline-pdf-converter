@@ -13,6 +13,7 @@ internal static class OfflineSelfTest
         var root = Directory.CreateTempSubdirectory("OfflinePDFConverter-selftest-").FullName;
         var checks = new List<string>();
         Exception? failure = null;
+        var version = typeof(OfflineSelfTest).Assembly.GetName().Version;
         try
         {
 #if PADDLE_OCR
@@ -43,8 +44,9 @@ internal static class OfflineSelfTest
             if (OperatingSystem.IsWindows()) VerifyAppLocalCrt(checks);
 #endif
             checks.Add("Unicode file paths");
-            if (typeof(OfflineSelfTest).Assembly.GetName().Version?.ToString() != "5.0.0.0") throw new InvalidDataException("バージョンが一致しません。");
-            checks.Add("version 5.0.0.0");
+            if (version?.ToString() != AppIdentity.ExpectedVersion)
+                throw new InvalidDataException($"バージョンが一致しません。期待値: {AppIdentity.ExpectedVersion}、実際: {version}");
+            checks.Add($"version {version}");
             await OfflineFeatureChecks.RunAsync(root, checks);
         }
         catch (Exception ex) { failure = ex; }
@@ -57,7 +59,7 @@ internal static class OfflineSelfTest
             try { Directory.Delete(root, recursive: true); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failure ??= ex; }
         }
-        var report = new { version = "5.0.0", edition = AppIdentity.WindowTitle, passed = failure == null, checks, error = failure?.ToString(),
+        var report = new { version = version?.ToString(3), edition = AppIdentity.WindowTitle, passed = failure == null, checks, error = failure?.ToString(),
             operatingSystem = Environment.OSVersion.ToString(), architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString() };
         var fullReportPath = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullReportPath)!);

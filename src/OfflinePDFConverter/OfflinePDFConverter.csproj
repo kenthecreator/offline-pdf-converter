@@ -6,21 +6,30 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OfflinePDFConverter</AssemblyName>
     <RootNamespace>OfflinePDFConverter</RootNamespace>
-    <Product>Offline PDF Converter (v5.0)</Product>
-    <Version>5.0.0</Version>
-    <AssemblyVersion>5.0.0.0</AssemblyVersion>
-    <FileVersion>5.0.0.0</FileVersion>
+    <Product>Offline PDF Converter (v5.1)</Product>
+    <Version>5.1.0</Version>
+    <AssemblyVersion>5.1.0.0</AssemblyVersion>
+    <FileVersion>5.1.0.0</FileVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PaddleOcrEdition)' == 'true'">
     <AssemblyName>OfflinePDFConverter.PaddleEdition</AssemblyName>
-    <Product>Offline PDF Converter (v5.0)</Product>
     <DefineConstants>$(DefineConstants);PADDLE_OCR</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(OpcPrototype)' == 'true'">
+    <Product>Offline PDF Converter (v5.1 Prototype)</Product>
+    <Version>5.1.0-alpha.6</Version>
+    <AssemblyVersion>5.1.0.0</AssemblyVersion>
+    <FileVersion>5.1.0.6</FileVersion>
+    <DefineConstants>$(DefineConstants);V51_PROTOTYPE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
+    <EmbeddedResource Include="$(OpcOfficeEngineArchive)" LogicalName="OfflinePDFConverter.OfficeEngine.zip"
+                      Condition="'$(RuntimeIdentifier)' == 'win-x64' and '$(OpcOfficeEngineArchive)' != ''" />
     <EmbeddedResource Include="ocr/windows-x64.zip" LogicalName="OfflinePDFConverter.WindowsOcr.zip" Condition="'$(PaddleOcrEdition)' != 'true'" />
     <EmbeddedResource Include="ocr/windows-x64.sha256" LogicalName="OfflinePDFConverter.WindowsOcr.sha256" Condition="'$(PaddleOcrEdition)' != 'true'" />
     <EmbeddedResource Include="Assets/OcrSelfTest.png" LogicalName="OfflinePDFConverter.OcrSelfTest.png" />

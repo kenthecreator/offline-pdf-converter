@@ -4,9 +4,6 @@ import io
 import json
 import urllib.request
 from pathlib import Path
-import fontTools
-from fontTools.ttLib import TTFont
-from fontTools.varLib.instancer import instantiateVariableFont
 
 ROOT = Path(__file__).resolve().parents[1]
 FONTS = ROOT / 'src/OfflinePDFConverter/Assets/Fonts'
@@ -17,6 +14,10 @@ def main():
     records = {x['file']: x for x in json.loads((FONTS / 'manifest.json').read_text())['files']}
     target = FONTS / 'NotoSansJP-Regular.ttf'
     if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest() != records[target.name]['sha256']:
+        import fontTools
+        from fontTools.ttLib import TTFont
+        from fontTools.varLib.instancer import instantiateVariableFont
+
         if fontTools.__version__ != '4.61.1':
             raise RuntimeError('Install the pinned build dependency: python -m pip install fonttools==4.61.1')
         with urllib.request.urlopen(URL, timeout=120) as response:

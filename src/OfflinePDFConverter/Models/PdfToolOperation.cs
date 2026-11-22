@@ -6,5 +6,7 @@ public enum PdfToolOperation
     Split,
     DeletePages,
     ExtractPages,
-    SimpleEdit
+    SimpleEdit,
+    PageLayout,
+    RotatePages
 }

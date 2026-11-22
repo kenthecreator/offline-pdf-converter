@@ -62,6 +62,7 @@ internal static class Program
             PaddleOcrService.Cleanup();
 #endif
             BundledOcrRuntime.Cleanup();
+            OfficePdfService.Cleanup();
         }
     }
 

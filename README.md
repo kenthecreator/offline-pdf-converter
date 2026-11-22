@@ -1,8 +1,8 @@
-# Offline PDF Converter (v5.0)
+# Offline PDF Converter (v5.1)
 
 完全オフライン動作を前提にした、Windows x64／macOS Apple Silicon向けのPDF・画像変換とPDF編集のデスクトップアプリです。[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から配布ZIPを取得できます。
 
-v5.0ではセレクター、操作ボタン、解像度バー、進捗バーにガラス調の描画を採用しています。ライト／ダークのどちらでも利用できます。
+v5.1ではOfficeファイルのPDF変換、最大16 in 1の配置、ページ回転を追加しました。v5.0で導入したセレクター、操作ボタン、解像度バー、進捗バーのガラス調の描画を引き継いでいます。ライト／ダークのどちらでも利用できます。
 
 OCRの画面と仕様は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を参照してください。PDF編集のTXT出力機能は廃止しました。
 
@@ -16,7 +16,7 @@ OCRの画面と仕様は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を�
 - Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
 - ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
-[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v5.0リリース内容](docs/RELEASE_DETAILS_v5.0.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
+[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v5.1リリース内容](docs/RELEASE_DETAILS_v5.1.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
 
 v4.4では、トリミング範囲外の文字によって本文のOCRが省略される問題と、長い日本語が保存時に折り返されない問題を修正しました。v4.3から引き継いだ改善として、ページ番号のみが文字で本文が画像・輪郭線のPDFもOCRできるようにし、小さい日本語を検出前の縮小で失わないよう改善しました。非表示文字層にはNoto Sans Japaneseを内蔵します。実際の配布exeから主要機能と実ウィンドウを検証します。検証条件と未確認事項は[v4.4リリース内容](docs/RELEASE_DETAILS_v4.4.0.md)を参照してください。
 
@@ -65,6 +65,9 @@ WPF/WinUIはWindows専用UIとして有力ですが、クロスプラットフ�
 - 図形の塗り潰し色、境界線の色、境界線の太さ、色なし設定
 - PDF編集プレビューの拡大/縮小、Ctrl+マウスホイール、トラックパッドのピンチ操作
 - Auto（初期設定）でデバイスのライト／ダーク設定に追従。手動切り替えも可能
+- Word・Excel・PowerPointを透かしなしでPDFに変換（.docx・.xlsx・.pptx）
+- 2・4・6・9・16 in 1と、ページごとの移動・拡縮
+- 選択ページまたは全ページを左右に90度回転
 - ドラッグ＆ドロップ
 - 進捗バー、完了メッセージ、分かりやすいエラー表示
 
@@ -84,13 +87,7 @@ offline-pdf-converter/
 
 詳細は [docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md) を参照してください。
 
-Mac・Windowsのv5.0配布物を作成:
-
-```sh
-python3 scripts/build-paddle-edition.py --target both
-```
-
-出力は `dist/paddle-edition/` の `Offline PDF Converter (v5.0)-macOS-arm64.zip` と `Offline PDF Converter (v5.0)-Windows-x64.zip` です。Windows単独の発行には `-p:PaddleOcrEdition=true` を指定してください。旧Tesseract実装は回帰検証用に残しています。
+CIではMac版とWindows版を各OS上で作成します。ローカルビルドは [配布手順](docs/DISTRIBUTION.md) を参照してください。
 
 ## ライセンス
 

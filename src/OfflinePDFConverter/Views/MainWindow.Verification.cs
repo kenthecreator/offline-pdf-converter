@@ -128,6 +128,7 @@ public partial class MainWindow
             var pdf = Directory.GetFiles(imageFolder, "*.pdf").Single();
             using (var doc = UglyToad.PdfPig.PdfDocument.Open(pdf)) Check(doc.NumberOfPages == 1, "GUI image PDF output invalid.");
             checks.Add("image to PDF through the actual Start control and completion dialog");
+            await VerifyV51Async(root, report, checks, Until);
             await AddPdfPathsAsync(new[] { pdf }); SetMode(ConversionMode.PdfTools);
             await Until(() => _pdfPagePreviews.Count == 1);
             SetPdfPreviewDisplay(true); Check(_pdfPagePreviewListScroll.IsVisible, "List preview not visible.");

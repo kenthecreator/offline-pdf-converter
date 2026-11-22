@@ -437,7 +437,7 @@
                 BorderThickness="0"
                 Cursor="Hand"
                 AutomationProperties.Name="表示モード"
-                AutomationProperties.HelpText="PDF編集、PDFと画像、OCR処理を選択します。左右キーとドラッグでも切り替えられます"
+                AutomationProperties.HelpText="PDF編集、PDF変換、OCR処理を選択します。左右キーとドラッグでも切り替えられます"
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnModeSelectorKeyDown">
           <Grid Width="432" Height="68" ColumnDefinitions="144,144,144">
@@ -491,10 +491,10 @@
                          Grid.Column="1"
                          Classes="mode-segment"
                          GroupName="MainMode"
-                         AutomationProperties.Name="PDFと画像"
-                         AutomationProperties.HelpText="PDFと画像の相互変換を表示します"
+                         AutomationProperties.Name="PDF変換"
+                         AutomationProperties.HelpText="PDFと画像の相互変換やWord・Excel・PowerPointのPDF変換を表示します"
                          Click="OnPdfModeClick">
-              <TextBlock x:Name="PdfModeLabel" Text="PDF ↔ 画像">
+              <TextBlock x:Name="PdfModeLabel" Text="PDF変換">
                 <TextBlock.RenderTransform>
                   <TranslateTransform X="0" />
                 </TextBlock.RenderTransform>
@@ -601,6 +601,7 @@
                              FontWeight="Bold"
                              VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="small-action" Content="Officeファイルを追加…" Click="OnOfficeToPdfClick" ToolTip.Tip="Word・Excel・PowerPointをPDFへ変換（.docx・.xlsx・.pptx、ドロップにも対応）" />
                     <Button Classes="small-action" Content="追加" Click="OnAddPdfFilesClick" />
                     <Button Classes="small-action" Content="削除" Click="OnRemovePdfFilesClick" />
                     <Button Classes="small-action" Content="すべて削除" Click="OnClearPdfFilesClick" />
@@ -814,6 +815,7 @@
                              FontWeight="Bold"
                              VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Classes="small-action" Content="Officeファイルを追加…" Click="OnOfficeToPdfClick" ToolTip.Tip="Word・Excel・PowerPointをPDFへ変換（.docx・.xlsx・.pptx、ドロップにも対応）" />
                     <Button Classes="small-action" Content="追加" Click="OnAddImageFilesClick" />
                     <Button Classes="small-action" Content="削除" Click="OnRemoveImageFilesClick" />
                     <Button Classes="small-action" Content="すべて削除" Click="OnClearImageFilesClick" />
@@ -1249,6 +1251,8 @@
                     <ComboBoxItem Content="選択ページを削除" />
                     <ComboBoxItem Content="選択ページのみ出力" />
                     <ComboBoxItem Content="文字・テキストを追加" />
+                    <ComboBoxItem Content="複数ページを1枚に配置" />
+                    <ComboBoxItem Content="ページを回転" />
                   </ComboBox>
                 </StackPanel>
               </Border>

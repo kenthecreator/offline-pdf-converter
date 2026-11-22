@@ -1211,6 +1211,8 @@ public partial class MainWindow : Window
                 PdfToolOperation.DeletePages => ("deleted_pages.pdf", "ページ削除後のPDFを保存"),
                 PdfToolOperation.ExtractPages => ("extracted_pages.pdf", "選択ページのPDFを保存"),
                 PdfToolOperation.SimpleEdit => ("edited.pdf", "編集後のPDFを保存"),
+                PdfToolOperation.PageLayout => ("layout.pdf", "配置したPDFを保存"),
+                PdfToolOperation.RotatePages => ("rotated.pdf", "回転したPDFを保存"),
                 _ => ("merged.pdf", "結合後のPDFを保存")
             };
 
@@ -1562,6 +1564,12 @@ public partial class MainWindow : Window
                 case PdfToolOperation.SimpleEdit:
                     await StartSimpleEditPdfAsync();
                     break;
+                case PdfToolOperation.PageLayout:
+                    await StartPageEditingAsync(layoutMode: true);
+                    break;
+                case PdfToolOperation.RotatePages:
+                    await StartPageEditingAsync(layoutMode: false);
+                    break;
             }
         }
         catch (Exception ex)
@@ -1778,32 +1786,30 @@ public partial class MainWindow : Window
         try
         {
             if (_conversionCts != null) return;
-            if (_conversionCts != null) return;
             var dropped = e.DataTransfer.TryGetFiles();
             if (dropped == null)
             {
                 return;
             }
 
-            var paths = ExpandDroppedPaths(dropped.Select(file => file.TryGetLocalPath()).WhereNotNull());
-
-            if (_mode == ConversionMode.PdfToImage)
-            {
-                await AddPdfPathsAsync(paths);
-            }
-            else if (_mode is ConversionMode.PdfTools or ConversionMode.Ocr)
-            {
-                await AddPdfPathsAsync(paths);
-            }
-            else
-            {
-                AddImagePaths(paths);
-            }
+            await AddDroppedFilesAsync(dropped.Select(file => file.TryGetLocalPath()).WhereNotNull());
         }
         catch (Exception ex)
         {
             if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
         }
+    }
+
+    private async Task AddDroppedFilesAsync(IEnumerable<string> localPaths)
+    {
+        var directPaths = localPaths.ToArray();
+        var paths = ExpandDroppedPaths(directPaths);
+        if (_mode == ConversionMode.ImageToPdf)
+            AddImagePaths(paths);
+        else
+            await AddPdfPathsAsync(paths);
+
+        await ConvertOfficeFilesAsync(directPaths);
     }
 
     private async Task AddPdfPathsAsync(IEnumerable<string> paths)
@@ -2136,17 +2142,18 @@ public partial class MainWindow : Window
             return PdfToolOperation.SimpleEdit;
         }
 
-        return PdfToolOperation.Merge;
+        return value switch
+        {
+            "複数ページを1枚に配置" => PdfToolOperation.PageLayout,
+            "ページを回転" => PdfToolOperation.RotatePages,
+            _ => PdfToolOperation.Merge
+        };
     }
 
     private void UpdatePdfToolOperationUi()
     {
         var operation = GetPdfToolOperation();
-        _pdfToolOutputPdfPanel.IsVisible = operation is PdfToolOperation.Merge
-            or PdfToolOperation.DeletePages
-            or PdfToolOperation.ExtractPages
-            or PdfToolOperation.SimpleEdit
-           ;
+        _pdfToolOutputPdfPanel.IsVisible = operation != PdfToolOperation.Split;
         _pdfToolOutputFolderPanel.IsVisible = operation == PdfToolOperation.Split;
         _pdfPageSelectionPanel.IsVisible = operation is PdfToolOperation.DeletePages or PdfToolOperation.ExtractPages;
         _pdfSimpleEditPanel.IsVisible = operation == PdfToolOperation.SimpleEdit;
@@ -2155,6 +2162,8 @@ public partial class MainWindow : Window
             PdfToolOperation.DeletePages => "削除後のPDF",
             PdfToolOperation.ExtractPages => "選択ページのPDF",
             PdfToolOperation.SimpleEdit => "編集後のPDF",
+            PdfToolOperation.PageLayout => "配置したPDF",
+            PdfToolOperation.RotatePages => "回転したPDF",
             _ => "結合後のPDF"
         };
         _pdfToolOutputPdfTextBox.Watermark = "保存先とPDF名";
@@ -2170,6 +2179,8 @@ public partial class MainWindow : Window
             PdfToolOperation.DeletePages => "deleted_pages.pdf",
             PdfToolOperation.ExtractPages => "extracted_pages.pdf",
             PdfToolOperation.SimpleEdit => "edited.pdf",
+            PdfToolOperation.PageLayout => "layout.pdf",
+            PdfToolOperation.RotatePages => "rotated.pdf",
             _ => "merged.pdf"
         };
         var currentFileName = Path.GetFileName(_pdfToolOutputPdfTextBox.Text ?? string.Empty);
@@ -2178,7 +2189,9 @@ public partial class MainWindow : Window
             "merged.pdf",
             "deleted_pages.pdf",
             "extracted_pages.pdf",
-            "edited.pdf"
+            "edited.pdf",
+            "layout.pdf",
+            "rotated.pdf"
         };
         if (knownDefaultNames.Contains(currentFileName, StringComparer.OrdinalIgnoreCase)
             && !string.Equals(currentFileName, defaultFileName, StringComparison.OrdinalIgnoreCase))
@@ -2211,6 +2224,11 @@ public partial class MainWindow : Window
         }
 
         var operation = GetPdfToolOperation();
+        if (operation is PdfToolOperation.PageLayout or PdfToolOperation.RotatePages)
+        {
+            _pdfPreviewHelpText.Text = "PDFを1つ追加し、「開始」で編集プレビューを開きます。";
+            return;
+        }
         var isPageSelectionMode = operation is PdfToolOperation.DeletePages
             or PdfToolOperation.ExtractPages
            ;

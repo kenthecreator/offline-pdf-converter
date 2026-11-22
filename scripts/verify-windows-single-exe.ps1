@@ -2,7 +2,8 @@ param(
   [Parameter(Mandatory=$true)][string]$ExePath,
   [switch]$BlockNetwork,
   [switch]$VerifyGui,
-  [string]$ReportPath = ''
+  [string]$ReportPath = '',
+  [string]$OfficeFixtures = ''
 )
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path $ExePath).Path
@@ -12,7 +13,7 @@ $rules = @()
 $profiles = @()
 try {
   # Verify the actual distribution filename, including spaces and parentheses.
-  $testName = 'Offline PDF Converter (v5.0).exe'
+  $testName = [IO.Path]::GetFileName($source)
   $isolatedExe = Join-Path $testDirectory $testName
   Copy-Item $source $isolatedExe
   if ((Get-ChildItem $testDirectory -File).Count -ne 1) { throw 'Expected only one executable.' }
@@ -40,11 +41,14 @@ try {
   $previousPath = $env:PATH
   $previousTessdata = $env:TESSDATA_PREFIX
   $previousBundleDirectory = $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR
+  $previousOfficeFixtures = $env:OPC_OFFICE_VERIFY_FIXTURES
+  $resolvedOfficeFixtures = if ($OfficeFixtures) { (Resolve-Path $OfficeFixtures).Path } else { $null }
   try {
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     $env:TESSDATA_PREFIX = Join-Path $testDirectory 'missing-data'
     # A fresh private directory avoids accidentally testing an older extracted bundle.
     $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $testDirectory 'bundle'
+    $env:OPC_OFFICE_VERIFY_FIXTURES = $resolvedOfficeFixtures
     $mode = if ($VerifyGui) { '--verify-gui' } else { '--verify-offline' }
     $process = Start-Process $isolatedExe -WorkingDirectory $testDirectory -ArgumentList @($mode, ('"' + $report + '"')) -PassThru
     if (-not $process.WaitForExit(300000)) { $process.Kill(); throw 'Self-test timed out.' }
@@ -56,13 +60,22 @@ try {
     $result | Add-Member -NotePropertyName networkIsolation -NotePropertyValue $(if ($BlockNetwork) { 'Windows Firewall: tested exe blocked inbound and outbound on all profiles' } else { 'not enforced' })
     $result | Add-Member -NotePropertyName freshBundleExtraction -NotePropertyValue $true
     $result | ConvertTo-Json -Depth 8 | Write-Output
+    $officeEvidence = [IO.Path]::ChangeExtension($report, ".office")
+    if ($VerifyGui -and $OfficeFixtures -and @(Get-ChildItem $officeEvidence -Filter '*.pdf').Count -ne 3) {
+      throw 'Expected three Office PDF outputs from the tested exe.'
+    }
     if ($ReportPath) {
       $destination = [IO.Path]::GetFullPath($ReportPath)
       New-Item -ItemType Directory -Force (Split-Path $destination -Parent) | Out-Null
       $result | ConvertTo-Json -Depth 8 | Set-Content $destination -Encoding utf8
       if ($VerifyGui -and (Test-Path ([IO.Path]::ChangeExtension($report, ".png")))) { Copy-Item ([IO.Path]::ChangeExtension($report, ".png")) ([IO.Path]::ChangeExtension($destination, ".png")) }
+      if (Test-Path $officeEvidence) {
+        $evidenceDestination = [IO.Path]::ChangeExtension($destination, ".office")
+        New-Item -ItemType Directory -Force $evidenceDestination | Out-Null
+        Copy-Item (Join-Path $officeEvidence '*.pdf') $evidenceDestination
+      }
     }
-  } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory }
+  } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory; $env:OPC_OFFICE_VERIFY_FIXTURES = $previousOfficeFixtures }
 } finally {
   foreach ($name in $rules) { Remove-NetFirewallRule -DisplayName $name -ErrorAction Continue }
   foreach ($profile in $profiles) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Continue }
