@@ -70,8 +70,11 @@ public partial class MainWindow
                 Check(_modePillGlass is { IsAvailable: true, HasRendered: true },
                     "Skia did not draw the mode selection refraction.");
             }
-            Check(PillButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
+            Check(ButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
                 "Incorrect glass decoration on the main Start button.");
+            Check(_pdfToolOperationCombo.GetVisualDescendants().OfType<Border>()
+                .Any(border => border.Name == "Background" && border.Child is ButtonGlass) == glassEnabled,
+                "Incorrect glass decoration on the operation dropdown.");
             checks.Add($"five selector pills and the main Start button: {Program.GlassTrial}");
             for (var theme = 0; theme < 3; theme++)
             {
@@ -116,7 +119,7 @@ public partial class MainWindow
             var editor = desktop.Windows.Single(w => w != this);
             var done = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Content?.ToString() == "完了");
             await Until(() => done.Bounds.Width > 0);
-            Check(PillButtonGlass.IsAppliedTo(done) == glassEnabled,
+            Check(ButtonGlass.IsAppliedTo(done) == glassEnabled,
                 "Incorrect glass decoration on the editor Done button.");
             var editFont = editor.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "EditFontSizeTextBox");
             var addText = editor.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "AddEditorTextButton");
@@ -157,10 +160,11 @@ public partial class MainWindow
 
             SetMode(ConversionMode.Ocr);
             await Until(() => _ocrBeforePages.Count == 1);
-            Check(!this.GetVisualDescendants().OfType<Button>().Any(button =>
-                    button.CornerRadius.TopLeft == 12 && button.Bounds.Height > 26 &&
-                    PillButtonGlass.IsAppliedTo(button)),
-                "Glass was applied to a rounded-rectangle preview button.");
+            Button? thumbnail = null;
+            await Until(() => (thumbnail = this.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(button => button.IsEffectivelyVisible && button.CornerRadius.TopLeft == 12 && button.Bounds.Height > 26)) is not null);
+            Check(ButtonGlass.IsAppliedTo(thumbnail!) == glassEnabled,
+                "Incorrect glass decoration on the rounded-rectangle OCR preview button.");
             Required<RadioButton>("OcrMixedChoice").IsChecked = true;
             var ocr = Directory.CreateDirectory(Path.Combine(root, "ocr-output")).FullName;
             Required<TextBox>("OcrOutputFolderTextBox").Text = ocr;

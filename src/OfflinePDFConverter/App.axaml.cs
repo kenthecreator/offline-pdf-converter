@@ -23,7 +23,8 @@ public partial class App : Application
             RequestedThemeVariant = isSystemDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
             var window = new MainWindow(isSystemDarkTheme);
             if (window.PillGlassEnabled)
-                Styles.Add(PillButtonGlass.CreateStyle());
+                foreach (var style in ButtonGlass.CreateStyles())
+                    Styles.Add(style);
             desktop.MainWindow = window;
             if (Program.GuiVerificationReport is { } report)
             {

@@ -280,8 +280,9 @@ public partial class MainWindow
                 float slope = 1.55 * pow(bevel, 1.28);
                 float3 normal = normalize(float3(outward * slope, 1.0));
                 float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 1.0 / 1.47);
+                float lightSurface = smoothstep(0.48, 0.82, surround.r);
                 // Back-project the ray across the thickness of the rounded bevel.
-                float2 offset = -ray.xy * (13.0 / max(-ray.z, 0.2));
+                float2 offset = -ray.xy * (mix(13.0, 17.0, lightSurface) / max(-ray.z, 0.2));
 
                 float2 samplePoint = point + origin + offset;
                 float3 backdrop = trackSurface(samplePoint);
@@ -289,13 +290,16 @@ public partial class MainWindow
                 float2 spread = outward * 1.45;
                 backdrop = mix(backdrop, (trackSurface(samplePoint + spread) +
                     trackSurface(samplePoint - spread)) * 0.5, 0.27);
-                float3 color = mix(backdrop, pillColor, 0.37);
+                float3 color = mix(backdrop, pillColor, mix(0.37, 0.18, lightSurface));
 
                 float light = dot(outward, normalize(float2(-0.53, -0.85)));
-                float glint = exp(-abs(distance + 1.5) * 0.85);
-                float reflection = glint * (0.06 + 0.53 * pow(max(light, 0.0), 6.0)
+                float glint = exp(-abs(distance + mix(1.5, 2.05, lightSurface)) * 0.85);
+                float reflection = glint * (mix(0.06, 0.12, lightSurface) +
+                    mix(0.53, 0.78, lightSurface) * pow(max(light, 0.0), 6.0)
                     + 0.22 * pow(max(-light, 0.0), 11.0));
-                float shade = exp(-abs(distance + 0.45) * 1.45) * 0.18;
+                float shade = exp(-abs(distance + 0.45) * 1.45) * mix(0.18, 0.34, lightSurface);
+                shade += lightSurface * exp(-abs(distance + 3.6) * 0.70)
+                    * (0.027 + 0.073 * max(-light, 0.0));
                 color = mix(color, float3(0.0), shade);
                 color = mix(color, float3(1.0), reflection);
                 return half4(color * mask, mask);
