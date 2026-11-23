@@ -136,7 +136,7 @@ jobs:
           merge-multiple: true
       - name: Compare page size, Japanese text, and graphic and text positions
         run: |
-          python -m pip install pypdfium2==5.23.0 Pillow==13.0.0
+          python -m pip install pypdfium2==5.13.0 Pillow==13.0.0
           python scripts/verify-office-release.py reports/macos-gui.office
           python scripts/verify-office-release.py reports/windows2022-gui.office --reference reports/macos-gui.office
           python scripts/verify-office-release.py reports/windows2025-gui.office --reference reports/macos-gui.office
