@@ -34,7 +34,7 @@ public partial class MainWindow
         _ocrModeButton = Required<RadioButton>("OcrModeButton");
         _startOcrButton = Required<Button>("StartOcrButton");
         _ocrFilesList.ItemsSource = _pdfFiles;
-        Required<TextBox>("OcrOutputFolderTextBox").Text = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        Required<TextBox>("OcrOutputFolderTextBox").Text = DefaultOutputFolder;
         Required<TextBlock>("OcrEngineDescription").Text = AppIdentity.OcrDescription;
         Required<RadioButton>("OcrEnglishChoice").Content = AppIdentity.OcrLanguages[2];
         InitializeOcrPreviewMotion();
@@ -163,8 +163,14 @@ public partial class MainWindow
     {
         try
         {
-            var selected = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "PDFの保存先", AllowMultiple = false });
-            if (selected.FirstOrDefault()?.TryGetLocalPath() is { } path) Required<TextBox>("OcrOutputFolderTextBox").Text = path;
+            var output = Required<TextBox>("OcrOutputFolderTextBox");
+            var selected = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "PDFの保存先",
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(output.Text),
+                AllowMultiple = false
+            });
+            if (selected.FirstOrDefault()?.TryGetLocalPath() is { } path) output.Text = path;
         }
         catch (Exception ex)
         {

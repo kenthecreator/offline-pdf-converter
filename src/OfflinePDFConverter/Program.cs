@@ -29,6 +29,7 @@ internal static class Program
         const string glassFlag = "--trial-liquid-glass";
         const string offFlag = "--trial-liquid-glass=off";
         const string fallbackFlag = "--trial-liquid-glass=simulate-failure";
+        const string refractionFlag = "--trial-live-refraction";
         if (args.Contains(fallbackFlag))
             GlassTrial = ModePillGlassTrial.SimulateFailure;
         else if (args.Contains(offFlag))
@@ -36,7 +37,7 @@ internal static class Program
         else if (args.Contains(glassFlag))
             GlassTrial = ModePillGlassTrial.On;
 
-        args = args.Where(arg => arg != glassFlag && arg != offFlag && arg != fallbackFlag).ToArray();
+        args = args.Where(arg => arg != glassFlag && arg != offFlag && arg != fallbackFlag && arg != refractionFlag).ToArray();
 
         if (args.Length == 2 && args[0] == "--verify-offline")
         {

@@ -6,10 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>OfflinePDFConverter</AssemblyName>
     <RootNamespace>OfflinePDFConverter</RootNamespace>
-    <Product>Offline PDF Converter (v5.3)</Product>
-    <Version>5.3.0</Version>
-    <AssemblyVersion>5.3.0.0</AssemblyVersion>
-    <FileVersion>5.3.0.0</FileVersion>
+    <Product>Offline PDF Converter (v5.4)</Product>
+    <Version>5.4.0</Version>
+    <AssemblyVersion>5.4.0.0</AssemblyVersion>
+    <FileVersion>5.4.0.0</FileVersion>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
@@ -22,7 +22,7 @@
   <PropertyGroup Condition="'$(OpcPrototype)' == 'true'">
     <Product>Offline PDF Converter (v5.1 Prototype)</Product>
     <Version>5.1.0-alpha.6</Version>
-    <AssemblyVersion>5.3.0.0</AssemblyVersion>
+    <AssemblyVersion>5.4.0.0</AssemblyVersion>
     <FileVersion>5.1.0.6</FileVersion>
     <DefineConstants>$(DefineConstants);V51_PROTOTYPE</DefineConstants>
   </PropertyGroup>

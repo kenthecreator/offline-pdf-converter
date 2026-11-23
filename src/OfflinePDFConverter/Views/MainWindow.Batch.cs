@@ -63,7 +63,7 @@ public partial class MainWindow
     }
     private void SetBusy(bool busy)
     {
-        foreach (var panel in new[] { "PdfPanel", "ImagePanel", "PdfToolsPanel" }) Required<Grid>(panel).IsEnabled = !busy;
+        foreach (var panel in new[] { "PdfPanel", "ImagePanel", "OfficePanel", "PdfToolsPanel" }) Required<Grid>(panel).IsEnabled = !busy;
         if (this.FindControl<Button>("CancelConversionButton") is { } cancel) cancel.IsVisible = busy;
         _startOcrButton.IsEnabled = !busy && _pdfFiles.Count > 0;
         _ocrModeButton.IsEnabled = !busy;

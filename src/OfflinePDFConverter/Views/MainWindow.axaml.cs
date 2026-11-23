@@ -30,9 +30,11 @@ namespace OfflinePDFConverter.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly string DefaultOutputFolder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
     private const double ModeSegmentWidth = 144;
     private const double ModeDragMaximum = ModeSegmentWidth * 2;
-    private const double DirectionDragMaximum = 125;
+    private const double DirectionSegmentWidth = 133;
+    private const double DirectionDragMaximum = 2 * DirectionSegmentWidth;
     private const double PreviewViewDragMaximum = 72;
     private const double ThemeSegmentWidth = 50;
     private const double ThemeDragMaximum = ThemeSegmentWidth * 2;
@@ -134,6 +136,7 @@ public partial class MainWindow : Window
     private Grid _directionSelectorHost = null!;
     private Border _directionSelectorSwitch = null!;
     private RadioButton _pdfToImageDirectionButton = null!;
+    private RadioButton _officeToPdfDirectionButton = null!;
     private RadioButton _imageToPdfDirectionButton = null!;
     private TextBlock _pdfToImageDirectionLabel = null!;
     private TextBlock _imageToPdfDirectionLabel = null!;
@@ -244,14 +247,13 @@ public partial class MainWindow : Window
         _pdfPagePreviewListItems.ItemsSource = _pdfPagePreviews;
         _imageFilesList.ItemsSource = _imageFiles;
 
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        _pdfOutputFolderTextBox.Text = desktop;
+        _pdfOutputFolderTextBox.Text = DefaultOutputFolder;
         _pdfOutputBaseNameTextBox.Text = "converted";
-        _imageOutputPdfTextBox.Text = Path.Combine(desktop, "converted_images.pdf");
+        _imageOutputPdfTextBox.Text = Path.Combine(DefaultOutputFolder, "converted_images.pdf");
         _imageOutputBaseNameTextBox.Text = "converted_images";
-        _pdfToolOutputFolderTextBox.Text = desktop;
+        _pdfToolOutputFolderTextBox.Text = DefaultOutputFolder;
         _pdfToolOutputBaseNameTextBox.Text = "split";
-        _pdfToolOutputPdfTextBox.Text = Path.Combine(desktop, "merged.pdf");
+        _pdfToolOutputPdfTextBox.Text = Path.Combine(DefaultOutputFolder, "merged.pdf");
         _pdfToolOutputPdfBaseNameTextBox.Text = "merged";
         UpdatePdfToolOperationUi();
         SetMode(ConversionMode.PdfTools);
@@ -300,6 +302,7 @@ public partial class MainWindow : Window
         _directionSelectorHost = Required<Grid>("DirectionSelectorHost");
         _directionSelectorSwitch = Required<Border>("DirectionSelectorSwitch");
         _pdfToImageDirectionButton = Required<RadioButton>("PdfToImageDirectionButton");
+        _officeToPdfDirectionButton = Required<RadioButton>("OfficeToPdfDirectionButton");
         _imageToPdfDirectionButton = Required<RadioButton>("ImageToPdfDirectionButton");
         _pdfToImageDirectionLabel = Required<TextBlock>("PdfToImageDirectionLabel");
         _imageToPdfDirectionLabel = Required<TextBlock>("ImageToPdfDirectionLabel");
@@ -488,6 +491,8 @@ public partial class MainWindow : Window
     {
         SetMode(ConversionMode.ImageToPdf);
     }
+
+    private void OnOfficeToPdfDirectionClick(object? sender, RoutedEventArgs e) => SetMode(ConversionMode.OfficeToPdf);
 
     private void OnPdfDpiSliderKeyDown(object? sender, KeyEventArgs e)
     {
@@ -699,24 +704,46 @@ public partial class MainWindow : Window
         SelectCategory(index);
     }
 
-    private void OnDirectionSelectorKeyDown(object? sender, KeyEventArgs e)
+    private int GetDirectionIndex() => _mode switch
     {
-        switch (e.Key)
+        ConversionMode.ImageToPdf => 1,
+        ConversionMode.OfficeToPdf => 2,
+        _ => 0
+    };
+
+    private void SelectDirection(int index)
+    {
+        switch (Math.Clamp(index, 0, 2))
         {
-            case Key.Left:
-            case Key.Up:
-            case Key.Home:
+            case 0:
                 SetMode(ConversionMode.PdfToImage);
                 _pdfToImageDirectionButton.Focus();
-                e.Handled = true;
                 break;
-            case Key.Right:
-            case Key.Down:
-            case Key.End:
+            case 1:
                 SetMode(ConversionMode.ImageToPdf);
                 _imageToPdfDirectionButton.Focus();
-                e.Handled = true;
                 break;
+            case 2:
+                SetMode(ConversionMode.OfficeToPdf);
+                _officeToPdfDirectionButton.Focus();
+                break;
+        }
+    }
+
+    private void OnDirectionSelectorKeyDown(object? sender, KeyEventArgs e)
+    {
+        int? index = e.Key switch
+        {
+            Key.Left or Key.Up => GetDirectionIndex() - 1,
+            Key.Right or Key.Down => GetDirectionIndex() + 1,
+            Key.Home => 0,
+            Key.End => 2,
+            _ => null
+        };
+        if (index is { } direction)
+        {
+            SelectDirection(direction);
+            e.Handled = true;
         }
     }
 
@@ -760,10 +787,10 @@ public partial class MainWindow : Window
         }
 
         var releaseX = e.GetPosition(_directionSelectorSwitch).X;
-        var targetPdfToImage = _directionDragMoved
-            ? _directionSelectionTransform.X < DirectionDragMaximum / 2
-            : releaseX < _directionSelectorSwitch.Bounds.Width / 2;
-        FinishDirectionDrag(targetPdfToImage);
+        var index = _directionDragMoved
+            ? (int)Math.Round(_directionSelectionTransform.X / DirectionSegmentWidth)
+            : (int)Math.Floor((releaseX - 2) / DirectionSegmentWidth);
+        FinishDirectionDrag(index);
         e.Pointer.Capture(null);
         e.Handled = true;
     }
@@ -772,16 +799,15 @@ public partial class MainWindow : Window
     {
         if (_directionDragActive)
         {
-            FinishDirectionDrag(_directionSelectionTransform.X < DirectionDragMaximum / 2);
+            FinishDirectionDrag((int)Math.Round(_directionSelectionTransform.X / DirectionSegmentWidth));
         }
     }
 
-    private void FinishDirectionDrag(bool selectPdfToImage)
+    private void FinishDirectionDrag(int index)
     {
         _directionDragActive = false;
         _directionSelectionTransform.Transitions = _directionSelectionTransitions;
-        SetMode(selectPdfToImage ? ConversionMode.PdfToImage : ConversionMode.ImageToPdf);
-        (selectPdfToImage ? _pdfToImageDirectionButton : _imageToPdfDirectionButton).Focus();
+        SelectDirection(index);
     }
 
     private void OnThemeSwitchPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -997,23 +1023,25 @@ public partial class MainWindow : Window
         if (mode != ConversionMode.Ocr) CancelOcrPreview();
         _pdfPanel.IsVisible = mode == ConversionMode.PdfToImage;
         _imagePanel.IsVisible = mode == ConversionMode.ImageToPdf;
+        Required<Grid>("OfficePanel").IsVisible = mode == ConversionMode.OfficeToPdf;
         _pdfToolsPanel.IsVisible = mode == ConversionMode.PdfTools;
         _ocrPanel.IsVisible = mode == ConversionMode.Ocr;
         Required<Grid>("ActionFooter").ColumnDefinitions[1].Width = new GridLength(mode == ConversionMode.Ocr ? 300 : 240);
-        _directionSelectorHost.IsVisible = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
+        _directionSelectorHost.IsVisible = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf or ConversionMode.OfficeToPdf;
         _startOcrButton.IsVisible = mode == ConversionMode.Ocr;
         _startPdfButton.IsVisible = mode == ConversionMode.PdfToImage;
         _startImageButton.IsVisible = mode == ConversionMode.ImageToPdf;
         _startPdfToolButton.IsVisible = mode == ConversionMode.PdfTools;
         var isPdfToolsMode = mode == ConversionMode.PdfTools;
         _pdfToolsModeButton.IsChecked = isPdfToolsMode;
-        _pdfModeButton.IsChecked = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
+        _pdfModeButton.IsChecked = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf or ConversionMode.OfficeToPdf;
         _ocrModeButton.IsChecked = mode == ConversionMode.Ocr;
         _modeSelectionTransform.X = GetCategoryIndex() * ModeSegmentWidth;
-        var isPdfToImage = mode != ConversionMode.ImageToPdf;
-        _pdfToImageDirectionButton.IsChecked = isPdfToImage;
-        _imageToPdfDirectionButton.IsChecked = !isPdfToImage;
-        _directionSelectionTransform.X = isPdfToImage ? 0 : DirectionDragMaximum;
+        var directionIndex = GetDirectionIndex();
+        _pdfToImageDirectionButton.IsChecked = directionIndex == 0;
+        _imageToPdfDirectionButton.IsChecked = directionIndex == 1;
+        _officeToPdfDirectionButton.IsChecked = directionIndex == 2;
+        _directionSelectionTransform.X = directionIndex * DirectionSegmentWidth;
         SetStatus(null);
 
         if (mode == ConversionMode.PdfTools)
@@ -1136,6 +1164,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task<IStorageFolder?> GetOutputPickerLocationAsync(string? folder)
+    {
+        if (!string.IsNullOrWhiteSpace(folder) && Path.IsPathFullyQualified(folder) &&
+            await StorageProvider.TryGetFolderFromPathAsync(folder) is { } selected)
+            return selected;
+        return await StorageProvider.TryGetWellKnownFolderAsync(WellKnownFolder.Desktop);
+    }
+
     private async void OnSelectPdfOutputFolderClick(object? sender, RoutedEventArgs e)
     {
         try
@@ -1143,6 +1179,7 @@ public partial class MainWindow : Window
             var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "画像の出力先フォルダを選択",
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(_pdfOutputFolderTextBox.Text),
                 AllowMultiple = false
             });
 
@@ -1168,6 +1205,7 @@ public partial class MainWindow : Window
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "出力PDFを保存",
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(Path.GetDirectoryName(_imageOutputPdfTextBox.Text)),
                 SuggestedFileName = $"{suggestedBaseName}.pdf",
                 DefaultExtension = "pdf",
                 FileTypeChoices = new[] { PdfFileType }
@@ -1211,6 +1249,7 @@ public partial class MainWindow : Window
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = title,
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(Path.GetDirectoryName(_pdfToolOutputPdfTextBox.Text)),
                 SuggestedFileName = suggestedName,
                 DefaultExtension = "pdf",
                 FileTypeChoices = new[] { PdfFileType }
@@ -1236,6 +1275,7 @@ public partial class MainWindow : Window
             var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "分割したPDFの出力先フォルダを選択",
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(_pdfToolOutputFolderTextBox.Text),
                 AllowMultiple = false
             });
 
@@ -1790,13 +1830,17 @@ public partial class MainWindow : Window
     private async Task AddDroppedFilesAsync(IEnumerable<string> localPaths)
     {
         var directPaths = localPaths.ToArray();
+        if (_mode == ConversionMode.OfficeToPdf)
+        {
+            await ConvertOfficeFilesAsync(directPaths);
+            return;
+        }
+
         var paths = ExpandDroppedPaths(directPaths);
         if (_mode == ConversionMode.ImageToPdf)
             AddImagePaths(paths);
         else
             await AddPdfPathsAsync(paths);
-
-        await ConvertOfficeFilesAsync(directPaths);
     }
 
     private async Task AddPdfPathsAsync(IEnumerable<string> paths)
@@ -2183,9 +2227,9 @@ public partial class MainWindow : Window
         if (knownDefaultNames.Contains(currentFileName, StringComparer.OrdinalIgnoreCase)
             && !string.Equals(currentFileName, defaultFileName, StringComparison.OrdinalIgnoreCase))
         {
+            var directory = Path.GetDirectoryName(_pdfToolOutputPdfTextBox.Text);
             _pdfToolOutputPdfTextBox.Text = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                defaultFileName);
+                string.IsNullOrWhiteSpace(directory) ? DefaultOutputFolder : directory, defaultFileName);
             _pdfToolOutputPdfBaseNameTextBox.Text = Path.GetFileNameWithoutExtension(defaultFileName);
         }
     }
@@ -2560,7 +2604,7 @@ public partial class MainWindow : Window
         var directory = Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(directory))
         {
-            directory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            directory = DefaultOutputFolder;
         }
 
         var desiredPath = Path.Combine(directory, $"{FileNameHelper.SafeBaseName(outputBaseName)}.pdf");

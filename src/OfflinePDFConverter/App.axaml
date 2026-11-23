@@ -1,8 +1,76 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:OfflinePDFConverter.Views"
              x:Class="OfflinePDFConverter.App"
              RequestedThemeVariant="Default">
+  <Application.Resources>
+    <ControlTheme x:Key="PanelScrollThumbTheme" TargetType="views:PanelScrollThumb">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent">
+            <Border Name="PanelScrollFace" Background="{DynamicResource ScrollBarPanningThumbBackground}"
+                    CornerRadius="999" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:vertical">
+        <Setter Property="MinHeight" Value="18" />
+      </Style>
+      <Style Selector="^:horizontal">
+        <Setter Property="MinWidth" Value="18" />
+      </Style>
+      <Style Selector="^:vertical /template/ Border#PanelScrollFace">
+        <Setter Property="Width" Value="3" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="^:horizontal /template/ Border#PanelScrollFace">
+        <Setter Property="Height" Value="3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="^:vertical:pointerover /template/ Border#PanelScrollFace">
+        <Setter Property="Width" Value="5" />
+      </Style>
+      <Style Selector="^:horizontal:pointerover /template/ Border#PanelScrollFace">
+        <Setter Property="Height" Value="5" />
+      </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="PanelScrollBar" TargetType="ScrollBar">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Track Name="PanelScrollTrack"
+                 Orientation="{TemplateBinding Orientation}"
+                 Minimum="{TemplateBinding Minimum}"
+                 Maximum="{TemplateBinding Maximum}"
+                 Value="{TemplateBinding Value, Mode=TwoWay}"
+                 ViewportSize="{TemplateBinding ViewportSize}"
+                 DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}">
+            <views:PanelScrollThumb Theme="{StaticResource PanelScrollThumbTheme}" Focusable="False" />
+          </Track>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:vertical /template/ Track#PanelScrollTrack">
+        <Setter Property="Width" Value="9" />
+        <Setter Property="Margin" Value="0,5" />
+        <Setter Property="IsDirectionReversed" Value="True" />
+      </Style>
+      <Style Selector="^:horizontal /template/ Track#PanelScrollTrack">
+        <Setter Property="Height" Value="9" />
+        <Setter Property="Margin" Value="5,0" />
+      </Style>
+    </ControlTheme>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="ScrollViewer">
+      <Setter Property="AllowAutoHide" Value="True" />
+    </Style>
+    <Style Selector="ScrollViewer /template/ ScrollBar">
+      <Setter Property="Theme" Value="{StaticResource PanelScrollBar}" />
+    </Style>
+    <Style Selector="ScrollViewer /template/ Panel#PART_ScrollBarsSeparator">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
   </Application.Styles>
 </Application>

@@ -9,6 +9,9 @@ namespace OfflinePDFConverter.Views;
 internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush background) : IDisposable
 {
     private bool _disposed;
+    private SKRuntimeEffect? _scrollEffect;
+    private bool _scrollEffectUnavailable;
+    private readonly SKShader _emptyLabels = SKShader.CreateColor(SKColors.Transparent);
 
     internal SolidColorBrush Background { get; } = background;
 
@@ -30,7 +33,9 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
     }
 
     public bool Draw(DrawingContext context, Size size, Size trackSize, Vector origin,
-        Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw, CornerRadius? cornerRadius = null)
+        Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw,
+        CornerRadius? cornerRadius = null, SKShader? labels = null, Vector labelsOffset = default,
+        float labelRefraction = 0)
     {
         if (_disposed)
             return false;
@@ -52,9 +57,14 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 ["pillColor"] = Rgb(surface),
                 ["rimOnly"] = rimOnly ? 1f : 0f,
                 ["roundedRectangle"] = cornerRadius.HasValue ? 1f : 0f,
-                ["localRadii"] = radii
+                ["localRadii"] = radii,
+                ["hasLabels"] = labels is null ? 0f : 1f,
+                ["labelsOffset"] = new[] { (float)labelsOffset.X, (float)labelsOffset.Y },
+                ["labelRefraction"] = labelRefraction
             };
-            if (effect.ToShader(uniforms) is not { } shader)
+            var children = new SKRuntimeEffectChildren(effect);
+            children.Add("labels", labels ?? _emptyLabels);
+            if (effect.ToShader(uniforms, children) is not { } shader)
                 return false;
 
             var operation = new DrawOperation(new Rect(size), shader, onDraw);
@@ -78,6 +88,60 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
 
     private static float[] Rgb(Color color) => new[] { color.R / 255f, color.G / 255f, color.B / 255f };
 
+    internal bool DrawScrollEdges(DrawingContext context, Rect viewport, double drawableWidth, double band,
+        SKShader scene, Color panelColor, float top, float bottom, Action<bool> onDraw)
+    {
+        if (_disposed || _scrollEffectUnavailable)
+            return false;
+
+        try
+        {
+            if (_scrollEffect is null)
+            {
+                _scrollEffect = SKRuntimeEffect.CreateShader(ScrollShaderSource, out var error);
+                if (_scrollEffect is null)
+                {
+                    _scrollEffectUnavailable = true;
+                    System.Diagnostics.Trace.WriteLine($"Scroll glass shader compilation failed: {error}");
+                    return false;
+                }
+            }
+
+            using var uniforms = new SKRuntimeEffectUniforms(_scrollEffect)
+            {
+                ["viewportOrigin"] = new[] { (float)viewport.X, (float)viewport.Y },
+                ["viewportHeight"] = (float)viewport.Height,
+                ["drawableWidth"] = (float)drawableWidth,
+                ["band"] = (float)band,
+                ["panelColor"] = Rgb(panelColor),
+                ["strength"] = new[] { top, bottom }
+            };
+            var children = new SKRuntimeEffectChildren(_scrollEffect);
+            children.Add("scene", scene);
+            if (_scrollEffect.ToShader(uniforms, children) is not { } shader)
+                return false;
+
+            var near = new Rect(viewport.X, viewport.Y, drawableWidth, band);
+            var far = new Rect(viewport.X, viewport.Bottom - band, drawableWidth, band);
+            var operation = new DrawOperation(top > 0 ? near : far, shader, onDraw, top > 0 && bottom > 0 ? far : null);
+            try
+            {
+                context.Custom(operation);
+            }
+            catch
+            {
+                operation.Dispose();
+                throw;
+            }
+            return true;
+        }
+        catch (Exception error) when (IsDrawingFailure(error))
+        {
+            System.Diagnostics.Trace.WriteLine($"Scroll glass drawing unavailable: {error.Message}");
+            return false;
+        }
+    }
+
     private static bool IsDrawingFailure(Exception error) =>
         error is InvalidOperationException or ArgumentException or NotSupportedException
             or DllNotFoundException or EntryPointNotFoundException or TypeInitializationException;
@@ -87,12 +151,14 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         if (_disposed)
             return;
         _disposed = true;
+        _emptyLabels.Dispose();
+        _scrollEffect?.Dispose();
         effect.Dispose();
     }
 
-    private sealed class DrawOperation(Rect bounds, SKShader shader, Action<bool> onDraw) : ICustomDrawOperation
+    private sealed class DrawOperation(Rect bounds, SKShader shader, Action<bool> onDraw, Rect? farBand = null) : ICustomDrawOperation
     {
-        public Rect Bounds => bounds;
+        public Rect Bounds => farBand is { } other ? bounds.Union(other) : bounds;
 
         public bool HitTest(Point point) => false;
 
@@ -111,8 +177,13 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 }
 
                 using var paint = new SKPaint { Shader = shader };
-                lease.SkCanvas.DrawRect(SKRect.Create((float)bounds.Width, (float)bounds.Height), paint);
+                Draw(bounds);
+                if (farBand is { } other)
+                    Draw(other);
                 onDraw(true);
+
+                void Draw(Rect rect) => lease.SkCanvas.DrawRect(
+                    SKRect.Create((float)rect.X, (float)rect.Y, (float)rect.Width, (float)rect.Height), paint);
             }
             catch (Exception error) when (IsDrawingFailure(error))
             {
@@ -123,6 +194,40 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
 
         public void Dispose() => shader.Dispose();
     }
+
+    private const string ScrollShaderSource = """
+        uniform shader scene;
+        uniform float2 viewportOrigin;
+        uniform float viewportHeight;
+        uniform float drawableWidth;
+        uniform float band;
+        uniform float3 panelColor;
+        uniform float2 strength;
+
+        half4 main(float2 point) {
+            float2 p = point - viewportOrigin;
+            bool top = p.y < viewportHeight * 0.5;
+            float distance = top ? p.y : viewportHeight - p.y;
+            float amount = top ? strength.x : strength.y;
+            float bevel = clamp(1.0 - distance / band, 0.0, 1.0);
+            float slope = (top ? 1.0 : -1.0) * 1.55 * pow(bevel, 1.28);
+            float3 normal = normalize(float3(0.0, slope, 1.0));
+            float3 ray = refract(float3(0.0, 0.0, -1.0), normal, 1.0 / 1.47);
+            // Read inward from the clipped viewport edge and match the original at the inner boundary.
+            float bend = smoothstep(0.18, 0.58, bevel);
+            half4 original = scene.eval(p);
+            p.y = clamp(p.y - ray.y * (15.0 * bend * amount / max(-ray.z, 0.2)), 0.5, viewportHeight - 0.5);
+            half4 image = scene.eval(p);
+            // Leave the panel's live background and frame alone wherever the sample did not change.
+            half4 difference = abs(image - original);
+            float changed = max(max(difference.r, difference.g), max(difference.b, difference.a));
+            float3 surface = image.rgb + panelColor * (1.0 - image.a);
+            float side = min(p.x, drawableWidth - p.x);
+            float alpha = smoothstep(0.015, 0.13, changed)
+                * smoothstep(1.25, 3.6, distance) * smoothstep(1.25, 5.0, side);
+            return half4(surface * alpha, alpha);
+        }
+        """;
 
     // Evaluate the existing solid track over the header at the refracted position.
     private const string ShaderSource = """
@@ -135,6 +240,10 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         uniform float rimOnly;
         uniform float roundedRectangle;
         uniform float4 localRadii;
+        uniform shader labels;
+        uniform float hasLabels;
+        uniform float2 labelsOffset;
+        uniform float labelRefraction;
 
         float2 fromCapsuleAxis(float2 point, float2 size) {
             float2 p = point - size * 0.5;
@@ -233,6 +342,12 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 return half4(float3(response > 0.0 ? alpha : 0.0), alpha);
             }
 
+            if (hasLabels > 0.5) {
+                // Match the unrefracted text at the outer edge, where the two layers meet.
+                float edgeFade = smoothstep(0.0, 5.0, -distance);
+                half4 text = labels.eval(point + origin + labelsOffset + offset * (labelRefraction * edgeFade));
+                color = color * (1.0 - text.a) + text.rgb;
+            }
             return half4(color * mask, mask);
         }
         """;

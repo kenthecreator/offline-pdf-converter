@@ -494,37 +494,39 @@
               </Border.RenderTransform>
             </Border>
 
-            <RadioButton x:Name="PdfToolsModeButton"
-                         Grid.Column="0"
-                         Classes="mode-segment"
-                         GroupName="MainMode"
-                         IsChecked="True"
-                         AutomationProperties.Name="PDF編集"
-                         AutomationProperties.HelpText="PDFの結合、分割、ページ編集を表示します"
-                         Click="OnPdfToolsModeClick">
-              <TextBlock x:Name="PdfToolsModeLabel" Text="PDF編集">
-                <TextBlock.RenderTransform>
-                  <TranslateTransform X="4" />
-                </TextBlock.RenderTransform>
-              </TextBlock>
-            </RadioButton>
-            <RadioButton x:Name="PdfModeButton"
-                         Grid.Column="1"
-                         Classes="mode-segment"
-                         GroupName="MainMode"
-                         AutomationProperties.Name="PDF変換"
-                         AutomationProperties.HelpText="PDFと画像の相互変換やWord・Excel・PowerPointのPDF変換を表示します"
-                         Click="OnPdfModeClick">
-              <TextBlock x:Name="PdfModeLabel" Text="PDF変換">
-                <TextBlock.RenderTransform>
-                  <TranslateTransform X="0" />
-                </TextBlock.RenderTransform>
-              </TextBlock>
-            </RadioButton>
-            <RadioButton x:Name="OcrModeButton" Grid.Column="2" Classes="mode-segment" GroupName="MainMode"
-                         AutomationProperties.Name="OCR処理" AutomationProperties.HelpText="検索可能なPDFを作成する画面を表示します" Click="OnOcrModeClick">
-              <TextBlock Text="OCR処理" />
-            </RadioButton>
+            <Grid x:Name="ModeSelectorButtons" Grid.ColumnSpan="3" ColumnDefinitions="144,144,144">
+              <RadioButton x:Name="PdfToolsModeButton"
+                           Grid.Column="0"
+                           Classes="mode-segment"
+                           GroupName="MainMode"
+                           IsChecked="True"
+                           AutomationProperties.Name="PDF編集"
+                           AutomationProperties.HelpText="PDFの結合、分割、ページ編集を表示します"
+                           Click="OnPdfToolsModeClick">
+                <TextBlock x:Name="PdfToolsModeLabel" Text="PDF編集">
+                  <TextBlock.RenderTransform>
+                    <TranslateTransform X="4" />
+                  </TextBlock.RenderTransform>
+                </TextBlock>
+              </RadioButton>
+              <RadioButton x:Name="PdfModeButton"
+                           Grid.Column="1"
+                           Classes="mode-segment"
+                           GroupName="MainMode"
+                           AutomationProperties.Name="PDF変換"
+                           AutomationProperties.HelpText="PDFと画像の相互変換やWord・Excel・PowerPointのPDF変換を表示します"
+                           Click="OnPdfModeClick">
+                <TextBlock x:Name="PdfModeLabel" Text="PDF変換">
+                  <TextBlock.RenderTransform>
+                    <TranslateTransform X="0" />
+                  </TextBlock.RenderTransform>
+                </TextBlock>
+              </RadioButton>
+              <RadioButton x:Name="OcrModeButton" Grid.Column="2" Classes="mode-segment" GroupName="MainMode"
+                           AutomationProperties.Name="OCR処理" AutomationProperties.HelpText="検索可能なPDFを作成する画面を表示します" Click="OnOcrModeClick">
+                <TextBlock Text="OCR処理" />
+              </RadioButton>
+            </Grid>
           </Grid>
         </Border>
         <Border x:Name="ThemeToggleSwitch"
@@ -573,30 +575,32 @@
               </Border.RenderTransform>
             </Border>
 
-            <TextBlock x:Name="ThemeAutoLabel" Grid.Column="0" Classes="theme-segment-label selected"
-                       Text="Auto" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
-            <TextBlock x:Name="ThemeLightLabel"
-                       Grid.Column="1"
-                       Classes="theme-segment-label"
-                       Text="☀"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       IsHitTestVisible="False">
-              <TextBlock.RenderTransform>
-                <TranslateTransform X="0" />
-              </TextBlock.RenderTransform>
-            </TextBlock>
-            <TextBlock x:Name="ThemeDarkLabel"
-                       Grid.Column="2"
-                       Classes="theme-segment-label"
-                       Text="☾"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       IsHitTestVisible="False">
-              <TextBlock.RenderTransform>
-                <TranslateTransform X="0" />
-              </TextBlock.RenderTransform>
-            </TextBlock>
+            <Grid x:Name="ThemeSelectorLabels" Grid.ColumnSpan="3" ColumnDefinitions="50,50,50">
+              <TextBlock x:Name="ThemeAutoLabel" Grid.Column="0" Classes="theme-segment-label selected"
+                         Text="Auto" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+              <TextBlock x:Name="ThemeLightLabel"
+                         Grid.Column="1"
+                         Classes="theme-segment-label"
+                         Text="☀"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsHitTestVisible="False">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="0" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
+              <TextBlock x:Name="ThemeDarkLabel"
+                         Grid.Column="2"
+                         Classes="theme-segment-label"
+                         Text="☾"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         IsHitTestVisible="False">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform X="0" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
+            </Grid>
           </Grid>
         </Border>
       </StackPanel>
@@ -622,7 +626,6 @@
                              FontWeight="Bold"
                              VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button Classes="small-action" Content="Officeファイルを追加…" Click="OnOfficeToPdfClick" ToolTip.Tip="Word・Excel・PowerPointをPDFへ変換（.docx・.xlsx・.pptx、ドロップにも対応）" />
                     <Button Classes="small-action" Content="追加" Click="OnAddPdfFilesClick" />
                     <Button Classes="small-action" Content="削除" Click="OnRemovePdfFilesClick" />
                     <Button Classes="small-action" Content="すべて削除" Click="OnClearPdfFilesClick" />
@@ -664,156 +667,158 @@
                 BorderBrush="{DynamicResource PanelBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="28"
-                Padding="14"
+                Padding="14,2"
                 ClipToBounds="True">
-          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="14">
-              <TextBlock Text="出力設定"
-                         FontSize="22"
-                         FontWeight="Bold"
-                         HorizontalAlignment="Center" />
+          <Grid x:Name="PdfOutputSettingsViewport">
+            <ScrollViewer x:Name="PdfOutputSettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Margin="0,12" Spacing="14">
+                <TextBlock Text="出力設定"
+                           FontSize="22"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center" />
 
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="画像形式" HorizontalAlignment="Center" />
-                  <ComboBox x:Name="PdfFormatCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
-                    <ComboBoxItem Content="PNG" />
-                    <ComboBoxItem Content="JPEG" />
-                  </ComboBox>
-                </StackPanel>
-              </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="画像形式" HorizontalAlignment="Center" />
+                    <ComboBox x:Name="PdfFormatCombo" SelectedIndex="0" HorizontalAlignment="Stretch">
+                      <ComboBoxItem Content="PNG" />
+                      <ComboBoxItem Content="JPEG" />
+                    </ComboBox>
+                  </StackPanel>
+                </Border>
 
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="変換するページ" HorizontalAlignment="Center" />
-                  <TextBox Classes="settings-input" x:Name="PdfPageRangeTextBox" Watermark="空欄ですべて／例: 1,3,5-7" />
-                  <TextBlock Text="PDFの先頭を1ページ目として指定します。"
-                             Foreground="{DynamicResource TextMutedBrush}"
-                             FontSize="12"
-                             TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="変換するページ" HorizontalAlignment="Center" />
+                    <TextBox Classes="settings-input" x:Name="PdfPageRangeTextBox" Watermark="空欄ですべて／例: 1,3,5-7" />
+                    <TextBlock Text="PDFの先頭を1ページ目として指定します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
 
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="9">
-                  <TextBlock Classes="label" Text="解像度" HorizontalAlignment="Center" />
-                  <Border x:Name="PdfDpiSliderSwitch"
-                          Width="212"
-                          Height="32"
-                          HorizontalAlignment="Center"
-                          Background="Transparent"
-                          Focusable="True"
-                          Cursor="Hand"
-                          AutomationProperties.Name="解像度"
-                          AutomationProperties.HelpText="左右キーまたはドラッグで、普通、高画質、超高画質から選択します">
-                    <Grid x:Name="PdfDpiSliderRoot"
-                          Width="196"
-                          Height="28"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center">
-                      <Border x:Name="PdfDpiTrack"
-                              Width="196"
-                              Height="24"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              CornerRadius="12"
-                              Background="{DynamicResource PdfDpiTrackBrush}"
-                              BorderBrush="{DynamicResource ModeTrackBorderBrush}"
-                              BorderThickness="1"
-                              ClipToBounds="True">
-                        <Panel>
-                          <Border x:Name="PdfDpiRange"
-                                  Width="14"
-                                  Height="24"
-                                  HorizontalAlignment="Left"
-                                  VerticalAlignment="Center"
-                                  CornerRadius="12,0,0,12"
-                                  Background="{DynamicResource GlassAccentBrush}">
-                            <Border.Transitions>
-                              <Transitions>
-                                <DoubleTransition Property="Width"
-                                                  Duration="0:0:0.3"
-                                                  Easing="0.23,1,0.32,1" />
-                              </Transitions>
-                            </Border.Transitions>
-                          </Border>
-                        </Panel>
-                      </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="9">
+                    <TextBlock Classes="label" Text="解像度" HorizontalAlignment="Center" />
+                    <Border x:Name="PdfDpiSliderSwitch"
+                            Width="212"
+                            Height="32"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            Focusable="True"
+                            Cursor="Hand"
+                            AutomationProperties.Name="解像度"
+                            AutomationProperties.HelpText="左右キーまたはドラッグで、普通、高画質、超高画質から選択します">
+                      <Grid x:Name="PdfDpiSliderRoot"
+                            Width="196"
+                            Height="28"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <Border x:Name="PdfDpiTrack"
+                                Width="196"
+                                Height="24"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                CornerRadius="12"
+                                Background="{DynamicResource PdfDpiTrackBrush}"
+                                BorderBrush="{DynamicResource ModeTrackBorderBrush}"
+                                BorderThickness="1"
+                                ClipToBounds="True">
+                          <Panel>
+                            <Border x:Name="PdfDpiRange"
+                                    Width="14"
+                                    Height="24"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    CornerRadius="12,0,0,12"
+                                    Background="{DynamicResource GlassAccentBrush}">
+                              <Border.Transitions>
+                                <Transitions>
+                                  <DoubleTransition Property="Width"
+                                                    Duration="0:0:0.3"
+                                                    Easing="0.23,1,0.32,1" />
+                                </Transitions>
+                              </Border.Transitions>
+                            </Border>
+                          </Panel>
+                        </Border>
 
-                      <Border x:Name="PdfDpiTickNormal"
-                              Classes="resolution-tick selected"
-                              HorizontalAlignment="Left"
-                              VerticalAlignment="Center"
-                              Margin="11,0,0,0"
-                              IsHitTestVisible="False" />
-                      <Border x:Name="PdfDpiTickHigh"
-                              Classes="resolution-tick"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              IsHitTestVisible="False" />
-                      <Border x:Name="PdfDpiTickUltra"
-                              Classes="resolution-tick"
-                              HorizontalAlignment="Right"
-                              VerticalAlignment="Center"
-                              Margin="0,0,11,0"
-                              IsHitTestVisible="False" />
+                        <Border x:Name="PdfDpiTickNormal"
+                                Classes="resolution-tick selected"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                Margin="11,0,0,0"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="PdfDpiTickHigh"
+                                Classes="resolution-tick"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False" />
+                        <Border x:Name="PdfDpiTickUltra"
+                                Classes="resolution-tick"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Margin="0,0,11,0"
+                                IsHitTestVisible="False" />
 
-                      <Border x:Name="PdfDpiThumb"
-                              Width="30"
-                              Height="30"
-                              HorizontalAlignment="Left"
-                              VerticalAlignment="Center"
-                              CornerRadius="15"
-                              Background="{DynamicResource PdfDpiThumbBrush}"
-                              BorderBrush="{DynamicResource PdfDpiThumbBorderBrush}"
-                              BorderThickness="1"
-                              BoxShadow="0 1 6 0 #26000000"
-                              IsHitTestVisible="False">
-                        <Border.RenderTransform>
-                          <TranslateTransform X="0">
-                            <TranslateTransform.Transitions>
-                              <Transitions>
-                                <DoubleTransition Property="X"
-                                                  Duration="0:0:0.3"
-                                                  Easing="0.23,1,0.32,1" />
-                              </Transitions>
-                            </TranslateTransform.Transitions>
-                          </TranslateTransform>
-                        </Border.RenderTransform>
-                      </Border>
-                    </Grid>
-                  </Border>
+                        <Border x:Name="PdfDpiThumb"
+                                Width="30"
+                                Height="30"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                CornerRadius="15"
+                                Background="{DynamicResource PdfDpiThumbBrush}"
+                                BorderBrush="{DynamicResource PdfDpiThumbBorderBrush}"
+                                BorderThickness="1"
+                                BoxShadow="0 1 6 0 #26000000"
+                                IsHitTestVisible="False">
+                          <Border.RenderTransform>
+                            <TranslateTransform X="0">
+                              <TranslateTransform.Transitions>
+                                <Transitions>
+                                  <DoubleTransition Property="X"
+                                                    Duration="0:0:0.3"
+                                                    Easing="0.23,1,0.32,1" />
+                                </Transitions>
+                              </TranslateTransform.Transitions>
+                            </TranslateTransform>
+                          </Border.RenderTransform>
+                        </Border>
+                      </Grid>
+                    </Border>
 
-                  <TextBlock x:Name="PdfDpiCurrentHint"
-                             Text="普通 · 200 dpi"
-                             Foreground="{DynamicResource TextMutedBrush}"
-                             FontSize="13"
-                             FontWeight="SemiBold"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-              </Border>
+                    <TextBlock x:Name="PdfDpiCurrentHint"
+                               Text="普通 · 200 dpi"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                  </StackPanel>
+                </Border>
 
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
-                  <TextBox Classes="settings-input" x:Name="PdfOutputFolderTextBox" Watermark="保存先フォルダ" />
-                  <Button Classes="small-action" Content="選択" Click="OnSelectPdfOutputFolderClick" />
-                </StackPanel>
-              </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="出力先フォルダ" HorizontalAlignment="Center" />
+                    <TextBox Classes="settings-input" x:Name="PdfOutputFolderTextBox" Watermark="保存先フォルダ" />
+                    <Button Classes="small-action" Content="選択" Click="OnSelectPdfOutputFolderClick" />
+                  </StackPanel>
+                </Border>
 
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8">
-                  <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" />
-                  <TextBox Classes="settings-input" x:Name="PdfOutputBaseNameTextBox" Watermark="例: output" />
-                  <TextBlock Text="複数ページは _page001 を付けて保存します。"
-                             Foreground="{DynamicResource TextMutedBrush}"
-                             FontSize="12"
-                             TextWrapping="Wrap" />
-                </StackPanel>
-              </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="10" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8">
+                    <TextBlock Classes="label" Text="書き出しファイル名（元ファイル名を自動付加）" HorizontalAlignment="Center" />
+                    <TextBox Classes="settings-input" x:Name="PdfOutputBaseNameTextBox" Watermark="例: output" />
+                    <TextBlock Text="複数ページは _page001 を付けて保存します。"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
 
-            </StackPanel>
-          </ScrollViewer>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
         </Border>
       </Grid>
 
@@ -836,7 +841,6 @@
                              FontWeight="Bold"
                              VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button Classes="small-action" Content="Officeファイルを追加…" Click="OnOfficeToPdfClick" ToolTip.Tip="Word・Excel・PowerPointをPDFへ変換（.docx・.xlsx・.pptx、ドロップにも対応）" />
                     <Button Classes="small-action" Content="追加" Click="OnAddImageFilesClick" />
                     <Button Classes="small-action" Content="削除" Click="OnRemoveImageFilesClick" />
                     <Button Classes="small-action" Content="すべて削除" Click="OnClearImageFilesClick" />
@@ -920,6 +924,38 @@
         </Border>
       </Grid>
 
+      <Grid x:Name="OfficePanel" ColumnDefinitions="*,240" ColumnSpacing="22" IsVisible="False">
+        <Border Classes="glass-surface" Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1"
+                CornerRadius="28" Padding="24">
+          <Border Classes="glass-surface" Background="{DynamicResource GlassCardBrush}"
+                  BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                  CornerRadius="22" Margin="0,54,0,0" Padding="16">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+              <TextBlock Text="Word・Excel・PowerPoint" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+              <TextBlock Text=".docx・.xlsx・.pptx を選択またはドロップすると変換を開始します。"
+                         Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+              <Button Classes="small-action" Content="Officeファイルを追加…"
+                      HorizontalAlignment="Center" Click="OnOfficeToPdfClick" />
+            </StackPanel>
+          </Border>
+        </Border>
+        <Border Grid.Column="1" Classes="glass-surface" Background="{DynamicResource GlassPanelBrush}"
+                BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1"
+                CornerRadius="28" Padding="16">
+          <StackPanel Spacing="12">
+            <TextBlock Text="PDF出力設定" FontSize="20" FontWeight="Bold" />
+            <TextBlock Classes="label" Text="保存先フォルダー" />
+            <TextBox x:Name="OfficeOutputFolderTextBox" Classes="settings-input"
+                     AutomationProperties.Name="Office変換の保存先フォルダー"
+                     Watermark="元ファイルと同じフォルダー" />
+            <Button Classes="small-action" Content="参照…" Click="OnSelectOfficeOutputFolderClick" />
+            <TextBlock Text="空欄の場合は、各PDFを元ファイルと同じフォルダーに保存します。"
+                       Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
       <Grid x:Name="DirectionSelectorHost"
             ColumnDefinitions="*,240"
             ColumnSpacing="22"
@@ -927,7 +963,7 @@
             Panel.ZIndex="10">
         <Border x:Name="DirectionSelectorSwitch"
                 Grid.Column="0"
-                Width="270"
+                Width="403"
                 Height="46"
                 Margin="0,20,0,0"
                 CornerRadius="23"
@@ -941,8 +977,8 @@
                 AutomationProperties.HelpText="クリックまたは左右へドラッグして変換方向を切り替えます"
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnDirectionSelectorKeyDown">
-          <Grid Width="266" Height="46" ColumnDefinitions="133,133">
-            <Border x:Name="DirectionSelectorTrack" Grid.ColumnSpan="2"
+          <Grid Width="399" Height="46" ColumnDefinitions="133,133,133">
+            <Border x:Name="DirectionSelectorTrack" Grid.ColumnSpan="3"
                     Height="43"
                     Margin="1,0"
                     CornerRadius="21.5"
@@ -951,7 +987,7 @@
                     BorderThickness="0"
                     IsHitTestVisible="False" />
             <Border x:Name="DirectionSelectionPill"
-                    Width="142"
+                    Width="134"
                     Height="47"
                     Margin="-0.5,0,0,0"
                     HorizontalAlignment="Left"
@@ -974,33 +1010,43 @@
               </Border.RenderTransform>
             </Border>
 
-            <RadioButton x:Name="PdfToImageDirectionButton"
-                         Grid.Column="0"
-                         Classes="direction-segment"
-                         GroupName="ConversionDirection"
-                         IsChecked="True"
-                         AutomationProperties.Name="PDFから画像"
-                         AutomationProperties.HelpText="PDFを画像へ変換する画面を表示します"
-                         Click="OnPdfToImageDirectionClick">
-              <TextBlock x:Name="PdfToImageDirectionLabel" Text="PDF → 画像">
-                <TextBlock.RenderTransform>
-                  <TranslateTransform X="4" />
-                </TextBlock.RenderTransform>
-              </TextBlock>
-            </RadioButton>
-            <RadioButton x:Name="ImageToPdfDirectionButton"
-                         Grid.Column="1"
-                         Classes="direction-segment"
-                         GroupName="ConversionDirection"
-                         AutomationProperties.Name="画像からPDF"
-                         AutomationProperties.HelpText="画像をPDFへ変換する画面を表示します"
-                         Click="OnImageToPdfDirectionClick">
-              <TextBlock x:Name="ImageToPdfDirectionLabel" Text="画像 → PDF">
-                <TextBlock.RenderTransform>
-                  <TranslateTransform X="-4" />
-                </TextBlock.RenderTransform>
-              </TextBlock>
-            </RadioButton>
+            <Grid x:Name="DirectionSelectorButtons" Grid.ColumnSpan="3" ColumnDefinitions="133,133,133">
+              <RadioButton x:Name="PdfToImageDirectionButton"
+                           Grid.Column="0"
+                           Classes="direction-segment"
+                           GroupName="ConversionDirection"
+                           IsChecked="True"
+                           AutomationProperties.Name="PDFから画像"
+                           AutomationProperties.HelpText="PDFを画像へ変換する画面を表示します"
+                           Click="OnPdfToImageDirectionClick">
+                <TextBlock x:Name="PdfToImageDirectionLabel" Text="PDF → 画像">
+                  <TextBlock.RenderTransform>
+                    <TranslateTransform X="0" />
+                  </TextBlock.RenderTransform>
+                </TextBlock>
+              </RadioButton>
+              <RadioButton x:Name="ImageToPdfDirectionButton"
+                           Grid.Column="1"
+                           Classes="direction-segment"
+                           GroupName="ConversionDirection"
+                           AutomationProperties.Name="画像からPDF"
+                           AutomationProperties.HelpText="画像をPDFへ変換する画面を表示します"
+                           Click="OnImageToPdfDirectionClick">
+                <TextBlock x:Name="ImageToPdfDirectionLabel" Text="画像 → PDF">
+                  <TextBlock.RenderTransform>
+                    <TranslateTransform X="0" />
+                  </TextBlock.RenderTransform>
+                </TextBlock>
+              </RadioButton>
+              <RadioButton x:Name="OfficeToPdfDirectionButton"
+                           Grid.Column="2"
+                           Classes="direction-segment"
+                           GroupName="ConversionDirection"
+                           AutomationProperties.Name="OfficeからPDF"
+                           Click="OnOfficeToPdfDirectionClick">
+                <TextBlock Text="Office → PDF" />
+              </RadioButton>
+            </Grid>
           </Grid>
         </Border>
       </Grid>
@@ -1115,31 +1161,33 @@
                     </Border.RenderTransform>
                   </Border>
 
-                  <RadioButton x:Name="PdfPreviewIconButton"
-                               Grid.Column="0"
-                               Classes="preview-segment"
-                               GroupName="PdfPreviewDisplay"
-                               IsChecked="True"
-                               AutomationProperties.Name="アイコン表示"
-                               Click="OnPdfPreviewIconClick">
-                    <TextBlock x:Name="PdfPreviewIconLabel" Text="アイコン">
-                      <TextBlock.RenderTransform>
-                        <TranslateTransform X="4" />
-                      </TextBlock.RenderTransform>
-                    </TextBlock>
-                  </RadioButton>
-                  <RadioButton x:Name="PdfPreviewListButton"
-                               Grid.Column="1"
-                               Classes="preview-segment"
-                               GroupName="PdfPreviewDisplay"
-                               AutomationProperties.Name="リスト表示"
-                               Click="OnPdfPreviewListClick">
-                    <TextBlock x:Name="PdfPreviewListLabel" Text="リスト">
-                      <TextBlock.RenderTransform>
-                        <TranslateTransform X="-4" />
-                      </TextBlock.RenderTransform>
-                    </TextBlock>
-                  </RadioButton>
+                  <Grid x:Name="PdfPreviewSelectorButtons" Grid.ColumnSpan="2" ColumnDefinitions="80,80">
+                    <RadioButton x:Name="PdfPreviewIconButton"
+                                 Grid.Column="0"
+                                 Classes="preview-segment"
+                                 GroupName="PdfPreviewDisplay"
+                                 IsChecked="True"
+                                 AutomationProperties.Name="アイコン表示"
+                                 Click="OnPdfPreviewIconClick">
+                      <TextBlock x:Name="PdfPreviewIconLabel" Text="アイコン">
+                        <TextBlock.RenderTransform>
+                          <TranslateTransform X="4" />
+                        </TextBlock.RenderTransform>
+                      </TextBlock>
+                    </RadioButton>
+                    <RadioButton x:Name="PdfPreviewListButton"
+                                 Grid.Column="1"
+                                 Classes="preview-segment"
+                                 GroupName="PdfPreviewDisplay"
+                                 AutomationProperties.Name="リスト表示"
+                                 Click="OnPdfPreviewListClick">
+                      <TextBlock x:Name="PdfPreviewListLabel" Text="リスト">
+                        <TextBlock.RenderTransform>
+                          <TranslateTransform X="-4" />
+                        </TextBlock.RenderTransform>
+                      </TextBlock>
+                    </RadioButton>
+                  </Grid>
                 </Grid>
               </Border>
             </Grid>
@@ -1418,31 +1466,33 @@
                     </Border.RenderTransform>
                   </Border>
 
-                  <RadioButton x:Name="OcrPreviewIconButton"
-                               Grid.Column="0"
-                               Classes="preview-segment"
-                               GroupName="OcrPreviewDisplay"
-                               IsChecked="True"
-                               AutomationProperties.Name="アイコン表示"
-                               Click="OnOcrPreviewIconClick">
-                    <TextBlock x:Name="OcrPreviewIconLabel" Text="アイコン">
-                      <TextBlock.RenderTransform>
-                        <TranslateTransform X="4" />
-                      </TextBlock.RenderTransform>
-                    </TextBlock>
-                  </RadioButton>
-                  <RadioButton x:Name="OcrPreviewListButton"
-                               Grid.Column="1"
-                               Classes="preview-segment"
-                               GroupName="OcrPreviewDisplay"
-                               AutomationProperties.Name="リスト表示"
-                               Click="OnOcrPreviewListClick">
-                    <TextBlock x:Name="OcrPreviewListLabel" Text="リスト">
-                      <TextBlock.RenderTransform>
-                        <TranslateTransform X="-4" />
-                      </TextBlock.RenderTransform>
-                    </TextBlock>
-                  </RadioButton>
+                  <Grid x:Name="OcrPreviewSelectorButtons" Grid.ColumnSpan="2" ColumnDefinitions="80,80">
+                    <RadioButton x:Name="OcrPreviewIconButton"
+                                 Grid.Column="0"
+                                 Classes="preview-segment"
+                                 GroupName="OcrPreviewDisplay"
+                                 IsChecked="True"
+                                 AutomationProperties.Name="アイコン表示"
+                                 Click="OnOcrPreviewIconClick">
+                      <TextBlock x:Name="OcrPreviewIconLabel" Text="アイコン">
+                        <TextBlock.RenderTransform>
+                          <TranslateTransform X="4" />
+                        </TextBlock.RenderTransform>
+                      </TextBlock>
+                    </RadioButton>
+                    <RadioButton x:Name="OcrPreviewListButton"
+                                 Grid.Column="1"
+                                 Classes="preview-segment"
+                                 GroupName="OcrPreviewDisplay"
+                                 AutomationProperties.Name="リスト表示"
+                                 Click="OnOcrPreviewListClick">
+                      <TextBlock x:Name="OcrPreviewListLabel" Text="リスト">
+                        <TextBlock.RenderTransform>
+                          <TranslateTransform X="-4" />
+                        </TextBlock.RenderTransform>
+                      </TextBlock>
+                    </RadioButton>
+                  </Grid>
                 </Grid>
               </Border>
             </Grid>
@@ -1548,37 +1598,39 @@
             </Grid>
           </Grid>
         </Border>
-        <Border Classes="glass-surface settings-panel" Grid.Column="1" Background="{DynamicResource GlassPanelBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="28" Padding="16">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <StackPanel x:Name="OcrSettingsPanel" Spacing="14">
-              <TextBlock Text="PDFのOCR処理" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" />
-              <TextBlock x:Name="OcrEngineDescription" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8"><TextBlock Classes="label" Text="PDFの言語" />
-                  <RadioButton x:Name="OcrHorizontalChoice" Content="日本語（横書き）" GroupName="OcrReading" IsChecked="True" />
-                  <RadioButton x:Name="OcrVerticalChoice" Content="日本語（縦書き）" GroupName="OcrReading" />
-                  <RadioButton x:Name="OcrEnglishChoice" Content="英語" GroupName="OcrReading" />
-                  <RadioButton x:Name="OcrMixedChoice" Content="日本語・英語 混在" GroupName="OcrReading" />
-                </StackPanel>
-              </Border>
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8"><TextBlock Classes="label" Text="認識するページ" />
-                  <TextBox Classes="settings-input" x:Name="OcrPagesTextBox" Watermark="空欄ですべて／例：1,3,5-7" />
-                  <Button Classes="small-action" Content="全ページに戻す" Click="OnOcrAllPagesClick" />
-                  <TextBlock Text="一覧のすべてのPDFに同じ指定を使います。対象外のページもPDFに残します。プレビューの表示ページとは別の設定です。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
-                </StackPanel>
-              </Border>
-              <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                <StackPanel Spacing="8"><TextBlock Classes="label" Text="PDFの保存先" />
-                  <TextBox Classes="settings-input" x:Name="OcrOutputFolderTextBox" Watermark="保存先フォルダ" />
-                  <Button Classes="small-action" Content="保存先を選択" Click="OnOcrOutputFolderClick" />
-                  <TextBlock Text="元ファイル名_OCR.pdfで保存します。同名の出力は連番を付けて残します。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
-                </StackPanel>
-              </Border>
-              <TextBlock Text="原本の見た目を保ち、検索・選択・コピーできる文字を追加します。既に文字を持つページはそのまま残します。認識結果は原本と照合してください。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
-              <Button Content="使用ライセンス" Click="OnOcrLicensesClick" />
-            </StackPanel>
-          </ScrollViewer>
+        <Border Classes="glass-surface settings-panel" Grid.Column="1" Background="{DynamicResource GlassPanelBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="28" Padding="16,2" ClipToBounds="True">
+          <Grid x:Name="OcrSettingsViewport">
+            <ScrollViewer x:Name="OcrSettingsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="OcrSettingsPanel" Margin="0,14" Spacing="14">
+                <TextBlock Text="PDFのOCR処理" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" />
+                <TextBlock x:Name="OcrEngineDescription" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" />
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8"><TextBlock Classes="label" Text="PDFの言語" />
+                    <RadioButton x:Name="OcrHorizontalChoice" Content="日本語（横書き）" GroupName="OcrReading" IsChecked="True" />
+                    <RadioButton x:Name="OcrVerticalChoice" Content="日本語（縦書き）" GroupName="OcrReading" />
+                    <RadioButton x:Name="OcrEnglishChoice" Content="英語" GroupName="OcrReading" />
+                    <RadioButton x:Name="OcrMixedChoice" Content="日本語・英語 混在" GroupName="OcrReading" />
+                  </StackPanel>
+                </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8"><TextBlock Classes="label" Text="認識するページ" />
+                    <TextBox Classes="settings-input" x:Name="OcrPagesTextBox" Watermark="空欄ですべて／例：1,3,5-7" />
+                    <Button Classes="small-action" Content="全ページに戻す" Click="OnOcrAllPagesClick" />
+                    <TextBlock Text="一覧のすべてのPDFに同じ指定を使います。対象外のページもPDFに残します。プレビューの表示ページとは別の設定です。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                  </StackPanel>
+                </Border>
+                <Border Classes="glass-surface settings-card" Background="{DynamicResource GlassCardBrush}" CornerRadius="14" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                  <StackPanel Spacing="8"><TextBlock Classes="label" Text="PDFの保存先" />
+                    <TextBox Classes="settings-input" x:Name="OcrOutputFolderTextBox" Watermark="保存先フォルダ" />
+                    <Button Classes="small-action" Content="保存先を選択" Click="OnOcrOutputFolderClick" />
+                    <TextBlock Text="元ファイル名_OCR.pdfで保存します。同名の出力は連番を付けて残します。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="原本の見た目を保ち、検索・選択・コピーできる文字を追加します。既に文字を持つページはそのまま残します。認識結果は原本と照合してください。" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                <Button Content="使用ライセンス" Click="OnOcrLicensesClick" />
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
         </Border>
       </Grid>
     </Grid>

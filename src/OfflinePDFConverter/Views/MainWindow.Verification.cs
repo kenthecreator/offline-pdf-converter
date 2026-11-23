@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
@@ -85,8 +86,16 @@ public partial class MainWindow
         {
             Program.TraceGuiVerification("Main window opened");
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
+            Check(!string.IsNullOrWhiteSpace(DefaultOutputFolder) &&
+                  _pdfOutputFolderTextBox.Text == DefaultOutputFolder &&
+                  _pdfToolOutputFolderTextBox.Text == DefaultOutputFolder &&
+                  Required<TextBox>("OcrOutputFolderTextBox").Text == DefaultOutputFolder &&
+                  Path.GetDirectoryName(_imageOutputPdfTextBox.Text) == DefaultOutputFolder &&
+                  Path.GetDirectoryName(_pdfToolOutputPdfTextBox.Text) == DefaultOutputFolder,
+                "An output field did not default to Desktop.");
+            checks.Add("all initial output folders and PDF paths default to Desktop");
             var glassEnabled = Program.GlassTrial == ModePillGlassTrial.On;
-            foreach (var (pillName, trackName) in GlassSelectors)
+            foreach (var (pillName, trackName, _, _) in GlassSelectors)
             {
                 Check(Required<Border>(trackName).Child is null, "The existing track must remain undecorated: " + trackName);
                 var decoration = Required<Border>(pillName).Child;
@@ -95,8 +104,9 @@ public partial class MainWindow
             }
             if (Program.GlassTrial == ModePillGlassTrial.On)
             {
-                await Until(() => _modePillGlass is not { IsAvailable: true, HasRendered: false });
-                Check(_modePillGlass is { IsAvailable: true, HasRendered: true },
+                var modeLens = _selectorLenses["ModeSelectionPill"];
+                await Until(() => !modeLens.IsAvailable || modeLens.HasRendered);
+                Check(modeLens is { IsAvailable: true, HasRendered: true },
                     "Skia did not draw the mode selection refraction.");
             }
             Check(ButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
@@ -212,6 +222,12 @@ public partial class MainWindow
                 FinishThemeDrag(theme);
                 await Until(() => !_themeTransitionActive);
                 Check(_themeMode == theme, "Theme switch failed.");
+                if (glassEnabled)
+                {
+                    await Until(() => Math.Abs(_themeToggleTransform.X - theme * ThemeSegmentWidth) < .01);
+                    Check(Required<Border>("ThemeToggleThumb").ZIndex == Required<Grid>("ThemeSelectorLabels").ZIndex,
+                        "The settled theme pill was placed in front of the original labels.");
+                }
                 Check(ReferenceEquals(headerIcon.Source, headerSource), "The header icon changed with the theme.");
                 if (glassEnabled && theme != 0)
                 {
@@ -250,12 +266,200 @@ public partial class MainWindow
                     }
 
                     await Until(() => AtOffset(0));
-
                     void CheckStartColors() =>
                         Check(presenter.Background is null && presenter.Foreground is ISolidColorBrush label &&
                               (theme == 1 ? label.Color.R > 220 : label.Color.R < 48),
                             "Start button lost the theme label or covered the glass face.");
                 }
+            }
+            if (glassEnabled)
+            {
+                foreach (int theme in new[] { 1, 2 })
+                {
+                    FinishThemeDrag(theme);
+                    await Until(() => !_themeTransitionActive && _themeMode == theme);
+                    var themeName = theme == 1 ? "light" : "dark";
+                    foreach (var (selectorIndex, mode) in new[]
+                    {
+                        (0, ConversionMode.PdfTools),
+                        (1, ConversionMode.PdfTools),
+                        (2, ConversionMode.PdfToImage),
+                        (3, ConversionMode.PdfTools),
+                        (4, ConversionMode.Ocr)
+                    })
+                    {
+                        SetMode(mode);
+                        var (pillName, _, labelsName, step) = GlassSelectors[selectorIndex];
+                        var lens = _selectorLenses[pillName];
+                        var pill = Required<Border>(pillName);
+                        var labels = Required<Grid>(labelsName);
+                        await Until(() => labels.IsEffectivelyVisible && lens.HasLabelBackdrop);
+                        var translation = (TranslateTransform)pill.RenderTransform!;
+                        var transitions = translation.Transitions;
+                        var originalX = translation.X;
+                        translation.Transitions = null;
+                        try
+                        {
+                            translation.X = step / 2;
+                            Check(pill.ZIndex > labels.ZIndex, $"The moving pill is behind its labels: {pillName}.");
+                            var straightPath = Path.ChangeExtension(report, $".{pillName}-straight-{themeName}.png");
+                            var bentPath = Path.ChangeExtension(report, $".{pillName}-bent-{themeName}.png");
+                            lens.SetLabelRefraction(false);
+                            SaveSnapshot(straightPath);
+                            lens.SetLabelRefraction(true);
+                            SaveSnapshot(bentPath);
+
+                            using var straight = SkiaSharp.SKBitmap.Decode(straightPath);
+                            using var bent = SkiaSharp.SKBitmap.Decode(bentPath);
+                            var labelStart = labels.TranslatePoint(default, this)!.Value;
+                            var labelEnd = labels.TranslatePoint(new Point(labels.Bounds.Width, labels.Bounds.Height), this)!.Value;
+                            var left = pill.TranslatePoint(default, this)!.Value.X;
+                            var right = pill.TranslatePoint(new Point(pill.Bounds.Width, 0), this)!.Value.X;
+                            var center = (left + right) / 2;
+                            int leftChanges = 0, rightChanges = 0, outsideChanges = 0;
+                            for (int y = (int)labelStart.Y; y < (int)labelEnd.Y; y++)
+                            for (int x = (int)labelStart.X; x < (int)labelEnd.X; x++)
+                            {
+                                if (straight.GetPixel(x, y) == bent.GetPixel(x, y))
+                                    continue;
+                                if (x + 1 < left || x > right)
+                                    outsideChanges++;
+                                else if (x < center)
+                                    leftChanges++;
+                                else
+                                    rightChanges++;
+                            }
+
+                            Check(leftChanges > 10 && rightChanges > 10 && outsideChanges == 0,
+                                $"Label refraction on {pillName} in {themeName}: left={leftChanges}, right={rightChanges}, outside={outsideChanges}.");
+                            for (int stop = 0; stop < labels.Children.Count; stop++)
+                            {
+                                translation.X = stop * step;
+                                Check(pill.ZIndex == labels.ZIndex,
+                                    $"The settled pill covers its original labels at stop {stop}: {pillName}.");
+                            }
+                            checks.Add($"{pillName} refracts labels at both edges in {themeName} theme");
+                        }
+                        finally
+                        {
+                            lens.SetLabelRefraction(true);
+                            translation.X = originalX;
+                            translation.Transitions = transitions;
+                        }
+                    }
+
+                    foreach (var (name, mode) in new[]
+                    {
+                        ("PdfOutputSettings", ConversionMode.PdfToImage),
+                        ("OcrSettings", ConversionMode.Ocr)
+                    })
+                    {
+                        SetMode(mode);
+                        var scroll = Required<ScrollViewer>(name + "Scroll");
+                        var viewport = Required<Grid>(name + "Viewport");
+                        var edge = viewport.Children.OfType<SettingsScrollGlass>().Single();
+                        await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
+                        var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
+                        var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
+                            .Single(item => item.TemplatedParent == scroll && item.Orientation == Avalonia.Layout.Orientation.Vertical);
+                        var thumb = bar.GetVisualDescendants().OfType<PanelScrollThumb>().Single();
+                        var face = thumb.GetVisualDescendants().OfType<Border>().Single(item => item.Name == "PanelScrollFace");
+                        await Until(() => thumb.Opacity == 0);
+                        Check(!thumb.IsHitTestVisible && !bar.GetVisualDescendants().OfType<RepeatButton>().Any(),
+                            "The idle scrollbar intercepts input or has arrow buttons.");
+                        scroll.Offset = new Vector(0, 24);
+                        await Until(() => thumb.Opacity == 1);
+                        Check(thumb.IsHitTestVisible && face.Width == 3, "The scrolling thumb did not appear at its normal width.");
+                        var hover = (IPseudoClasses)thumb.Classes;
+                        hover.Set(":pointerover", true);
+                        try
+                        {
+                            Check(face.Width == 5, "The scrollbar hover size is incorrect.");
+                            await Until(() => thumb.Opacity == 0 && !thumb.IsHitTestVisible);
+                        }
+                        finally
+                        {
+                            hover.Set(":pointerover", false);
+                        }
+                        checks.Add($"{name} shows a slim scrollbar while scrolling and hides it after idle even when hovered");
+                        var panel = viewport.GetVisualAncestors().OfType<Border>()
+                            .First(border => border.Classes.Contains("settings-panel"));
+                        var panelStart = presenter.TranslatePoint(default, panel)!.Value;
+                        var panelEnd = presenter.TranslatePoint(new Point(presenter.Bounds.Width, presenter.Bounds.Height), panel)!.Value;
+                        double topInset = panelStart.Y;
+                        double bottomInset = panel.Bounds.Height - panelEnd.Y;
+                        Check(panel.ClipToBounds && topInset is >= 2 and < 4 && bottomInset is >= 2 and < 4,
+                            "The settings viewport does not keep the expected thin rim: " + name);
+                        var max = scroll.Extent.Height - scroll.Viewport.Height;
+                        var captions = presenter.GetVisualDescendants().OfType<TextBlock>()
+                            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) &&
+                                           text.Bounds.Height is > 8 and < 60)
+                            .Select(text => (Y: text.TranslatePoint(default, presenter)!.Value.Y + scroll.Offset.Y,
+                                             Height: text.Bounds.Height))
+                            .ToArray();
+                        foreach (var (isTop, atEnd) in new[] { (true, false), (false, false), (true, true), (false, true) })
+                        {
+                            var offset = atEnd ? (isTop ? 0 : max) : captions.Select(caption => isTop
+                                    ? caption.Y + caption.Height * .35
+                                    : caption.Y + caption.Height * .72 - presenter.Bounds.Height)
+                                .First(candidate => candidate > SettingsScrollGlass.BandDepth &&
+                                                    candidate < max - SettingsScrollGlass.BandDepth);
+                            scroll.Offset = new Vector(0, offset);
+                            await Until(() => edge.HasBackdrop);
+                            // The edge redraw must still be in place after the scroll input has stopped.
+                            await Task.Delay(350);
+                            if (atEnd && scroll.Content is StackPanel content)
+                            {
+                                var item = isTop ? content.Children.First() : content.Children.Last();
+                                var itemEdge = item.TranslatePoint(new Point(0, isTop ? 0 : item.Bounds.Height), presenter)!.Value.Y;
+                                var padding = isTop ? itemEdge : presenter.Bounds.Height - itemEdge;
+                                Check(padding >= 11, "The first or last settings item lost its scrollable spacing: " + name);
+                            }
+                            var endName = (isTop ? "top" : "bottom") + (atEnd ? "-limit" : "");
+                            var normal = Path.ChangeExtension(report, $".{name}-{endName}-straight-{themeName}.png");
+                            var refracted = Path.ChangeExtension(report, $".{name}-{endName}-bent-{themeName}.png");
+                            edge.Opacity = 0;
+                            try
+                            {
+                                SaveSnapshot(normal);
+                            }
+                            finally
+                            {
+                                edge.Opacity = 1;
+                            }
+                            SaveSnapshot(refracted);
+
+                            var start = presenter.TranslatePoint(default, this)!.Value;
+                            var end = presenter.TranslatePoint(new Point(presenter.Bounds.Width, presenter.Bounds.Height), this)!.Value;
+                            var band = presenter.TranslatePoint(new Point(0, SettingsScrollGlass.BandDepth), this)!.Value.Y - start.Y;
+                            using var plain = SkiaSharp.SKBitmap.Decode(normal);
+                            using var bent = SkiaSharp.SKBitmap.Decode(refracted);
+                            int ChangedPixels(int from, int to)
+                            {
+                                int changes = 0;
+                                for (int y = from; y < to; y++)
+                                for (int x = (int)start.X + 3; x < (int)end.X - 16; x++)
+                                {
+                                    var a = plain.GetPixel(x, y);
+                                    var b = bent.GetPixel(x, y);
+                                    if (Math.Abs(a.Red - b.Red) + Math.Abs(a.Green - b.Green) + Math.Abs(a.Blue - b.Blue) > 18)
+                                        changes++;
+                                }
+                                return changes;
+                            }
+
+                            int changed = isTop ? ChangedPixels((int)start.Y + 1, (int)(start.Y + band))
+                                : ChangedPixels((int)(end.Y - band), (int)end.Y - 1);
+                            int middle = ChangedPixels((int)(start.Y + band) + 1, (int)(end.Y - band) - 1);
+                            Check((atEnd ? changed == 0 : changed > 20) && middle == 0,
+                                $"Stopped scroll glass on {name} {endName} in {themeName}: edge={changed}, middle={middle}.");
+                        }
+                        Check(!edge.IsHitTestVisible && !edge.Focusable, "Scroll effect intercepts input: " + name);
+                        checks.Add($"{name} retains both refracted edges after scrolling stops and clears them at the limits in {themeName} theme");
+                        scroll.Offset = default;
+                    }
+                }
+                SetMode(ConversionMode.PdfTools);
             }
             _mainProgressBar.Value = 0;
             if (glassEnabled)
@@ -397,7 +601,8 @@ public partial class MainWindow
             checks.Add("OCR through Start, before/after previews and real PDF text selection/copy");
             SaveSnapshot(Path.ChangeExtension(report, ".png"));
             if (Program.GlassTrial == ModePillGlassTrial.On)
-                Check(_modePillGlass is { IsAvailable: true }, "The refraction fell back during GUI verification.");
+                Check(_selectorLenses.Count == GlassSelectors.Length && _selectorLenses.Values.All(lens => lens.IsAvailable && lens.HasRendered),
+                    "A selector stopped drawing its glass during GUI verification.");
             // Closing an active conversion must cancel it and finish without displaying a modal result.
             SetMode(ConversionMode.PdfToImage); SetPdfDpiIndex(2);
             Required<Button>("StartPdfButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

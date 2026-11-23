@@ -18,7 +18,7 @@ internal static class OfficePdfService
 
     public static bool IsSupported(string path) => Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
-    public static Task<ConversionResult> ConvertAsync(IReadOnlyList<string> files,
+    public static Task<ConversionResult> ConvertAsync(IReadOnlyList<string> files, string? outputFolder,
         IProgress<ConversionProgress> progress, CancellationToken token) => Task.Run(() =>
     {
         var outputs = new List<string>();
@@ -30,7 +30,7 @@ internal static class OfficePdfService
             progress.Report(new ConversionProgress(i, files.Count, $"変換中 · {Path.GetFileName(source)}"));
             try
             {
-                outputs.Add(ConvertFile(source, token));
+                outputs.Add(ConvertFile(source, outputFolder, token));
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException)
             {
@@ -40,21 +40,24 @@ internal static class OfficePdfService
         return new ConversionResult(outputs.Count, errors) { OutputPaths = outputs };
     }, token);
 
-    private static string ConvertFile(string source, CancellationToken token)
+    private static string ConvertFile(string source, string? outputFolder, CancellationToken token)
     {
         var extension = Path.GetExtension(source).ToLowerInvariant();
         using var input = File.OpenRead(source);
         ValidatePackage(input, extension);
         token.ThrowIfCancellationRequested();
-        return AtomicFile.Write(Path.ChangeExtension(source, ".pdf"), destination =>
+        var output = Path.ChangeExtension(source, ".pdf");
+        if (!string.IsNullOrEmpty(outputFolder))
+            output = Path.Combine(outputFolder, Path.GetFileName(output));
+        return AtomicFile.Write(output, destination =>
         {
             try
             {
-                using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                using var outputStream = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             }
             catch (UnauthorizedAccessException ex)
             {
-                throw new IOException("元ファイルと同じフォルダーにPDFを書き込めません。", ex);
+                throw new IOException("保存先フォルダーにPDFを書き込めません。", ex);
             }
 
             Runtime.Value.SavePdf(source, destination, token);

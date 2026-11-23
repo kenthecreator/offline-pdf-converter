@@ -83,6 +83,26 @@ public partial class MainWindow
         }
     }
 
+    private async void OnSelectOfficeOutputFolderClick(object? sender, RoutedEventArgs e)
+    {
+        var outputFolder = Required<Avalonia.Controls.TextBox>("OfficeOutputFolderTextBox");
+        try
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "PDFの保存先フォルダーを選択",
+                SuggestedStartLocation = await GetOutputPickerLocationAsync(outputFolder.Text),
+                AllowMultiple = false
+            });
+            if (folders.FirstOrDefault()?.TryGetLocalPath() is { } folder)
+                outputFolder.Text = folder;
+        }
+        catch (Exception ex)
+        {
+            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
+        }
+    }
+
     private async Task ConvertOfficeFilesAsync(IEnumerable<string> paths)
     {
         if (_windowClosed || _conversionCts != null)
@@ -91,7 +111,13 @@ public partial class MainWindow
         if (sources.Length == 0)
             return;
 
-        var message = "元ファイルと同じフォルダーにPDFを保存しました。";
-        await RunConversionAsync((progress, token) => OfficePdfService.ConvertAsync(sources, progress, token), message);
+        var folder = Required<Avalonia.Controls.TextBox>("OfficeOutputFolderTextBox").Text?.Trim();
+        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
+            throw new ArgumentException("保存先フォルダーが見つかりません。");
+
+        var message = string.IsNullOrEmpty(folder)
+            ? "元ファイルと同じフォルダーにPDFを保存しました。"
+            : "指定したフォルダーにPDFを保存しました。";
+        await RunConversionAsync((progress, token) => OfficePdfService.ConvertAsync(sources, folder, progress, token), message);
     }
 }

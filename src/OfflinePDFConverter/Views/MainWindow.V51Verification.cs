@@ -173,7 +173,7 @@ public partial class MainWindow
         var fixtures = Environment.GetEnvironmentVariable("OPC_OFFICE_VERIFY_FIXTURES");
         if (!string.IsNullOrEmpty(fixtures))
         {
-            SetMode(ConversionMode.PdfToImage);
+            SelectDirection(2);
             var officeButton = this.GetVisualDescendants().OfType<Button>()
                 .Single(button => button.IsEffectivelyVisible && Equals(button.Content, "Officeファイルを追加…"));
             Require(officeButton.IsEffectivelyEnabled, "The Office file picker button is unavailable.");
@@ -203,10 +203,16 @@ public partial class MainWindow
             Require(!File.Exists(Path.ChangeExtension(corruptPath, ".pdf")), "An invalid input left a PDF behind.");
             // The native picker supplies its own storage item for literal %xx names. The
             // programmatic storage lookup on macOS sometimes canonicalizes that name.
+            var customFolder = Directory.CreateDirectory(Path.Combine(root, "office-output")).FullName;
+            var outputFolder = Required<TextBox>("OfficeOutputFolderTextBox");
+            outputFolder.Text = customFolder;
             var escapedConversion = AddDroppedFilesAsync(new[] { escapedPath });
             await DismissResultAsync("完了", "作成したファイル: 1");
             await escapedConversion;
-            using (var escaped = UglyToad.PdfPig.PdfDocument.Open(Path.ChangeExtension(escapedPath, ".pdf")))
+            outputFolder.Text = string.Empty;
+            Require(!File.Exists(Path.ChangeExtension(escapedPath, ".pdf")),
+                "Office conversion ignored the configured output folder.");
+            using (var escaped = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(customFolder, escapedName + ".pdf")))
                 Require(escaped.GetPages().Any(page => page.Text.Contains("PowerPoint sample")),
                     "An Office file with a literal URL escape in its name did not convert.");
             using var word = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(root, "日本語 サンプル.pdf"));
@@ -220,7 +226,7 @@ public partial class MainWindow
             Directory.CreateDirectory(evidence);
             foreach (var name in new[] { "日本語 サンプル.pdf", "日本語 ワークブック.pdf", "日本語 スライド.pdf" })
                 File.Copy(Path.Combine(root, name), Path.Combine(evidence, name), overwrite: true);
-            checks.Add("Word/Excel/PowerPoint file drop, percent in file names, corrupt-input reporting, searchable outputs, and the Office picker button");
+            checks.Add("Word/Excel/PowerPoint file drop, custom output folder, percent in file names, corrupt-input reporting, searchable outputs, and the Office picker button");
         }
 
         _pdfFiles.Clear();
