@@ -46,11 +46,13 @@ internal sealed class ButtonGlass : Control
     private readonly Border? _surfaceOwner;
     private int _rendered;
     private int _opticsFailed;
+    private readonly bool _completeFace;
 
-    private ButtonGlass(GlassOptics optics, Border? surfaceOwner = null)
+    private ButtonGlass(GlassOptics optics, Border? surfaceOwner = null, bool completeFace = false)
     {
         _optics = optics;
         _surfaceOwner = surfaceOwner;
+        _completeFace = completeFace;
         IsHitTestVisible = false;
         Focusable = false;
         ActualThemeVariantChanged += (_, _) => InvalidateVisual();
@@ -75,9 +77,9 @@ internal sealed class ButtonGlass : Control
             InvalidateVisual();
     }
 
-    internal static ButtonGlass ForBorder(Border surface, GlassOptics optics)
+    internal static ButtonGlass ForBorder(Border surface, GlassOptics optics, bool completeFace = false)
     {
-        var rim = new ButtonGlass(optics, surface);
+        var rim = new ButtonGlass(optics, surface, completeFace);
         rim.Bind(CornerRadiusProperty, new Binding(nameof(Border.CornerRadius)) { Source = surface });
         rim.Bind(SurfaceBrushProperty, new Binding(nameof(Border.Background)) { Source = surface });
         rim.Bind(MarginProperty, new Binding(nameof(Border.Padding)) { Source = surface, Converter = RimMargin });
@@ -209,6 +211,26 @@ internal sealed class ButtonGlass : Control
                 presenter.Bind(ContentPresenter.PaddingProperty, new TemplateBinding(TemplatedControl.PaddingProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.HorizontalContentAlignmentProperty, new TemplateBinding(ContentControl.HorizontalContentAlignmentProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.VerticalContentAlignmentProperty, new TemplateBinding(ContentControl.VerticalContentAlignmentProperty), BindingPriority.Template);
+                if (button.Classes.Contains("start-glass"))
+                {
+                    var glass = new Border { CornerRadius = new CornerRadius(999), BoxShadow = PillShadow,
+                        IsHitTestVisible = false };
+                    glass.Bind(Border.BackgroundProperty, new TemplateBinding(TemplatedControl.BackgroundProperty), BindingPriority.Template);
+                    glass.Bind(Border.BorderBrushProperty, new TemplateBinding(TemplatedControl.BorderBrushProperty), BindingPriority.Template);
+                    glass.Bind(Border.BorderThicknessProperty, new TemplateBinding(TemplatedControl.BorderThicknessProperty), BindingPriority.Template);
+                    glass.Child = ForBorder(glass, optics, completeFace: true);
+                    // Fluent applies pointer and press colors to the named presenter.
+                    // The lens owns the face, and the label follows the button's theme color.
+                    presenter.Background = null;
+                    presenter.BorderBrush = null;
+                    presenter.Bind(ContentPresenter.ForegroundProperty,
+                        new Binding(nameof(Button.Foreground)) { Source = button });
+                    presenter.BoxShadow = default;
+                    glass.Classes.Add("start-glass-motion");
+                    presenter.Classes.Add("start-glass-motion");
+                    // Keep the hit area stationary while the two visual parts move.
+                    return new Grid { Background = Brushes.Transparent, Children = { glass, presenter } };
+                }
                 var rim = new ButtonGlass(optics);
                 rim.Bind(CornerRadiusProperty, new Binding(nameof(ContentPresenter.CornerRadius)) { Source = presenter });
                 rim.Bind(SurfaceBrushProperty, new Binding(nameof(ContentPresenter.Background)) { Source = presenter });
@@ -219,11 +241,11 @@ internal sealed class ButtonGlass : Control
 
     internal static bool IsAppliedTo(Button button) =>
         button.GetVisualChildren().OfType<Grid>()
-            .SelectMany(grid => grid.Children.OfType<ButtonGlass>()).Any(rim => rim.HasDrawableBounds);
+            .SelectMany(grid => grid.Children.Select(child => child is Border border ? FindRim(border) : child as ButtonGlass).OfType<ButtonGlass>()).Any(rim => rim.HasDrawableBounds);
 
     internal static bool HasRenderedPill(Button button) =>
         button.GetVisualChildren().OfType<Grid>()
-            .SelectMany(grid => grid.Children.OfType<ButtonGlass>())
+            .SelectMany(grid => grid.Children.Select(child => child is Border border ? FindRim(border) : child as ButtonGlass).OfType<ButtonGlass>())
             .Any(rim => rim.HasRendered);
 
     private bool HasDrawableBounds => Bounds.Width >= 8 && Bounds.Height >= 8;
@@ -243,11 +265,16 @@ internal sealed class ButtonGlass : Control
             var face = Blend(track, backdrop);
             // Static light surfaces can use the pill's complete face because their
             // content is drawn above the glass. Reuse its translucent track tint.
-            bool fullFace = _surfaceOwner is not null && track.A > 0 && face.R >= 220 &&
-                            _optics.Background.Color.R >= 220;
-            if (fullFace)
+            bool fullFace = _completeFace || (_surfaceOwner is not null && track.A > 0 && face.R >= 220 &&
+                            _optics.Background.Color.R >= 220);
+            if (_completeFace)
+                track = Color.FromArgb(242, face.R, face.G, face.B);
+            else if (fullFace)
                 track = Color.FromArgb(8, 0, 0, 0);
-            if (_optics.Draw(context, rect.Size, rect.Size, default, backdrop, track, face,
+            // Keep the accent tint under the refracted rim so it does not form a solid ring.
+            var trackSize = _completeFace ? new Size(rect.Width + 40, rect.Height + 40) : rect.Size;
+            var origin = _completeFace ? new Vector(20, 20) : default;
+            if (_optics.Draw(context, rect.Size, trackSize, origin, backdrop, track, face,
                     rimOnly: !fullFace, OnDraw, radius))
                 return;
         }

@@ -34,9 +34,9 @@ public partial class MainWindow
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
         var dpiTrack = Required<Border>("PdfDpiTrack");
         if (dpiTrack.Child is Panel dpiTrackLayers)
-            dpiTrackLayers.Children.Insert(0, ButtonGlass.ForBorder(dpiTrack, effect));
-        _pdfDpiRange.Child = ButtonGlass.ForBorder(_pdfDpiRange, effect);
-        _pdfDpiThumb.Child = ButtonGlass.ForBorder(_pdfDpiThumb, effect);
+            dpiTrackLayers.Children.Insert(0, ButtonGlass.ForBorder(dpiTrack, effect, completeFace: true));
+        _pdfDpiRange.Child = ButtonGlass.ForBorder(_pdfDpiRange, effect, completeFace: true);
+        _pdfDpiThumb.Child = ButtonGlass.ForBorder(_pdfDpiThumb, effect, completeFace: true);
 
         var lenses = new List<ModePillGlass>();
         foreach (var (pillName, trackName) in GlassSelectors)

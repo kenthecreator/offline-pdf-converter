@@ -81,9 +81,9 @@ public partial class MainWindow : Window
         ("ComboMenuHoverBrush", "#12000000", "#20FFFFFF"),
         ("ComboMenuSelectedBrush", "#D8D8D8", "#666666"),
         ("ComboMenuSelectedTextBrush", "#111111", "#FFFFFF"),
-        ("PdfDpiTrackBrush", "#10000000", "#20FFFFFF"),
-        ("PdfDpiThumbBrush", "#FFFFFFFF", "#FFF2F2F2"),
-        ("PdfDpiThumbBorderBrush", "#42000000", "#66000000")
+        ("PdfDpiTrackBrush", "#18000000", "#29FFFFFF"),
+        ("PdfDpiThumbBrush", "#FFF2F2F2", "#FFE7E7E7"),
+        ("PdfDpiThumbBorderBrush", "#24000000", "#28FFFFFF")
     };
 
     private static readonly FilePickerFileType PdfFileType = new("PDFファイル")
@@ -223,6 +223,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _reduceMotion = ShouldReduceMotion();
+        Classes.Set("reduce-motion", _reduceMotion);
         BindControls();
         if (Program.GlassTrial != ModePillGlassTrial.Off)
             InitializePillGlass();

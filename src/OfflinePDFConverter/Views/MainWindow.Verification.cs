@@ -3,6 +3,8 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Presenters;
+using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Input.Platform;
 using Avalonia.Media.Imaging;
@@ -212,9 +214,52 @@ public partial class MainWindow
                 Check(_themeMode == theme, "Theme switch failed.");
                 Check(ReferenceEquals(headerIcon.Source, headerSource), "The header icon changed with the theme.");
                 if (glassEnabled && theme != 0)
+                {
                     SaveSnapshot(Path.ChangeExtension(report, theme == 1 ? ".progress-light.png" : ".progress-dark.png"));
+                    var start = Required<Button>("StartPdfToolButton");
+                    var presenter = start.GetVisualDescendants().OfType<ContentPresenter>()
+                        .Single(item => item.Name == "PART_ContentPresenter");
+                    var footer = Required<Grid>("ActionFooter");
+                    Check(!footer.ClipToBounds && !start.ClipToBounds &&
+                          footer.Parent is Panel footerParent &&
+                          footerParent.Children.All(sibling => sibling == footer || sibling.ZIndex < footer.ZIndex),
+                        "The start footer must draw in front of the other content.");
+                    var faces = start.GetVisualDescendants().OfType<Control>()
+                        .Where(item => item.Classes.Contains("start-glass-motion")).ToArray();
+                    Check(faces.Length == 2, "Start button is missing its moving face or label.");
+                    bool AtOffset(double offset) => faces.All(item =>
+                        Math.Abs((item.RenderTransform?.Value.M32 ?? 0) - offset) < .1);
+                    await Until(() => AtOffset(0));
+                    var states = (IPseudoClasses)start.Classes;
+                    states.Set(":pointerover", true);
+                    try
+                    {
+                        await Until(() => AtOffset(-2));
+                        Check(faces.All(face => face.TranslatePoint(default, start) is { Y: >= -0.1 }),
+                            "The raised glass or label extends outside the button's top edge.");
+                        CheckStartColors();
+                        SaveSnapshot(Path.ChangeExtension(report, theme == 1 ? ".start-hover-light.png" : ".start-hover-dark.png"));
+                        states.Set(":pressed", true);
+                        await Until(() => AtOffset(1));
+                        CheckStartColors();
+                    }
+                    finally
+                    {
+                        states.Set(":pressed", false);
+                        states.Set(":pointerover", false);
+                    }
+
+                    await Until(() => AtOffset(0));
+
+                    void CheckStartColors() =>
+                        Check(presenter.Background is null && presenter.Foreground is ISolidColorBrush label &&
+                              (theme == 1 ? label.Color.R > 220 : label.Color.R < 48),
+                            "Start button lost the theme label or covered the glass face.");
+                }
             }
             _mainProgressBar.Value = 0;
+            if (glassEnabled)
+                checks.Add("start button motion and label contrast on hover, press and return in both themes");
             checks.Add("real desktop startup and the same header icon in Auto, Light and Dark");
             Program.TraceGuiVerification("Theme verification finished");
             var image = Path.Combine(root, "日本語 image.png");

@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / 'artifacts/paddle-edition'
 DIST = ROOT / 'dist/paddle-edition'
-TITLE = 'Offline PDF Converter (v5.2)'
+TITLE = 'Offline PDF Converter (v5.3)'
 
 def write_icns(icons, destination):
     # Store each PNG in its standard ICNS element so packaging also works without iconutil.
@@ -41,7 +41,7 @@ def main():
     if args.target in ('windows', 'both') and not (args.office_windows_zip and args.office_windows_zip.is_file()):
         parser.error('--office-windows-zip is required for a Windows build')
     title = 'Offline PDF Converter (v5.1 Prototype)' if args.prototype else TITLE
-    version = '5.1.0' if args.prototype else '5.2.0'
+    version = '5.1.0' if args.prototype else '5.3.0'
     bundle_version = '5.1.6' if args.prototype else version
     bundle_id = 'com.offlinepdfconverter.paddle.prototype' if args.prototype else 'com.offlinepdfconverter.paddle'
     artifacts = ARTIFACTS / 'prototype' if args.prototype else ARTIFACTS
@@ -101,7 +101,7 @@ def main():
             if len(files) != 1 or files[0].suffix != '.exe': raise ValueError('Expected one Windows executable')
             shutil.copy2(files[0], package/(title+'.exe'))
         documents = [ROOT/'README.md', ROOT/'LICENSE', ROOT/'THIRD_PARTY_LICENSES.md'] + [ROOT/'docs'/name for name in
-                     ['MANUAL.md', 'IMPROVEMENTS.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v5.2.0.md']]
+                     ['MANUAL.md', 'IMPROVEMENTS.md', 'PADDLE_EDITION.md', 'SEARCHABLE_PDF.md', 'RELEASE_DETAILS_v5.3.0.md']]
         if args.prototype:
             documents = [ROOT/'THIRD_PARTY_LICENSES.md']
         for source in documents:

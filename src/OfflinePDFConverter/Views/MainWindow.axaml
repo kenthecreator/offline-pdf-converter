@@ -46,9 +46,9 @@
     <SolidColorBrush x:Key="ComboMenuHoverBrush" Color="#12000000" />
     <SolidColorBrush x:Key="ComboMenuSelectedBrush" Color="#D8D8D8" />
     <SolidColorBrush x:Key="ComboMenuSelectedTextBrush" Color="#111111" />
-    <SolidColorBrush x:Key="PdfDpiTrackBrush" Color="#10000000" />
-    <SolidColorBrush x:Key="PdfDpiThumbBrush" Color="#FFFFFFFF" />
-    <SolidColorBrush x:Key="PdfDpiThumbBorderBrush" Color="#42000000" />
+    <SolidColorBrush x:Key="PdfDpiTrackBrush" Color="#18000000" />
+    <SolidColorBrush x:Key="PdfDpiThumbBrush" Color="#FFF2F2F2" />
+    <SolidColorBrush x:Key="PdfDpiThumbBorderBrush" Color="#24000000" />
   </Window.Resources>
   <Window.Styles>
     <Style Selector="TextBlock">
@@ -129,6 +129,27 @@
       <Setter Property="CornerRadius" Value="999" />
       <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="Button.primary.start-glass">
+      <Setter Property="ClipToBounds" Value="False" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ModePillBorderBrush}" />
+    </Style>
+    <Style Selector="Button.start-glass /template/ :is(Control).start-glass-motion">
+      <Setter Property="Margin" Value="0,2,0,1" />
+      <Setter Property="RenderTransform" Value="translateY(0px)" />
+    </Style>
+    <Style Selector=":is(Window):not(.reduce-motion) Button.start-glass /template/ :is(Control).start-glass-motion">
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.13" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.start-glass:not(:disabled):pointerover /template/ :is(Control).start-glass-motion">
+      <Setter Property="RenderTransform" Value="translateY(-2px)" />
+    </Style>
+    <Style Selector="Button.start-glass:not(:disabled):pressed /template/ :is(Control).start-glass-motion">
+      <Setter Property="RenderTransform" Value="translateY(1px)" />
     </Style>
     <Style Selector="Button.small-action">
       <Setter Property="CornerRadius" Value="999" />
@@ -746,7 +767,7 @@
                               Background="{DynamicResource PdfDpiThumbBrush}"
                               BorderBrush="{DynamicResource PdfDpiThumbBorderBrush}"
                               BorderThickness="1"
-                              BoxShadow="0 2 8 0 #38000000, 0 0 2 0 #26000000"
+                              BoxShadow="0 1 6 0 #26000000"
                               IsHitTestVisible="False">
                         <Border.RenderTransform>
                           <TranslateTransform X="0">
@@ -1562,7 +1583,7 @@
       </Grid>
     </Grid>
 
-    <Grid x:Name="ActionFooter" Grid.Row="2" ColumnDefinitions="*,240" Margin="34,0,34,24" ColumnSpacing="22">
+    <Grid x:Name="ActionFooter" Grid.Row="2" ZIndex="20" ClipToBounds="False" ColumnDefinitions="*,240" Margin="34,0,34,24" ColumnSpacing="22">
       <StackPanel Spacing="10" VerticalAlignment="Center">
         <Button x:Name="CancelConversionButton" Content="処理を中止" IsVisible="False" Click="OnCancelConversionClick" />
         <ProgressBar x:Name="MainProgressBar"
@@ -1579,22 +1600,22 @@
 
       <Grid Grid.Column="1">
         <Button x:Name="StartPdfButton"
-                Classes="primary"
+                Classes="primary start-glass"
                 Content="開始"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
                 IsVisible="False"
                 Click="OnStartPdfConversionClick" />
         <Button x:Name="StartImageButton"
-                Classes="primary"
+                Classes="primary start-glass"
                 Content="開始"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"
                 IsVisible="False"
                 Click="OnStartImageConversionClick" />
-        <Button x:Name="StartOcrButton" Classes="primary" Content="開始" HorizontalAlignment="Stretch" VerticalAlignment="Top" IsVisible="False" Click="OnOfflineOcrClick" />
+        <Button x:Name="StartOcrButton" Classes="primary start-glass" Content="開始" HorizontalAlignment="Stretch" VerticalAlignment="Top" IsVisible="False" Click="OnOfflineOcrClick" />
         <Button x:Name="StartPdfToolButton"
-                Classes="primary"
+                Classes="primary start-glass"
                 Content="開始"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top"

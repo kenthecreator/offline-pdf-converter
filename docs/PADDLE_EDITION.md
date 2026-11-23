@@ -1,10 +1,10 @@
-# Offline PDF Converter (v5.2) — 内蔵OCR
+# Offline PDF Converter (v5.3) — 内蔵OCR
 
-v5.2のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
+v5.3のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生成に対応します。
 
 ## 使い方
 
-アプリ名は「Offline PDF Converter (v5.2)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
+アプリ名は「Offline PDF Converter (v5.3)」です。「OCR処理」でPDFを追加し、「PDFの言語」、認識対象ページ、PDF保存先を選び、「開始」を押します。検索可能PDFへ出力し、PDF編集のTXT出力は廃止しました。
 
 - 日本語（横書き）: 日本語用PP-OCRv4認識モデル、横書きの読み順。
 - 日本語（縦書き）: 日本語用PP-OCRv4認識モデル、右の列から読む順序と縦方向の文字レイヤー。
@@ -15,7 +15,7 @@ v5.2のMac・Windows配布版は、PaddleOCRを内蔵した検索可能PDFの生
 
 [検索可能PDFの仕様・検証・制限](SEARCHABLE_PDF.md)を参照してください。
 
-Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。Windows x64版は.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。v5.2の公開ゲートはWindows Server 2022/2025で同じexeの通信遮断下の主要機能・実ウィンドウ検証を実行します。Windows 10/11の実機、Visual C++未導入VM、PC全体の通信切断、OSのファイル選択ダイアログと全マウス操作の網羅は未確認です。結果JSONはリリースに添付します。
+Mac版はApple Silicon用、ad-hoc署名で未公証です。Tesseract・Python・GPUは不要です。Windows x64版は.NET・認識モデル・Visual C++の必要なDLLをexeに内蔵します。公開済みv4.0ではVisual C++ v14（x64）ランタイムが別途必要です。v5.3の公開ゲートはWindows Server 2022/2025で同じexeの通信遮断下の主要機能・実ウィンドウ検証を実行します。Windows 10/11の実機、Visual C++未導入VM、PC全体の通信切断、OSのファイル選択ダイアログと全マウス操作の網羅は未確認です。結果JSONはリリースに添付します。
 
 ## 構成
 
