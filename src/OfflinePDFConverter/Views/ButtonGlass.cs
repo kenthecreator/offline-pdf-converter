@@ -4,6 +4,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Controls.Shapes;
 using Avalonia.Styling;
@@ -12,34 +13,41 @@ using Avalonia.VisualTree;
 
 namespace OfflinePDFConverter.Views;
 
-// Preserve the Fluent button presenter contract and add the optical rim in its local coordinates.
+// Add a directional reflection over the existing themed surface.
 internal sealed class ButtonGlass : Control
 {
-    private static readonly Pen DarkReflection = new(Glint(177, 32, 90), 1.25);
-    private static readonly Pen DarkShadow = new(Shade(29, 15, 105), 1.15);
-    private static readonly Pen LightEdge = new(Shade(86, 48, 119), 1.05);
-    private static readonly Pen LightReflection = new(Glint(250, 94, 184), 1.5);
-    private static readonly Pen LightShadow = new(Shade(39, 18, 78), 1.1);
+    private static readonly BoxShadows PillShadow = BoxShadows.Parse("0 1 6 0 #0D000000");
+    private static readonly IBrush DarkFace = Gradient("#10FFFFFF", "#00FFFFFF", "#12000000");
+    private static readonly IBrush LightFace = Gradient("#99FFFFFF", "#00FFFFFF", "#09000000");
+    private static readonly Pen DarkEdge = new(Gradient("#49FFFFFF", "#08FFFFFF", "#25000000"), .8);
+    private static readonly Pen LightEdge = new(Gradient("#CCFFFFFF", "#08FFFFFF", "#22000000"), .8);
+    private static readonly FuncValueConverter<Thickness, Thickness> RimMargin = new(padding =>
+        new Thickness(-padding.Left, -padding.Top, -padding.Right, -padding.Bottom));
 
     private static readonly StyledProperty<CornerRadius> CornerRadiusProperty =
         TemplatedControl.CornerRadiusProperty.AddOwner<ButtonGlass>();
     private static readonly StyledProperty<IBrush?> SurfaceBrushProperty =
         AvaloniaProperty.Register<ButtonGlass, IBrush?>("SurfaceBrush");
-    private static readonly AttachedProperty<bool> DecorateProperty =
-        AvaloniaProperty.RegisterAttached<ButtonGlass, Border, bool>("Decorate");
+    private static readonly AttachedProperty<GlassOptics?> DecorateProperty =
+        AvaloniaProperty.RegisterAttached<ButtonGlass, Border, GlassOptics?>("Decorate");
+    private static readonly AttachedProperty<GlassOptics?> DecorateCircleProperty =
+        AvaloniaProperty.RegisterAttached<ButtonGlass, Ellipse, GlassOptics?>("DecorateCircle");
+    private static readonly AttachedProperty<ButtonGlass?> CircleLensProperty =
+        AvaloniaProperty.RegisterAttached<ButtonGlass, Ellipse, ButtonGlass?>("CircleLens");
 
     static ButtonGlass()
     {
         AffectsRender<ButtonGlass>(CornerRadiusProperty, SurfaceBrushProperty, IsEffectivelyEnabledProperty);
         DecorateProperty.Changed.AddClassHandler<Border>(OnDecorateChanged);
+        DecorateCircleProperty.Changed.AddClassHandler<Ellipse>(OnDecorateCircleChanged);
     }
 
-    private readonly GlassOptics? _optics;
+    private readonly GlassOptics _optics;
     private readonly Border? _surfaceOwner;
-    private int _lensFailed;
-    private int _lensDrawn;
+    private int _rendered;
+    private int _opticsFailed;
 
-    private ButtonGlass(GlassOptics? optics = null, Border? surfaceOwner = null)
+    private ButtonGlass(GlassOptics optics, Border? surfaceOwner = null)
     {
         _optics = optics;
         _surfaceOwner = surfaceOwner;
@@ -48,66 +56,132 @@ internal sealed class ButtonGlass : Control
         ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _optics.Background.PropertyChanged += OnPaletteChanged;
+        InvalidateVisual();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _optics.Background.PropertyChanged -= OnPaletteChanged;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnPaletteChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == SolidColorBrush.ColorProperty)
+            InvalidateVisual();
+    }
+
     internal static ButtonGlass ForBorder(Border surface, GlassOptics optics)
     {
         var rim = new ButtonGlass(optics, surface);
         rim.Bind(CornerRadiusProperty, new Binding(nameof(Border.CornerRadius)) { Source = surface });
         rim.Bind(SurfaceBrushProperty, new Binding(nameof(Border.Background)) { Source = surface });
+        rim.Bind(MarginProperty, new Binding(nameof(Border.Padding)) { Source = surface, Converter = RimMargin });
         return rim;
     }
 
-    internal bool HasRendered => Volatile.Read(ref _lensDrawn) != 0 && Volatile.Read(ref _lensFailed) == 0;
+    internal bool HasRendered => Volatile.Read(ref _rendered) != 0 && Volatile.Read(ref _opticsFailed) == 0;
 
     internal static IEnumerable<Style> CreateStyles(GlassOptics optics)
     {
         yield return CreateButtonStyle(optics);
-        yield return DecorateBorder(selector => selector.OfType<ComboBox>().Template().OfType<Border>().Name("Background"));
-        yield return DecorateBorder(selector => selector.OfType<ComboBox>().Template().OfType<Border>().Name("HighlightBackground"));
-        yield return DecorateBorder(selector => selector.OfType<CheckBox>().Template().OfType<Border>().Name("NormalRectangle"));
-        yield return DecorateRadioCircle("OuterEllipse");
-        yield return DecorateRadioCircle("CheckOuterEllipse");
+        var combo = new Style(selector => selector.OfType<ComboBox>());
+        combo.Setters.Add(new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(999)));
+        yield return combo;
+        yield return DecorateBorder(selector => selector.OfType<ComboBox>().Template().OfType<Border>().Name("Background"), optics);
+        yield return DecorateBorder(selector => selector.OfType<ComboBox>().Template().OfType<Border>().Name("PopupBorder"), optics);
+        yield return DecorateBorder(selector => selector.OfType<CheckBox>().Template().OfType<Border>().Name("NormalRectangle"), optics);
+        yield return DecorateBorder(selector => selector.OfType<ListBox>().Class("file-drop").Template().OfType<Border>().Name("border"), optics);
+        yield return DecorateBorder(selector => selector.OfType<TextBox>().Class("settings-input").Template().OfType<Border>().Name("PART_BorderElement"), optics);
+        yield return DecorateBorder(selector => selector.OfType<Border>().Class("glass-surface"), optics);
+        yield return DecorateRadioCircle("OuterEllipse", optics);
+        yield return DecorateRadioCircle("CheckOuterEllipse", optics);
     }
 
-    private static Style DecorateBorder(Func<Selector?, Selector> selector)
+    private static Style DecorateBorder(Func<Selector?, Selector> selector, GlassOptics optics)
     {
         var style = new Style(selector);
-        style.Setters.Add(new Setter(DecorateProperty, true));
+        style.Setters.Add(new Setter(DecorateProperty, optics));
+        style.Setters.Add(new Setter(Border.BoxShadowProperty, PillShadow));
         return style;
     }
 
-    private static Style DecorateRadioCircle(string name)
+    private static Style DecorateRadioCircle(string name, GlassOptics optics)
     {
         var style = new Style(selector => selector.OfType<RadioButton>().Template().OfType<Ellipse>().Name(name));
-        style.Setters.Add(new Setter(Shape.StrokeProperty, Gradient(
-            Color.FromArgb(225, 248, 248, 248), Color.FromArgb(190, 120, 120, 120), Color.FromArgb(225, 53, 53, 53))));
+        style.Setters.Add(new Setter(DecorateCircleProperty, optics));
         return style;
+    }
+
+    private static void OnDecorateCircleChanged(Ellipse circle, AvaloniaPropertyChangedEventArgs _) =>
+        Dispatcher.UIThread.Post(() => ApplyCircleLens(circle));
+
+    private static void ApplyCircleLens(Ellipse circle)
+    {
+        if (circle.Parent is not Panel panel)
+            return;
+        if (circle.GetValue(CircleLensProperty) is { } previous)
+            panel.Children.Remove(previous);
+        circle.ClearValue(CircleLensProperty);
+        if (circle.GetValue(DecorateCircleProperty) is not { } optics)
+            return;
+        var lens = new ButtonGlass(optics) { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        lens.SetValue(CornerRadiusProperty, new CornerRadius(999));
+        lens.Bind(WidthProperty, new Binding(nameof(Ellipse.Width)) { Source = circle });
+        lens.Bind(HeightProperty, new Binding(nameof(Ellipse.Height)) { Source = circle });
+        lens.Bind(OpacityProperty, new Binding(nameof(Ellipse.Opacity)) { Source = circle });
+        lens.Bind(SurfaceBrushProperty, new Binding(nameof(Ellipse.Fill)) { Source = circle });
+        panel.Children.Insert(panel.Children.IndexOf(circle) + 1, lens);
+        circle.SetValue(CircleLensProperty, lens);
     }
 
     private static void OnDecorateChanged(Border border, AvaloniaPropertyChangedEventArgs _)
     {
-        if (border.GetValue(DecorateProperty) && border.Child is null)
+        if (border.Child is SurfaceLayers layers)
         {
-            var rim = new ButtonGlass { IsHitTestVisible = false, Focusable = false };
-            rim.Bind(CornerRadiusProperty, new Binding(nameof(Border.CornerRadius)) { Source = border });
-            border.Child = rim;
+            var content = layers.Children[1];
+            layers.Children.Remove(content);
+            border.Child = content;
         }
-        else if (!border.GetValue(DecorateProperty) && border.Child is ButtonGlass)
+        else if (border.Child is ButtonGlass)
+            border.Child = null;
+
+        if (border.GetValue(DecorateProperty) is not { } optics)
+            return;
+        var rim = ForBorder(border, optics);
+        if (border.Child is { } existing)
         {
             border.Child = null;
+            border.Child = new SurfaceLayers { Children = { rim, existing } };
         }
+        else
+            border.Child = rim;
     }
 
-    private static IBrush Glint(byte start, byte middle, byte end) => Gradient(
-        Color.FromArgb(start, 255, 255, 255), Color.FromArgb(middle, 255, 255, 255), Color.FromArgb(end, 255, 255, 255));
+    private sealed class SurfaceLayers : Grid { }
 
-    private static IBrush Shade(byte start, byte middle, byte end) => Gradient(
-        Color.FromArgb(start, 0, 0, 0), Color.FromArgb(middle, 0, 0, 0), Color.FromArgb(end, 0, 0, 0));
+    internal static ButtonGlass? FindRim(Border border) => border.Child switch
+    {
+        ButtonGlass rim => rim,
+        SurfaceLayers layers => (ButtonGlass)layers.Children[0],
+        _ => null
+    };
 
-    private static LinearGradientBrush Gradient(Color start, Color middle, Color end) => new()
+    private static LinearGradientBrush Gradient(string highlight, string neutral, string shadow) => new()
     {
         StartPoint = RelativePoint.TopLeft,
         EndPoint = RelativePoint.BottomRight,
-        GradientStops = new GradientStops { new(start, 0), new(middle, .48), new(end, 1) }
+        GradientStops = new GradientStops
+        {
+            new(Color.Parse(highlight), 0),
+            new(Color.Parse(neutral), .52),
+            new(Color.Parse(shadow), 1)
+        }
     };
 
     private static Style CreateButtonStyle(GlassOptics optics)
@@ -124,7 +198,10 @@ internal sealed class ButtonGlass : Control
                 presenter.Bind(ContentPresenter.BorderBrushProperty, new TemplateBinding(TemplatedControl.BorderBrushProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.BorderThicknessProperty, new TemplateBinding(TemplatedControl.BorderThicknessProperty), BindingPriority.Template);
                 if (usePill)
+                {
                     presenter.SetValue(ContentPresenter.CornerRadiusProperty, new CornerRadius(999), BindingPriority.Template);
+                    presenter.BoxShadow = PillShadow;
+                }
                 else
                     presenter.Bind(ContentPresenter.CornerRadiusProperty, new TemplateBinding(TemplatedControl.CornerRadiusProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.ContentProperty, new TemplateBinding(ContentControl.ContentProperty), BindingPriority.Template);
@@ -132,10 +209,9 @@ internal sealed class ButtonGlass : Control
                 presenter.Bind(ContentPresenter.PaddingProperty, new TemplateBinding(TemplatedControl.PaddingProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.HorizontalContentAlignmentProperty, new TemplateBinding(ContentControl.HorizontalContentAlignmentProperty), BindingPriority.Template);
                 presenter.Bind(ContentPresenter.VerticalContentAlignmentProperty, new TemplateBinding(ContentControl.VerticalContentAlignmentProperty), BindingPriority.Template);
-                var rim = new ButtonGlass(usePill ? optics : null) { IsHitTestVisible = false, Focusable = false };
+                var rim = new ButtonGlass(optics);
                 rim.Bind(CornerRadiusProperty, new Binding(nameof(ContentPresenter.CornerRadius)) { Source = presenter });
-                if (usePill)
-                    rim.Bind(SurfaceBrushProperty, new Binding(nameof(ContentPresenter.Background)) { Source = presenter });
+                rim.Bind(SurfaceBrushProperty, new Binding(nameof(ContentPresenter.Background)) { Source = presenter });
                 return new Grid { Children = { presenter, rim } };
             })));
         return style;
@@ -159,69 +235,62 @@ internal sealed class ButtonGlass : Control
 
         var rect = new Rect(Bounds.Size);
         using var disabledFade = context.PushOpacity(IsEffectivelyEnabled ? 1 : .28);
-        if (_optics is not null && Volatile.Read(ref _lensFailed) == 0 &&
-            GetValue(SurfaceBrushProperty) is ISolidColorBrush surface)
+        var radius = GetValue(CornerRadiusProperty);
+        if (Volatile.Read(ref _opticsFailed) == 0)
         {
             var backdrop = ResolveBackdrop();
-            var face = Blend(surface.Color, backdrop);
-            if (_optics.Draw(context, rect.Size, rect.Size, default, backdrop, face, face, rimOnly: true, OnLensDrawn))
+            var track = (GetValue(SurfaceBrushProperty) as ISolidColorBrush)?.Color ?? Colors.Transparent;
+            var face = Blend(track, backdrop);
+            // Static light surfaces can use the pill's complete face because their
+            // content is drawn above the glass. Reuse its translucent track tint.
+            bool fullFace = _surfaceOwner is not null && track.A > 0 && face.R >= 220 &&
+                            _optics.Background.Color.R >= 220;
+            if (fullFace)
+                track = Color.FromArgb(8, 0, 0, 0);
+            if (_optics.Draw(context, rect.Size, rect.Size, default, backdrop, track, face,
+                    rimOnly: !fullFace, OnDraw, radius))
                 return;
         }
 
-        var radius = GetValue(CornerRadiusProperty);
         double limit = Math.Min(rect.Width, rect.Height) / 2;
         var outline = new RoundedRect(rect, new CornerRadius(
             Math.Min(radius.TopLeft, limit), Math.Min(radius.TopRight, limit),
             Math.Min(radius.BottomRight, limit), Math.Min(radius.BottomLeft, limit)));
-        if (ActualThemeVariant == ThemeVariant.Dark)
-        {
-            DrawRim(context, outline, 1.3, DarkReflection);
-            DrawRim(context, outline, 2.55, DarkShadow);
-        }
-        else
-        {
-            DrawRim(context, outline, .95, LightEdge);
-            DrawRim(context, outline, 2, LightReflection);
-            DrawRim(context, outline, 3.35, LightShadow);
-        }
+        bool dark = ActualThemeVariant == ThemeVariant.Dark;
+        context.DrawRectangle(dark ? DarkFace : LightFace, dark ? DarkEdge : LightEdge, outline.Deflate(.6, .6));
     }
 
     private Color ResolveBackdrop()
     {
-        var background = ActualThemeVariant == ThemeVariant.Dark ? Color.FromRgb(25, 25, 25) : Color.FromRgb(242, 242, 242);
-        foreach (var visual in this.GetVisualAncestors().Reverse())
+        var color = _optics.Background.Color;
+        foreach (var ancestor in this.GetVisualAncestors().Reverse())
         {
-            if (visual == _surfaceOwner)
+            if (ancestor == _surfaceOwner)
                 continue;
-
-            var brush = visual switch
+            var brush = ancestor switch
             {
                 Border border => border.Background,
                 Panel panel => panel.Background,
-                Window window => window.Background,
                 _ => null
             };
             if (brush is ISolidColorBrush solid)
-                background = Blend(solid.Color, background);
+                color = Blend(solid.Color, color);
         }
-        return background;
+        return color;
     }
 
-    private static Color Blend(Color foreground, Color background)
+    private static Color Blend(Color front, Color back)
     {
-        int alpha = foreground.A;
-        byte Mix(byte front, byte back) => (byte)((front * alpha + back * (255 - alpha) + 127) / 255);
-        return Color.FromRgb(Mix(foreground.R, background.R), Mix(foreground.G, background.G), Mix(foreground.B, background.B));
+        int alpha = front.A;
+        byte Mix(byte first, byte second) => (byte)((first * alpha + second * (255 - alpha) + 127) / 255);
+        return Color.FromRgb(Mix(front.R, back.R), Mix(front.G, back.G), Mix(front.B, back.B));
     }
 
-    private void OnLensDrawn(bool success)
+    private void OnDraw(bool success)
     {
         if (success)
-            Volatile.Write(ref _lensDrawn, 1);
-        else if (Interlocked.Exchange(ref _lensFailed, 1) == 0)
+            Volatile.Write(ref _rendered, 1);
+        else if (Interlocked.Exchange(ref _opticsFailed, 1) == 0)
             Dispatcher.UIThread.Post(InvalidateVisual);
     }
-
-    private static void DrawRim(DrawingContext context, RoundedRect outline, double inset, Pen pen) =>
-        context.DrawRectangle(null, pen, outline.Deflate(inset, inset));
 }

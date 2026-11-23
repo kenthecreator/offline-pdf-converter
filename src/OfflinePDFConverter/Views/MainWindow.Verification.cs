@@ -30,6 +30,26 @@ public partial class MainWindow
             snapshot.Render(this);
             snapshot.Save(path);
         }
+        void CheckSurfaceTone(SkiaSharp.SKBitmap image, Border surface, bool dark)
+        {
+            int ToneAt(double x)
+            {
+                var point = surface.TranslatePoint(new Point(x, surface.Bounds.Height / 2), this);
+                Check(point.HasValue, "Surface is missing from the snapshot: " + surface.Name);
+                var position = point!.Value;
+                var pixel = image.GetPixel((int)position.X, (int)position.Y);
+                return (pixel.Red + pixel.Green + pixel.Blue) / 3;
+            }
+
+            // Sample away from the empty-list hint and the native one-pixel border.
+            int interior = ToneAt(16);
+            int edge = ToneAt(4);
+            string theme = dark ? "dark" : "light";
+            Check(dark ? interior < 65 : interior > 220,
+                $"Unexpected fill on {surface.Name} in {theme} theme: {interior}");
+            Check(Math.Abs(interior - edge) < 24,
+                $"Unexpected thick outline on {surface.Name} in {theme} theme: {edge} next to {interior}");
+        }
         async Task Until(Func<bool> condition)
         {
             var watch = Stopwatch.StartNew();
@@ -89,9 +109,82 @@ public partial class MainWindow
                 else
                     Check(!ButtonGlass.HasRenderedPill(action!), "Unexpected action button lens: " + caption);
             }
-            Check(_pdfToolOperationCombo.GetVisualDescendants().OfType<Border>()
-                .Any(border => border.Name == "Background" && border.Child is ButtonGlass) == glassEnabled,
-                "Incorrect glass decoration on the operation dropdown.");
+            async Task CheckGlassSurfaceAsync(Border border)
+            {
+                var rim = ButtonGlass.FindRim(border);
+                Check(glassEnabled ? rim is { IsHitTestVisible: false, Focusable: false } : rim is null,
+                    "Incorrect glass decoration on " + border.Name);
+                if (rim != null)
+                    await Until(() => rim.HasRendered);
+            }
+            foreach (var (mode, listName, comboName, fieldName, previewNames) in new[]
+            {
+                (ConversionMode.PdfTools, "PdfToolFilesList", "PdfToolOperationCombo", "PdfToolOutputPdfTextBox", new[] { "PdfPreviewSurface" }),
+                (ConversionMode.PdfToImage, "PdfFilesList", "PdfFormatCombo", "PdfPageRangeTextBox", Array.Empty<string>()),
+                (ConversionMode.ImageToPdf, "ImageFilesList", "ImagePageModeCombo", "ImageOutputPdfTextBox", Array.Empty<string>()),
+                (ConversionMode.Ocr, "OcrFilesList", "", "OcrPagesTextBox", new[] { "OcrBeforePreviewSurface", "OcrAfterPreviewSurface" })
+            })
+            {
+                SetMode(mode);
+                var list = Required<ListBox>(listName);
+                await Until(() => list.GetVisualDescendants().OfType<Border>().Any(border => border.Name == "border"));
+                var listBorder = list.GetVisualDescendants().OfType<Border>().First(border => border.Name == "border");
+                await CheckGlassSurfaceAsync(listBorder);
+                Check(listBorder.GetVisualDescendants().OfType<ScrollViewer>().Any(viewer => viewer.Name == "PART_ScrollViewer"),
+                    "The file list lost its original scroll viewer: " + listName);
+                foreach (var name in previewNames)
+                    await CheckGlassSurfaceAsync(Required<Border>(name));
+                var panel = this.GetVisualDescendants().OfType<Border>()
+                    .Single(border => border.IsEffectivelyVisible && border.Classes.Contains("settings-panel"));
+                var firstCard = panel.GetVisualDescendants().OfType<Border>()
+                    .First(border => border.IsEffectivelyVisible && border.Classes.Contains("settings-card"));
+                await CheckGlassSurfaceAsync(panel);
+                await CheckGlassSurfaceAsync(firstCard);
+                if (ButtonGlass.FindRim(firstCard) is { } cardRim)
+                    Check(cardRim.Bounds.Width >= firstCard.Bounds.Width - 4, "Card padding inset the optical rim.");
+                var field = Required<TextBox>(fieldName);
+                await Until(() => field.GetVisualDescendants().OfType<Border>().Any(border => border.Name == "PART_BorderElement"));
+                await CheckGlassSurfaceAsync(field.GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_BorderElement"));
+                if (mode == ConversionMode.Ocr)
+                {
+                    var choice = Required<RadioButton>("OcrHorizontalChoice");
+                    await Until(() => !glassEnabled || choice.GetVisualDescendants().OfType<ButtonGlass>().Any(rim => rim.HasRendered));
+                    Check(choice.IsChecked == true, "The checked language choice was lost.");
+                }
+                if (comboName.Length > 0)
+                {
+                    var combo = Required<ComboBox>(comboName);
+                    await Until(() => combo.GetVisualDescendants().OfType<Border>().Any(border => border.Name == "Background"));
+                    var face = combo.GetVisualDescendants().OfType<Border>().First(border => border.Name == "Background");
+                    Check(face.CornerRadius.TopLeft >= face.Bounds.Height / 2, "Dropdown is not pill-shaped: " + comboName);
+                    await CheckGlassSurfaceAsync(face);
+                    combo.IsDropDownOpen = true;
+                    await Until(() => combo.IsDropDownOpen && combo.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Any(popup => popup.IsOpen));
+                    var popup = combo.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().Single(item => item.IsOpen);
+                    if (popup.Child is Border popupBorder)
+                        await CheckGlassSurfaceAsync(popupBorder);
+                    combo.IsDropDownOpen = false;
+                }
+                if (glassEnabled)
+                {
+                    foreach (int theme in new[] { 1, 2, 1 })
+                    {
+                        FinishThemeDrag(theme);
+                        await Until(() => !_themeTransitionActive && _themeMode == theme);
+                        bool dark = theme == 2;
+                        var snapshotPath = Path.ChangeExtension(report, $".glass-{mode}-{(dark ? "dark" : "light")}.png");
+                        SaveSnapshot(snapshotPath);
+                        using var screenshot = SkiaSharp.SKBitmap.Decode(snapshotPath);
+                        CheckSurfaceTone(screenshot, listBorder, dark);
+                        foreach (var name in previewNames)
+                            CheckSurfaceTone(screenshot, Required<Border>(name), dark);
+                    }
+                }
+            }
+            SetMode(ConversionMode.PdfTools);
+            if (glassEnabled)
+                checks.Add("drop areas and empty previews keep their theme colors and avoid thick outlines after repeated theme switches");
+            checks.Add("pill dropdowns, original list scrolling, and glass on file-drop, preview and settings surfaces");
             checks.Add($"five selector pills and six labeled action buttons: {Program.GlassTrial}");
             var progressParts = _mainProgressBar.GetVisualDescendants().OfType<Border>().ToArray();
             var track = progressParts.Single(border => border.Name == "ProgressBarRoot");

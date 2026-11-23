@@ -5,9 +5,9 @@ public static class AppIdentity
 #if V51_PROTOTYPE
     public const string HeaderSuffix = " (v5.1 Prototype)";
 #else
-    public const string HeaderSuffix = " (v5.1)";
+    public const string HeaderSuffix = " (v5.2)";
 #endif
-    internal const string ExpectedVersion = "5.1.0.0";
+    internal const string ExpectedVersion = "5.2.0.0";
     public const string WindowTitle = "Offline PDF Converter" + HeaderSuffix;
 
 #if PADDLE_OCR

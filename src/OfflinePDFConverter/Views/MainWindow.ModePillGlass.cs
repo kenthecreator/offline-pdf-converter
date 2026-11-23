@@ -28,7 +28,7 @@ public partial class MainWindow
             Resources["ModePillBrush"] is not SolidColorBrush pillColor)
             return;
 
-        if (GlassOptics.Compile(Program.GlassTrial) is not { } effect)
+        if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;

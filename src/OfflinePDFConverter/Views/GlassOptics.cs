@@ -6,17 +6,19 @@ using SkiaSharp;
 
 namespace OfflinePDFConverter.Views;
 
-internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
+internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush background) : IDisposable
 {
     private bool _disposed;
 
-    public static GlassOptics? Compile(ModePillGlassTrial trial)
+    internal SolidColorBrush Background { get; } = background;
+
+    public static GlassOptics? Compile(ModePillGlassTrial trial, SolidColorBrush background)
     {
         try
         {
             var source = trial == ModePillGlassTrial.SimulateFailure ? "invalid SkSL" : ShaderSource;
             if (SKRuntimeEffect.CreateShader(source, out var error) is { } compiled)
-                return new GlassOptics(compiled);
+                return new GlassOptics(compiled, background);
 
             System.Diagnostics.Trace.WriteLine($"Glass shader compilation failed: {error}");
         }
@@ -28,13 +30,18 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
     }
 
     public bool Draw(DrawingContext context, Size size, Size trackSize, Vector origin,
-        Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw)
+        Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw, CornerRadius? cornerRadius = null)
     {
         if (_disposed)
             return false;
 
         try
         {
+            float[] radii = cornerRadius is { } radius
+                ? [ClampRadius(radius.TopLeft), ClampRadius(radius.TopRight),
+                    ClampRadius(radius.BottomRight), ClampRadius(radius.BottomLeft)]
+                : [0, 0, 0, 0];
+            float ClampRadius(double value) => (float)Math.Clamp(value, 0, Math.Min(size.Width, size.Height) / 2);
             using var uniforms = new SKRuntimeEffectUniforms(effect)
             {
                 ["trackSize"] = new[] { (float)trackSize.Width, (float)trackSize.Height },
@@ -43,7 +50,9 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
                 ["surround"] = Rgb(surround),
                 ["trackColor"] = new[] { track.R / 255f, track.G / 255f, track.B / 255f, track.A / 255f },
                 ["pillColor"] = Rgb(surface),
-                ["rimOnly"] = rimOnly ? 1f : 0f
+                ["rimOnly"] = rimOnly ? 1f : 0f,
+                ["roundedRectangle"] = cornerRadius.HasValue ? 1f : 0f,
+                ["localRadii"] = radii
             };
             if (effect.ToShader(uniforms) is not { } shader)
                 return false;
@@ -124,6 +133,8 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
         uniform float4 trackColor;
         uniform float3 pillColor;
         uniform float rimOnly;
+        uniform float roundedRectangle;
+        uniform float4 localRadii;
 
         float2 fromCapsuleAxis(float2 point, float2 size) {
             float2 p = point - size * 0.5;
@@ -131,7 +142,19 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
             return p - clamp(p, -span, span);
         }
 
+        float2 fromRoundedRectCorner(float2 centered, float2 size, out float radius) {
+            radius = centered.y < 0.0
+                ? (centered.x < 0.0 ? localRadii.x : localRadii.y)
+                : (centered.x < 0.0 ? localRadii.w : localRadii.z);
+            return abs(centered) - (size * 0.5 - radius);
+        }
+
         float trackDistance(float2 p) {
+            if (roundedRectangle > 0.5) {
+                float radius;
+                float2 edge = fromRoundedRectCorner(p - trackSize * 0.5, trackSize, radius);
+                return length(max(edge, 0.0)) + min(max(edge.x, edge.y), 0.0) - radius;
+            }
             return length(fromCapsuleAxis(p, trackSize)) - min(trackSize.x, trackSize.y) * 0.5;
         }
 
@@ -149,13 +172,24 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
             float radial = length(perpendicular);
             float diameter = min(localSize.x, localSize.y);
             float distance = radial - diameter * 0.5;
+            float2 outward = perpendicular / max(radial, 0.01);
+            if (roundedRectangle > 0.5) {
+                float2 centered = point - localSize * 0.5;
+                float radius;
+                float2 edge = fromRoundedRectCorner(centered, localSize, radius);
+                float2 outside = max(edge, 0.0);
+                float outsideLength = length(outside);
+                distance = outsideLength + min(max(edge.x, edge.y), 0.0) - radius;
+                float2 direction = outsideLength > 0.0 ? outside / max(outsideLength, 0.001)
+                    : (edge.x > edge.y ? float2(1.0, 0.0) : float2(0.0, 1.0));
+                outward = direction * sign(centered);
+            }
             float mask = coverage(distance);
             // The command-button lens is above the presenter. Its center passes the label through.
             if (rimOnly > 0.5)
                 mask *= coverage(distance + 0.7) * smoothstep(-min(8.0, diameter * 0.34), -min(3.5, diameter * 0.15), distance);
             if (mask <= 0.0) return half4(0.0);
 
-            float2 outward = perpendicular / max(radial, 0.01);
             float bevel = clamp(1.0 + distance / min(13.0, diameter * 0.37), 0.0, 1.0);
             float slope = 1.55 * pow(bevel, 1.28);
             float3 normal = normalize(float3(outward * slope, 1.0));
@@ -179,17 +213,26 @@ internal sealed class GlassOptics(SKRuntimeEffect effect) : IDisposable
             shade += lightSurface * exp(-abs(distance + 3.6) * 0.70)
                 * (0.027 + 0.073 * max(-light, 0.0));
 
-            if (rimOnly > 0.5) {
-                // Composite the change in light over the button's existing fill, including hover and press colors.
-                float bentLight = dot(backdrop - pillColor, float3(0.2126, 0.7152, 0.0722));
-                float response = reflection * 0.73 - shade * 0.77 + bentLight * 0.13;
-                float alpha = mask * min(abs(response), mix(0.36, 0.26, lightSurface));
-                return half4(float3(response > 0.0 ? alpha : 0.0), alpha);
-            }
-
             float3 color = mix(backdrop, pillColor, mix(0.37, 0.18, lightSurface));
             color = mix(color, float3(0.0), shade);
             color = mix(color, float3(1.0), reflection);
+            if (rimOnly > 0.5) {
+                // Match the pill's reflected tone over the existing fill. On white surfaces
+                // the bright glint needs a soft neighboring shadow to read as curved glass.
+                float3 luminance = float3(0.2126, 0.7152, 0.0722);
+                float bentLight = dot(backdrop - pillColor, luminance);
+                float darkResponse = reflection * 0.73 - shade * 0.77 + bentLight * 0.13;
+                float shoulder = exp(-abs(distance + 2.8) * 0.62);
+                float direction = pow(max(-light, 0.0), 2.0);
+                float paleFace = smoothstep(0.58, 0.9, dot(pillColor, luminance));
+                float target = dot(color - pillColor, luminance) - shoulder * direction * paleFace * 0.045;
+                float tone = dot(pillColor, luminance);
+                float lightResponse = target / max(target > 0.0 ? 1.0 - tone : tone, 0.15);
+                float response = mix(darkResponse, lightResponse, lightSurface);
+                float alpha = mask * min(abs(response), mix(0.36, 0.22, lightSurface));
+                return half4(float3(response > 0.0 ? alpha : 0.0), alpha);
+            }
+
             return half4(color * mask, mask);
         }
         """;

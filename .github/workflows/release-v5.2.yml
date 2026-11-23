@@ -1,0 +1,188 @@
+name: Verify and prepare v5.2
+on:
+  push:
+    branches: [codex/release-v5.2]
+  workflow_dispatch:
+    inputs:
+      prepare_draft:
+        description: Create the v5.2 draft if all checks pass on main
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-v5.2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            suffix: Windows-x64
+            target: windows
+          - os: macos-15
+            suffix: macOS-arm64
+            target: mac
+    runs-on: ${{ matrix.os }}
+    env:
+      PACKAGE_TITLE: Offline PDF Converter (v5.2)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify metadata and prepare the pinned dependencies
+        shell: bash
+        run: |
+          python scripts/verify-v5.2-release.py
+          python -m pip install fonttools==4.61.1
+          python scripts/prepare-ocr-font.py
+          python scripts/prepare-office-engine.py --target ${{ matrix.target }} --output artifacts/office-engine
+      - name: PDF, cancellation and file safety regressions
+        run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false -p:UsedAvaloniaProducts=
+      - name: Searchable PDF, four languages and appearance preservation
+        shell: bash
+        run: |
+          dotnet build tests/SearchablePdfTests -c Release -p:PaddleOcrEdition=true -p:UsedAvaloniaProducts=
+          dotnet artifacts/paddle-edition/bin/SearchablePdfTests/Release/net8.0/SearchablePdfTests.dll . artifacts/searchable-verification
+      - name: Small Japanese table text and page-number-only text layers
+        shell: bash
+        run: |
+          dotnet build tests/SmallTextOcrTests -c Release -p:PaddleOcrEdition=true -p:UsedAvaloniaProducts=
+          dotnet artifacts/paddle-edition/bin/SmallTextOcrTests/Release/net8.0/SmallTextOcrTests.dll . artifacts/small-text-verification
+      - name: Build exact macOS distribution
+        if: runner.os == 'macOS'
+        run: python scripts/build-paddle-edition.py --target mac --office-macos-app artifacts/office-engine/LibreOffice.app
+      - name: Build exact Windows distribution
+        if: runner.os == 'Windows'
+        run: python scripts/build-paddle-edition.py --target windows --office-windows-zip artifacts/office-engine/LibreOffice-win-x64.zip
+      - name: Verify archive and checksum
+        run: python scripts/verify-v5.2-release.py --archives dist/paddle-edition --target ${{ matrix.suffix }}
+      - name: Test exact macOS ZIP
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          ditto -x -k "dist/paddle-edition/$PACKAGE_TITLE-macOS-arm64.zip" isolated
+          app="isolated/$PACKAGE_TITLE.app"
+          codesign --verify --deep --strict "$app"
+          exe="$app/Contents/MacOS/OfflinePDFConverter.PaddleEdition"
+          PATH=/usr/bin:/bin DOTNET_BUNDLE_EXTRACT_BASE_DIR="$RUNNER_TEMP/opc-offline" "$exe" --verify-offline reports/macos-features.json
+          PATH=/usr/bin:/bin DOTNET_BUNDLE_EXTRACT_BASE_DIR="$RUNNER_TEMP/opc-gui" OPC_OFFICE_VERIFY_FIXTURES="$PWD/tests/fixtures/office-v5.1" "$exe" --verify-gui reports/macos-gui.json
+      - name: Test exact Windows ZIP with network blocked
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Expand-Archive -LiteralPath "dist/paddle-edition/${env:PACKAGE_TITLE}-Windows-x64.zip" -DestinationPath isolated
+          $exe = "isolated/$env:PACKAGE_TITLE.exe"
+          ./scripts/verify-windows-single-exe.ps1 -ExePath $exe -BlockNetwork -ReportPath reports/windows2022-features.json
+          ./scripts/verify-windows-single-exe.ps1 -ExePath $exe -BlockNetwork -VerifyGui -OfficeFixtures tests/fixtures/office-v5.1 -ReportPath reports/windows2022-gui.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5.2-${{ matrix.target }}
+          path: |
+            dist/paddle-edition/*.zip
+            dist/paddle-edition/*.sha256.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5.2-${{ matrix.target }}-evidence
+          path: reports/
+          if-no-files-found: error
+
+  windows-2025:
+    needs: build
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: v5.2-windows
+          path: candidate
+      - name: Test the same Windows ZIP on Windows Server 2025
+        shell: pwsh
+        run: |
+          $archive = @(Get-ChildItem candidate -Recurse -Filter '*.zip')
+          if ($archive.Count -ne 1) { throw 'Expected one Windows release archive.' }
+          Expand-Archive -LiteralPath $archive[0].FullName -DestinationPath isolated
+          $exe = 'isolated/Offline PDF Converter (v5.2).exe'
+          ./scripts/verify-windows-single-exe.ps1 -ExePath $exe -BlockNetwork -ReportPath reports/windows2025-features.json
+          ./scripts/verify-windows-single-exe.ps1 -ExePath $exe -BlockNetwork -VerifyGui -OfficeFixtures tests/fixtures/office-v5.1 -ReportPath reports/windows2025-gui.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5.2-windows2025-evidence
+          path: reports/
+          if-no-files-found: error
+
+  office-parity:
+    needs: [build, windows-2025]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v5.2-*-evidence
+          path: reports
+          merge-multiple: true
+      - name: Compare page size, Japanese text, and graphic and text positions
+        run: |
+          python -m pip install pypdfium2==5.23.0 Pillow==13.0.0
+          python scripts/verify-office-release.py reports/macos-gui.office
+          python scripts/verify-office-release.py reports/windows2022-gui.office --reference reports/macos-gui.office
+          python scripts/verify-office-release.py reports/windows2025-gui.office --reference reports/macos-gui.office
+          printf '{"passed":true,"commit":"%s"}\n' "$GITHUB_SHA" > office-parity.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v5.2-office-parity
+          path: office-parity.json
+          if-no-files-found: error
+
+  draft:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.prepare_draft
+    needs: office-parity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: v5.2-*
+          path: candidate
+      - name: Prepare the verified GitHub release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/verify-v5.2-release.py --archives candidate
+          mkdir release-assets
+          for target in Windows-x64 macOS-arm64; do
+            source=$(find candidate -type f -name "Offline PDF Converter (v5.2)-$target.zip")
+            name="Offline.PDF.Converter.v5.2.-$target.zip"
+            cp "$source" "release-assets/$name"
+            (cd release-assets && sha256sum "$name" > "$name.sha256.txt")
+          done
+          for report in macos-features macos-gui windows2022-features windows2022-gui windows2025-features windows2025-gui; do
+            source=$(find candidate -type f -name "$report.json")
+            test -f "$source"
+            cp "$source" "release-assets/verification-$report.json"
+          done
+          cp candidate/v5.2-office-parity/office-parity.json release-assets/
+          if gh release view v5.2.0 >/dev/null 2>&1 ||
+             gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v5.2.0" >/dev/null 2>&1; then
+            echo 'v5.2.0 exists; refusing to replace it.' >&2
+            exit 1
+          fi
+          gh release create v5.2.0 release-assets/* --target "$GITHUB_SHA" --draft \
+            --title 'Offline PDF Converter (v5.2)' --notes-file docs/RELEASE_DETAILS_v5.2.0.md
