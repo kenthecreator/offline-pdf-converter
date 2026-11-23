@@ -1,6 +1,8 @@
-# Offline PDF Converter (v5.4)
+# Offline PDF Converter (v5.5)
 
 完全オフライン動作を前提にした、Windows x64／macOS Apple Silicon向けのPDF・画像変換とPDF編集のデスクトップアプリです。[公式ダウンロードページ](https://kenthecreator.github.io/offline-pdf-converter/)から配布ZIPを取得できます。
+
+v5.5では、OSに表示するアプリアイコンと、メイン画面のヘッダーアイコンを更新しました。
 
 v5.4では、「Office → PDF」を独立した第3タブにし、右側でPDFの保存先を指定できるようにしました。選択タブのガラス表現、設定欄のスクロールバー、入力欄やファイル一覧の見え方も調整しました。
 
@@ -20,7 +22,7 @@ OCRの画面と仕様は [検索可能PDFの説明](docs/SEARCHABLE_PDF.md) を�
 - Windows 10（1903以降）／11 x64、macOS Apple Silicon向けです。Mac版はad-hoc署名で、Appleの公証は未実施です。
 - ネイティブ部品とOCRモデルは実行時に一時領域へ自動展開します。単体exeでも実行中の一時ファイルは作成されます。
 
-[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v5.4リリース内容](docs/RELEASE_DETAILS_v5.4.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
+[最新版のダウンロード](https://github.com/kenthecreator/offline-pdf-converter/releases/latest) ／ [v5.5リリース内容](docs/RELEASE_DETAILS_v5.5.0.md) ／ [OCRの仕様・制限](docs/SEARCHABLE_PDF.md)
 
 v4.4では、トリミング範囲外の文字によって本文のOCRが省略される問題と、長い日本語が保存時に折り返されない問題を修正しました。v4.3から引き継いだ改善として、ページ番号のみが文字で本文が画像・輪郭線のPDFもOCRできるようにし、小さい日本語を検出前の縮小で失わないよう改善しました。非表示文字層にはNoto Sans Japaneseを内蔵します。実際の配布exeから主要機能と実ウィンドウを検証します。検証条件と未確認事項は[v4.4リリース内容](docs/RELEASE_DETAILS_v4.4.0.md)を参照してください。
 
