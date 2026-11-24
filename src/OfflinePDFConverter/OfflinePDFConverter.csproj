@@ -33,9 +33,6 @@
     <EmbeddedResource Include="Assets/OcrSelfTest.png" LogicalName="OfflinePDFConverter.OcrSelfTest.png" />
     <AvaloniaResource Include="Assets/Fonts/*.ttf" />
     <EmbeddedResource Include="Assets/Fonts/*" LogicalName="OfflinePDFConverter.Fonts.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Assets/Fonts/Office/*.ttf;Assets/Fonts/Office/*.otf"
-                      LogicalName="OfflinePDFConverter.OfficeFonts.%(Filename)%(Extension)"
-                      Condition="'$(RuntimeIdentifier)' != 'win-x64'" />
     <AvaloniaResource Include="Assets\AppIcon.png" />
     <AvaloniaResource Include="Assets\AppHeaderIcon.png" />
     <PackageReference Include="Avalonia" Version="11.3.12" />

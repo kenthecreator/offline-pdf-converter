@@ -29,10 +29,10 @@ def fetch_assets(release, directory):
     archives = [f"Offline.PDF.Converter.v5.5.-{target}.zip" for target in PLATFORMS]
     checksums = [name + ".sha256.txt" for name in archives]
     reports = [f"verification-{name}.json" for name in REPORTS]
-    required = set(archives + checksums + reports + ["office-parity.json"])
+    required = set(archives + checksums + reports)
     if required - assets.keys():
         raise ValueError(f"Missing upload: {sorted(required - assets.keys())}")
-    for name in checksums + reports + ["office-parity.json"]:
+    for name in checksums + reports:
         data = gh("api", f"repos/{REPO}/releases/assets/{assets[name]['id']}",
                   "-H", "Accept: application/octet-stream")
         (directory / name).write_text(data, encoding="utf-8")
@@ -43,7 +43,6 @@ def fetch_assets(release, directory):
     for report in reports:
         if json.loads((directory / report).read_text(encoding="utf-8-sig"))["passed"] is not True:
             raise ValueError(f"Failed verification report: {report}")
-    return json.loads((directory / "office-parity.json").read_text(encoding="utf-8"))
 
 
 def main():
@@ -58,10 +57,8 @@ def main():
     if release["name"] != TITLE or release["prerelease"]:
         raise ValueError("Unexpected release title or prerelease state")
     with tempfile.TemporaryDirectory(prefix="opc-release-check-") as temporary:
-        parity = fetch_assets(release, Path(temporary))
+        fetch_assets(release, Path(temporary))
     target = release["target_commitish"]
-    if parity["passed"] is not True or parity["commit"] != target:
-        raise ValueError("No Office parity evidence for the release commit")
     verified_files = {}
     for name in PAGES_FILES:
         verified_file = api(f"contents/docs/download-page/{name}?ref={target}")

@@ -307,7 +307,7 @@
       <Setter Property="Background" Value="{DynamicResource AccentTextBrush}" />
       <Setter Property="Opacity" Value="0.75" />
     </Style>
-    <Style Selector=":is(Window).windows-layout Border.settings-panel TextBlock.label">
+    <Style Selector=":is(Window).fit-startup-layout Border.settings-panel TextBlock.label">
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="TextAlignment" Value="Center" />
     </Style>

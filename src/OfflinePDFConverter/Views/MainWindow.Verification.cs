@@ -86,35 +86,38 @@ public partial class MainWindow
         {
             Program.TraceGuiVerification("Main window opened");
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
-            if (OperatingSystem.IsWindows())
+            if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
             {
                 const double ratio = 1120d / 760;
-                Check(Math.Abs(ClientSize.AspectRatio - ratio) < .02, "Windows startup aspect ratio changed.");
+                Check(Math.Abs(ClientSize.AspectRatio - ratio) < .02, "Startup aspect ratio changed.");
                 var canvasStart = _themeTransitionRoot.TranslatePoint(default, this)!.Value;
                 var canvasEnd = _themeTransitionRoot.TranslatePoint(
                     new Point(_themeTransitionRoot.Bounds.Width, _themeTransitionRoot.Bounds.Height), this)!.Value;
                 Check(canvasStart.X >= -1 && canvasStart.Y >= -1 &&
                       canvasEnd.X <= ClientSize.Width + 1 && canvasEnd.Y <= ClientSize.Height + 1,
-                    "The main content extends outside the Windows client area.");
+                    "The main content extends outside the client area.");
                 if (Screens.ScreenFromWindow(this) is { } screen)
                 {
                     var area = screen.WorkingArea;
                     var frame = PixelSize.FromSize(FrameSize ?? ClientSize, DesktopScaling);
                     Check(Position.X >= area.X - 2 && Position.Y >= area.Y - 2 &&
                           Position.X + frame.Width <= area.Right + 2 && Position.Y + frame.Height <= area.Bottom + 2,
-                        "The Windows startup frame extends outside the monitor work area.");
+                        "The Startup frame extends outside the monitor work area.");
                 }
 
-                var compact = FitWindowsStartupClientSize(new Size(1120, 760), new PixelRect(0, 0, 1280, 680),
+                var compact = FitStartupClientSize(new Size(1120, 760), new PixelRect(0, 0, 1280, 680),
                     1.5, new Size(16, 40));
                 Check(Math.Abs(compact.AspectRatio - ratio) < .01 &&
                       (compact.Width + 16) * 1.5 <= 1280 && (compact.Height + 40) * 1.5 <= 680,
-                    "The Windows startup size does not fit a small work area at 150% scaling.");
+                    "The Startup size does not fit a small work area at 150% scaling.");
                 var nameField = Required<TextBox>("PdfToolOutputPdfBaseNameTextBox");
                 var caption = ((StackPanel)nameField.Parent!).Children.OfType<TextBlock>().Last();
                 Check(caption.TextWrapping == TextWrapping.Wrap,
-                    "The Windows output file name label is not configured to wrap.");
-                checks.Add("Windows startup frame and content fit the work area, and long settings labels wrap");
+                    "The output file name label is not configured to wrap.");
+                checks.Add("Startup frame and content fit the work area, and long settings labels wrap");
+            }
+            if (OperatingSystem.IsWindows())
+            {
                 var toolsLabel = Required<TextBlock>("PdfToolsModeLabel");
                 var toolsPill = Required<Border>("ModeSelectionPill");
                 var labelCenter = toolsLabel.TranslatePoint(new Point(toolsLabel.Bounds.Width / 2, 0), _modeSelectorSwitch);

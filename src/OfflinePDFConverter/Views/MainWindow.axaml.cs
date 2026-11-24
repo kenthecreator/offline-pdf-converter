@@ -34,7 +34,7 @@ public partial class MainWindow : Window
     private const double ModeSegmentWidth = 144;
     private const double ModeDragMaximum = ModeSegmentWidth * 2;
     private const double DirectionSegmentWidth = 133;
-    private static bool OfficeConversionAvailable => !OperatingSystem.IsWindows();
+    private static bool OfficeConversionAvailable => false;
     private static int LastDirectionIndex => OfficeConversionAvailable ? 2 : 1;
     private static double DirectionDragMaximum => LastDirectionIndex * DirectionSegmentWidth;
     private const double PreviewViewDragMaximum = 72;
@@ -227,11 +227,9 @@ public partial class MainWindow : Window
     public MainWindow(bool isInitialDarkTheme)
     {
         InitializeComponent();
+        ConfigureStartupLayout();
         if (OperatingSystem.IsWindows())
-        {
-            ConfigureWindowsStartupLayout();
             Required<TextBlock>("PdfToolsModeLabel").RenderTransform = null;
-        }
         _reduceMotion = ShouldReduceMotion();
         Classes.Set("reduce-motion", _reduceMotion);
         BindControls();
@@ -286,24 +284,24 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
-    private void ConfigureWindowsStartupLayout()
+    private void ConfigureStartupLayout()
     {
-        Classes.Add("windows-layout");
+        Classes.Add("fit-startup-layout");
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         if ((Screens.ScreenFromPoint(Position) ?? Screens.Primary) is not { } screen)
             return;
 
         var chrome = FrameSize is { } outer && outer.Height > ClientSize.Height
             ? outer - ClientSize
-            : new Size(16, 40);
-        var size = FitWindowsStartupClientSize(new Size(Width, Height), screen.WorkingArea, screen.Scaling, chrome);
+            : (OperatingSystem.IsWindows() ? new Size(16, 40) : new Size(0, 28));
+        var size = FitStartupClientSize(new Size(Width, Height), screen.WorkingArea, screen.Scaling, chrome);
         MinWidth = Math.Min(MinWidth, size.Width);
         MinHeight = Math.Min(MinHeight, size.Height);
         Width = size.Width;
         Height = size.Height;
     }
 
-    private static Size FitWindowsStartupClientSize(Size preferred, PixelRect workArea, double scaling, Size chrome)
+    private static Size FitStartupClientSize(Size preferred, PixelRect workArea, double scaling, Size chrome)
     {
         // Reserve room for the native frame and leave one DIP for rounding at fractional scaling.
         double width = Math.Max(1, workArea.Width / scaling - Math.Max(0, chrome.Width) - 1);

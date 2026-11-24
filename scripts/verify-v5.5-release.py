@@ -43,7 +43,7 @@ def verify_metadata():
         url = f"{REPO}/releases/download/v{VERSION}/Offline.PDF.Converter.v5.5.-{target}.zip"
         assert {url, url + ".sha256.txt"} <= parser.links
     assert f"{REPO}/releases/tag/v{VERSION}" in parser.links
-    assert f"{REPO}/blob/v{VERSION}/docs/MANUAL.md" in parser.links
+    assert f"{REPO}/blob/main/docs/MANUAL.md" in parser.links
     assert "v5.0" not in page
     assert 'href="app-icon-v5.5.png"' in page and 'src="app-icon-v5.5.png"' in page
     assert (ROOT / "docs/download-page/app-icon-v5.5.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
@@ -66,19 +66,17 @@ def verify_archive(folder, target):
         assert {f"RELEASE_DETAILS_v{VERSION}.md", "LICENSE", "THIRD_PARTY_LICENSES.md",
                 "OFL-NotoSansJP.txt", "OFL-ZenKakuGothicNew.txt", "MANUAL.md", "IMPROVEMENTS.md"} <= names
         office_licenses = {"OFL-NotoSerifCJKjp.txt", "OFL-Carlito.txt", "OFL-Caladea.txt"}
+        assert not (office_licenses & names), "Office fonts must not be packaged"
         if target == "Windows-x64":
             assert {name for name in names if name.lower().endswith((".exe", ".dll"))} == {TITLE + ".exe"}
-            assert not (office_licenses & names), "Office fonts should be packaged only with macOS"
         else:
-            assert office_licenses <= names
             contents = TITLE + ".app/Contents/"
             info = plistlib.loads(bundle.read(contents + "Info.plist"))
             assert info["CFBundleName"] == info["CFBundleDisplayName"] == TITLE
             assert info["CFBundleVersion"] == info["CFBundleShortVersionString"] == VERSION
             assert info["CFBundleIconFile"] == "AppIcon"
             assert contents + "Resources/AppIcon.icns" in names
-            assert contents + "Resources/OfficeEngine/LibreOffice.app/Contents/Frameworks/libmergedlo.dylib" in names
-            assert any(name.startswith(contents + "Resources/OfficeEngine/LICENSEs/") for name in names)
+            assert not any(name.startswith(contents + "Resources/OfficeEngine/") for name in names)
     print("Verified", archive.name)
 
 

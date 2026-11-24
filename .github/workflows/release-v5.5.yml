@@ -45,9 +45,6 @@ jobs:
           python scripts/verify-v5.5-release.py
           python -m pip install fonttools==4.61.1
           python scripts/prepare-ocr-font.py
-      - name: Prepare the macOS Office engine
-        if: runner.os == 'macOS'
-        run: python scripts/prepare-office-engine.py --target mac --output artifacts/office-engine
       - name: PDF, cancellation and file safety regressions
         run: dotnet run --project tests/RegressionTests -c Release -p:PaddleOcrEdition=false -p:UsedAvaloniaProducts=
       - name: Searchable PDF, four languages and appearance preservation
@@ -62,7 +59,7 @@ jobs:
           dotnet artifacts/paddle-edition/bin/SmallTextOcrTests/Release/net8.0/SmallTextOcrTests.dll . artifacts/small-text-verification
       - name: Build exact macOS distribution
         if: runner.os == 'macOS'
-        run: python scripts/build-paddle-edition.py --target mac --office-macos-app artifacts/office-engine/LibreOffice.app
+        run: python scripts/build-paddle-edition.py --target mac
       - name: Build exact Windows distribution
         if: runner.os == 'Windows'
         run: python scripts/build-paddle-edition.py --target windows
@@ -77,7 +74,7 @@ jobs:
           codesign --verify --deep --strict "$app"
           exe="$app/Contents/MacOS/OfflinePDFConverter.PaddleEdition"
           PATH=/usr/bin:/bin DOTNET_BUNDLE_EXTRACT_BASE_DIR="$RUNNER_TEMP/opc-offline" "$exe" --verify-offline reports/macos-features.json
-          PATH=/usr/bin:/bin DOTNET_BUNDLE_EXTRACT_BASE_DIR="$RUNNER_TEMP/opc-gui" OPC_OFFICE_VERIFY_FIXTURES="$PWD/tests/fixtures/office-v5.1" "$exe" --verify-gui reports/macos-gui.json
+          PATH=/usr/bin:/bin DOTNET_BUNDLE_EXTRACT_BASE_DIR="$RUNNER_TEMP/opc-gui" "$exe" --verify-gui reports/macos-gui.json
       - name: Test exact Windows ZIP with network blocked
         if: runner.os == 'Windows'
         shell: pwsh
@@ -123,32 +120,9 @@ jobs:
           path: reports/
           if-no-files-found: error
 
-  macos-office:
-    needs: [build, windows-2025]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v4
-        with:
-          name: v5.5-mac-evidence
-          path: reports
-      - name: Verify macOS Office PDF layout and Japanese text
-        run: |
-          python -m pip install pypdfium2==5.13.0 Pillow==13.0.0
-          python scripts/verify-office-release.py reports/macos-gui.office
-          printf '{"passed":true,"commit":"%s","platform":"macOS"}\n' "$GITHUB_SHA" > office-parity.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: v5.5-office-parity
-          path: office-parity.json
-          if-no-files-found: error
-
   draft:
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.prepare_draft
-    needs: macos-office
+    needs: [build, windows-2025]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -177,7 +151,6 @@ jobs:
             test -f "$source"
             cp "$source" "release-assets/verification-$report.json"
           done
-          cp candidate/v5.5-office-parity/office-parity.json release-assets/
           if gh release view v5.5.0 >/dev/null 2>&1 ||
              gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v5.5.0" >/dev/null 2>&1; then
             echo 'v5.5.0 exists; refusing to replace it.' >&2

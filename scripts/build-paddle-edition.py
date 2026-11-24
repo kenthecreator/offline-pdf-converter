@@ -33,10 +33,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--target', choices=['mac', 'windows', 'both'], default='both')
     parser.add_argument('--prototype', action='store_true', help='Build v5.1 Prototype packages separately from the release')
-    parser.add_argument('--office-macos-app', type=Path, help='LibreOffice app bundle to embed in the Mac prototype')
     args = parser.parse_args()
-    if args.target in ('mac', 'both') and not (args.office_macos_app and args.office_macos_app.is_dir()):
-        parser.error('--office-macos-app is required for a Mac build')
     title = 'Offline PDF Converter (v5.1 Prototype)' if args.prototype else TITLE
     version = '5.1.0' if args.prototype else '5.5.0'
     bundle_version = '5.1.6' if args.prototype else version
@@ -78,12 +75,6 @@ def main():
                     subprocess.run(['sips','-z',str(pixels*scale),str(pixels*scale),str(ROOT/'src/OfflinePDFConverter/Assets/AppIcon.png'),
                                     '--out',str(icons/f'icon_{pixels}x{pixels}{suffix}.png')],check=True,stdout=subprocess.DEVNULL)
             write_icns(icons, resources/'AppIcon.icns')
-            if args.office_macos_app:
-                office_engine = resources/'OfficeEngine'/'LibreOffice.app'
-                subprocess.run(['ditto', str(args.office_macos_app.resolve()), str(office_engine)], check=True)
-                notices = args.office_macos_app.resolve().parent/'LICENSEs'
-                if notices.is_dir():
-                    subprocess.run(['ditto', str(notices), str(office_engine.parent/'LICENSEs')], check=True)
             with (contents/'Info.plist').open('wb') as stream:
                 plistlib.dump({'CFBundleName':title,'CFBundleDisplayName':title,'CFBundleIdentifier':bundle_id,
                                'CFBundleExecutable':'OfflinePDFConverter.PaddleEdition','CFBundlePackageType':'APPL',
@@ -103,14 +94,9 @@ def main():
             shutil.copy2(source, package/source.name)
         shutil.copy2(ROOT/'src/OfflinePDFConverter/Assets/Fonts/OFL.txt', package/'OFL-ZenKakuGothicNew.txt')
         shutil.copy2(ROOT/'src/OfflinePDFConverter/Assets/Fonts/OFL-NotoSansJP.txt', package/'OFL-NotoSansJP.txt')
-        office_font_licenses = []
-        if target == 'mac':
-            office_font_licenses = sorted((ROOT/'src/OfflinePDFConverter/Assets/Fonts/Office').glob('OFL-*.txt'))
-        for source in office_font_licenses:
-            shutil.copy2(source, package/source.name)
         archive = dist/(title+'-'+('macOS-arm64' if target == 'mac' else 'Windows-x64')+'.zip')
         deliverable = package / (title + ('.app' if target == 'mac' else '.exe'))
-        if target == 'mac' and args.office_macos_app:
+        if target == 'mac':
             subprocess.run(['ditto', '-c', '-k', '--keepParent', str(deliverable), str(archive)], check=True)
             files = []
             zip_mode = 'a'
@@ -118,7 +104,6 @@ def main():
             files = list(deliverable.rglob('*')) if target == 'mac' else [deliverable]
             zip_mode = 'w'
         files += [package/source.name for source in documents] + [package/'OFL-ZenKakuGothicNew.txt', package/'OFL-NotoSansJP.txt']
-        files += [package/source.name for source in office_font_licenses]
         with zipfile.ZipFile(archive, zip_mode, zipfile.ZIP_DEFLATED, compresslevel=6) as bundle:
             for file in sorted(files):
                 if file.is_file(): bundle.write(file, file.relative_to(package))

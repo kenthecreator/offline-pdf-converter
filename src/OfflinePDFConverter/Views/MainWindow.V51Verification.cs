@@ -170,7 +170,6 @@ public partial class MainWindow
         checks.Add("PDF Edit rotation of selected and all pages through the actual buttons, verified in the saved PDF");
         Program.TraceGuiVerification("PDF layout and rotation verified");
 
-        var fixtures = Environment.GetEnvironmentVariable("OPC_OFFICE_VERIFY_FIXTURES");
         if (!OfficeConversionAvailable)
         {
             SelectDirection(2);
@@ -178,79 +177,21 @@ public partial class MainWindow
             Require(_mode == ConversionMode.ImageToPdf && labels.Children.Count == 2 &&
                     labels.ColumnDefinitions.Count == 2 && _officeToPdfDirectionButton.Parent is null &&
                     Required<Grid>("OfficePanel").Parent is null,
-                "Windows includes an Office tab or can select Office conversion.");
+                "The app includes an Office tab or can select Office conversion.");
             var officeDrop = Path.Combine(root, "unsupported.docx");
-            await File.WriteAllTextAsync(officeDrop, "Office conversion is disabled on Windows.");
+            await File.WriteAllTextAsync(officeDrop, "Office conversion is disabled.");
             int imageCount = _imageFiles.Count;
             await AddDroppedFilesAsync(new[] { officeDrop });
             Require(_imageFiles.Count == imageCount && !File.Exists(Path.ChangeExtension(officeDrop, ".pdf")),
-                "Windows processed an Office file drop.");
+                "The app processed an Office file drop.");
             SetMode(ConversionMode.OfficeToPdf);
-            Require(_mode == ConversionMode.PdfToImage, "Windows entered the Office conversion mode.");
+            Require(_mode == ConversionMode.PdfToImage, "The app entered the Office conversion mode.");
             Require(!typeof(OfficePdfService).Assembly.GetManifestResourceNames().Any(name =>
                     name == "OfflinePDFConverter.OfficeEngine.zip" ||
                     name.StartsWith("OfflinePDFConverter.OfficeFonts.", StringComparison.Ordinal)),
-                "The Windows package includes Office conversion resources.");
-            checks.Add("Windows conversion selector, file-drop behavior and package contain no Office conversion");
+                "The package includes Office conversion resources.");
+            checks.Add("Conversion selector, file-drop behavior and package contain no Office conversion");
         }
-        else if (!string.IsNullOrEmpty(fixtures))
-        {
-            SelectDirection(2);
-            var officeButton = this.GetVisualDescendants().OfType<Button>()
-                .Single(button => button.IsEffectivelyVisible && Equals(button.Content, "Officeファイルを追加…"));
-            Require(officeButton.IsEffectivelyEnabled, "The Office file picker button is unavailable.");
-            using var drop = new DataTransfer();
-            async Task AddToDropAsync(string path)
-            {
-                var file = await StorageProvider.TryGetFileFromPathAsync(new Uri(path));
-                drop.Add(DataTransferItem.CreateFile(file ?? throw new FileNotFoundException(path)));
-            }
-
-            foreach (var name in new[] { "日本語 サンプル.docx", "日本語 ワークブック.xlsx", "日本語 スライド.pptx" })
-            {
-                var path = Path.Combine(root, name);
-                File.Copy(Path.Combine(fixtures, name), path);
-                await AddToDropAsync(path);
-            }
-            const string escapedName = "日本語 # %20";
-            var escapedPath = Path.Combine(root, escapedName + ".PPTX");
-            File.Copy(Path.Combine(fixtures, "日本語 スライド.pptx"), escapedPath);
-            var corruptPath = Path.Combine(root, "broken.docx");
-            await File.WriteAllTextAsync(corruptPath, "This is not an Office file.");
-            await AddToDropAsync(corruptPath);
-
-            Program.TraceGuiVerification("Starting Office file-drop batch");
-            RaiseEvent(new DragEventArgs(DragDrop.DropEvent, drop, this, new Point(100, 160), KeyModifiers.None));
-            await DismissResultAsync("変換結果", "作成したファイル: 3", "broken.docx");
-            Require(!File.Exists(Path.ChangeExtension(corruptPath, ".pdf")), "An invalid input left a PDF behind.");
-            // The native picker supplies its own storage item for literal %xx names. The
-            // programmatic storage lookup on macOS sometimes canonicalizes that name.
-            var customFolder = Directory.CreateDirectory(Path.Combine(root, "office-output")).FullName;
-            var outputFolder = Required<TextBox>("OfficeOutputFolderTextBox");
-            outputFolder.Text = customFolder;
-            var escapedConversion = AddDroppedFilesAsync(new[] { escapedPath });
-            await DismissResultAsync("完了", "作成したファイル: 1");
-            await escapedConversion;
-            outputFolder.Text = string.Empty;
-            Require(!File.Exists(Path.ChangeExtension(escapedPath, ".pdf")),
-                "Office conversion ignored the configured output folder.");
-            using (var escaped = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(customFolder, escapedName + ".pdf")))
-                Require(escaped.GetPages().Any(page => page.Text.Contains("PowerPoint sample")),
-                    "An Office file with a literal URL escape in its name did not convert.");
-            using var word = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(root, "日本語 サンプル.pdf"));
-            using var excel = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(root, "日本語 ワークブック.pdf"));
-            using var slides = UglyToad.PdfPig.PdfDocument.Open(Path.Combine(root, "日本語 スライド.pdf"));
-            Require(word.GetPages().Any(page => page.Text.Contains("Word sample"))
-                && excel.GetPages().Any(page => page.Text.Contains("Excel sample"))
-                && slides.GetPages().Any(page => page.Text.Contains("PowerPoint sample")),
-                "Office file drop did not produce the expected PDFs.");
-            var evidence = Path.ChangeExtension(report, ".office");
-            Directory.CreateDirectory(evidence);
-            foreach (var name in new[] { "日本語 サンプル.pdf", "日本語 ワークブック.pdf", "日本語 スライド.pdf" })
-                File.Copy(Path.Combine(root, name), Path.Combine(evidence, name), overwrite: true);
-            checks.Add("Word/Excel/PowerPoint file drop, custom output folder, percent in file names, corrupt-input reporting, searchable outputs, and the Office picker button");
-        }
-
         _pdfFiles.Clear();
         _pdfToolOperationCombo.SelectedIndex = 0;
         _pdfToolOutputPdfTextBox.Text = previousOutput;
