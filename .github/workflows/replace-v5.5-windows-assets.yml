@@ -5,7 +5,7 @@ on:
     paths: [.github/workflows/replace-v5.5-windows-assets.yml]
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -18,13 +18,23 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45333604725'
-      CANDIDATE_SHA: '86d23744b23f80e8a5dd92044a8f26f9ced8a6c9'
+      CANDIDATE_RUN: '45334351557'
+      CANDIDATE_SHA: 'e179a2418d63b2550d504e98e46f685ec53c37a5'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
       PACKAGE_NAME: 'Offline.PDF.Converter.v5.5.-Windows-x64.zip'
     steps:
+      - name: Cancel the superseded candidate build
+        run: |
+          set -euo pipefail
+          run_path="repos/$GITHUB_REPOSITORY/actions/runs/45333604725"
+          run=$(gh api "$run_path")
+          jq -e '.head_sha == "86d23744b23f80e8a5dd92044a8f26f9ced8a6c9" and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+          if jq -e '.status != "completed"' <<<"$run" >/dev/null; then
+            gh api --method POST "$run_path/cancel" ||
+              gh api "$run_path" | jq -e '.status == "completed"' >/dev/null
+          fi
       - name: Wait for the verified and merged candidate
         run: |
           set -euo pipefail
@@ -96,9 +106,9 @@ jobs:
           cp previous/notes.md revised-notes.md
           cat >> revised-notes.md <<EOF
 
-          ## Windows x64 の設定パネルの描画更新
+          ## Windows x64 の起動時レイアウトと設定パネルの更新
 
-          設定パネルの屈折を無効にしました。上下端には反射が表示されます。選択ピルは前回の縁の調整と、移動中に文字が曲がる屈折を引き継ぎます。
+          起動ウインドウは画面の作業領域と表示倍率に合わせて横長で開きます。設定パネルの長いラベルは折り返し、上下端には反射が表示されます。選択ピルは前回の縁の調整と、移動中に文字が曲がる屈折を引き継ぎます。設定パネルの屈折は無効にしました。
 
           Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
           EOF
