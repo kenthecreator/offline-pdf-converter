@@ -15,6 +15,7 @@ concurrency:
 jobs:
   replace:
     runs-on: ubuntu-latest
+    timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
       CANDIDATE_RUN: '45318055109'
@@ -26,8 +27,16 @@ jobs:
         run: |
           set -euo pipefail
           repo="repos/$GITHUB_REPOSITORY"
-          gh api "$repo/actions/runs/$CANDIDATE_RUN" | jq -e --arg sha "$CANDIDATE_SHA" \
-            '.head_sha == $sha and .path == ".github/workflows/release-v5.5.yml" and .conclusion == "success"'
+          for attempt in $(seq 1 60); do
+            run=$(gh api "$repo/actions/runs/$CANDIDATE_RUN")
+            jq -e --arg sha "$CANDIDATE_SHA" \
+              '.head_sha == $sha and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+            if jq -e '.status == "completed"' <<<"$run" >/dev/null; then
+              break
+            fi
+            sleep 45
+          done
+          jq -e '.conclusion == "success"' <<<"$run" >/dev/null
           gh api "$repo/compare/$CANDIDATE_SHA...main" --jq '.status' | grep -Ex 'ahead|identical'
           test "$(gh api "$repo/git/ref/tags/v5.5.0" --jq '.object.sha')" = "$PREVIOUS_SHA"
           test "$(gh api "$repo/releases/latest" --jq '.id')" = "$RELEASE_ID"
