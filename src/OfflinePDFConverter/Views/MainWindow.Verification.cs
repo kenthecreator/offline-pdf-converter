@@ -86,6 +86,36 @@ public partial class MainWindow
         {
             Program.TraceGuiVerification("Main window opened");
             Check(Title == AppIdentity.WindowTitle && IsVisible && Bounds.Width > 0, "Main window not shown.");
+            if (OperatingSystem.IsWindows())
+            {
+                const double ratio = 1120d / 760;
+                Check(Math.Abs(ClientSize.AspectRatio - ratio) < .02, "Windows startup aspect ratio changed.");
+                var canvasStart = _themeTransitionRoot.TranslatePoint(default, this)!.Value;
+                var canvasEnd = _themeTransitionRoot.TranslatePoint(
+                    new Point(_themeTransitionRoot.Bounds.Width, _themeTransitionRoot.Bounds.Height), this)!.Value;
+                Check(canvasStart.X >= -1 && canvasStart.Y >= -1 &&
+                      canvasEnd.X <= ClientSize.Width + 1 && canvasEnd.Y <= ClientSize.Height + 1,
+                    "The main content extends outside the Windows client area.");
+                if (Screens.ScreenFromWindow(this) is { } screen)
+                {
+                    var area = screen.WorkingArea;
+                    var frame = PixelSize.FromSize(FrameSize ?? ClientSize, DesktopScaling);
+                    Check(Position.X >= area.X - 2 && Position.Y >= area.Y - 2 &&
+                          Position.X + frame.Width <= area.Right + 2 && Position.Y + frame.Height <= area.Bottom + 2,
+                        "The Windows startup frame extends outside the monitor work area.");
+                }
+
+                var compact = FitWindowsStartupClientSize(new Size(1120, 760), new PixelRect(0, 0, 1280, 680),
+                    1.5, new Size(16, 40));
+                Check(Math.Abs(compact.AspectRatio - ratio) < .01 &&
+                      (compact.Width + 16) * 1.5 <= 1280 && (compact.Height + 40) * 1.5 <= 680,
+                    "The Windows startup size does not fit a small work area at 150% scaling.");
+                var nameField = Required<TextBox>("PdfToolOutputPdfBaseNameTextBox");
+                var caption = ((StackPanel)nameField.Parent!).Children.OfType<TextBlock>().Last();
+                Check(caption.TextWrapping == TextWrapping.Wrap,
+                    "The Windows output file name label is not configured to wrap.");
+                checks.Add("Windows startup frame and content fit the work area, and long settings labels wrap");
+            }
             Check(!string.IsNullOrWhiteSpace(DefaultOutputFolder) &&
                   _pdfOutputFolderTextBox.Text == DefaultOutputFolder &&
                   _pdfToolOutputFolderTextBox.Text == DefaultOutputFolder &&
@@ -365,9 +395,10 @@ public partial class MainWindow
                         SetMode(mode);
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
-                        var edge = viewport.Children.OfType<SettingsScrollGlass>().Single();
+                        var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
                         var rim = viewport.Children.OfType<SettingsScrollRim>().SingleOrDefault();
-                        Check(OperatingSystem.IsWindows() == (rim is not null), $"Incorrect scroll rim for this platform: {name}.");
+                        Check(OperatingSystem.IsWindows() ? edge is null && rim is not null : edge is not null && rim is null,
+                            $"Incorrect scroll decoration for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
                         var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
@@ -410,8 +441,11 @@ public partial class MainWindow
                             await Until(() => rim.TopStrength > 0 && rim.BottomStrength == 0);
                             scroll.Offset = default;
                             await Until(() => rim.TopStrength == 0 && rim.BottomStrength > 0);
-                            checks.Add($"{name} shows rim reflections in {themeName} theme");
+                            checks.Add($"{name} scrolls with rim reflections and no viewport capture in {themeName} theme");
+                            continue;
                         }
+                        if (edge is null)
+                            throw new InvalidOperationException("Scroll glass is missing: " + name);
 
                         var captions = presenter.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) &&
@@ -427,8 +461,6 @@ public partial class MainWindow
                                 .First(candidate => candidate > SettingsScrollGlass.BandDepth &&
                                                     candidate < max - SettingsScrollGlass.BandDepth);
                             scroll.Offset = new Vector(0, offset);
-                            if (OperatingSystem.IsWindows())
-                                Check(!edge.HasBackdrop, "Scroll edge captured content before scrolling stopped: " + name);
                             await Until(() => edge.HasBackdrop);
                             // The edge redraw must still be in place after the scroll input has stopped.
                             await Task.Delay(350);
@@ -474,8 +506,7 @@ public partial class MainWindow
 
                             int changed = isTop ? ChangedPixels((int)start.Y + 1, (int)(start.Y + band))
                                 : ChangedPixels((int)(end.Y - band), (int)end.Y - 1);
-                            double activeBand = OperatingSystem.IsWindows() ? 12 : band;
-                            int middle = ChangedPixels((int)(start.Y + activeBand) + 1, (int)(end.Y - activeBand) - 1);
+                            int middle = ChangedPixels((int)(start.Y + band) + 1, (int)(end.Y - band) - 1);
                             Check((atEnd ? changed == 0 : changed > 20) && middle == 0,
                                 $"Stopped scroll glass on {name} {endName} in {themeName}: edge={changed}, middle={middle}.");
                         }
