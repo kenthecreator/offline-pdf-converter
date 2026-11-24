@@ -297,8 +297,8 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 // Refract the modeled track lip with the same ray as the flat fill.
                 float lip = inside * smoothstep(-6.0, -1.0, distance);
                 float upper = 1.0 - smoothstep(0.15, 0.85, p.y / max(trackSize.y, 1.0));
-                color = mix(color, float3(0.0), lip * 0.11 * (1.0 - upper));
-                color = mix(color, float3(1.0), lip * 0.22 * upper);
+                color = mix(color, float3(0.0), lip * 0.07 * (1.0 - upper));
+                color = mix(color, float3(1.0), lip * 0.14 * upper);
             }
             return color;
         }
@@ -360,8 +360,14 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 mix(0.53, 0.78, lightSurface) * pow(max(light, 0.0), 6.0)
                 + 0.22 * pow(max(-light, 0.0), 11.0));
             float shade = exp(-abs(distance + 0.45) * 1.45) * mix(0.18, 0.34, lightSurface);
-            shade += lightSurface * exp(-abs(distance + 3.6) * 0.70)
-                * (0.027 + 0.073 * max(-light, 0.0));
+            if (emphasizeTrack > 0.5) {
+                // The native selector border already defines the outline. Keep one soft glint.
+                reflection *= mix(0.72, 0.60, lightSurface);
+                shade *= mix(0.72, 0.55, lightSurface);
+            } else {
+                shade += lightSurface * exp(-abs(distance + 3.6) * 0.70)
+                    * (0.027 + 0.073 * max(-light, 0.0));
+            }
 
             float3 color = mix(backdrop, pillColor, mix(0.37, 0.18, lightSurface));
             color = mix(color, float3(0.0), shade);
