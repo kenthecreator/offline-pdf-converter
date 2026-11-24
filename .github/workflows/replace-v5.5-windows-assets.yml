@@ -1,0 +1,125 @@
+name: Publish the verified v5.5 Windows glass update
+on:
+  push:
+    branches: [codex/publish-v5.5-windows-glass]
+    paths: [.github/workflows/replace-v5.5-windows-assets.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: replace-v5.5
+  cancel-in-progress: false
+
+jobs:
+  replace-windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_RUN: '45321266659'
+      CANDIDATE_SHA: 'b1adbc997f815490d3e30153e8e5a9bae0cd83fb'
+      RELEASE_ID: '455464926'
+      RELEASE_TAG: 'v5.5.0'
+      RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
+      PACKAGE_NAME: 'Offline.PDF.Converter.v5.5.-Windows-x64.zip'
+    steps:
+      - name: Wait for the verified and merged candidate
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          for attempt in $(seq 1 60); do
+            run=$(gh api "$repo/actions/runs/$CANDIDATE_RUN")
+            jq -e --arg sha "$CANDIDATE_SHA" \
+              '.head_sha == $sha and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+            if jq -e '.status == "completed"' <<<"$run" >/dev/null; then
+              jq -e '.conclusion == "success"' <<<"$run" >/dev/null
+              if gh api "$repo/compare/$CANDIDATE_SHA...main" --jq '.status' | grep -Ex 'ahead|identical'; then
+                exit 0
+              fi
+            fi
+            sleep 45
+          done
+          echo 'Timed out waiting for verification and merge.' >&2
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CANDIDATE_RUN }}
+          pattern: v5.5-*
+          path: candidate
+      - name: Verify the Windows ZIP and back up its public files
+        run: |
+          set -euo pipefail
+          python scripts/verify-v5.5-release.py --archives candidate
+          parity=candidate/v5.5-office-parity/office-parity.json
+          jq -e --arg sha "$CANDIDATE_SHA" '.passed and .commit == $sha' "$parity" >/dev/null
+          mkdir replacement
+          source=$(find candidate -type f -name 'Offline PDF Converter (v5.5)-Windows-x64.zip')
+          cp "$source" "replacement/$PACKAGE_NAME"
+          (cd replacement && sha256sum "$PACKAGE_NAME" > "$PACKAGE_NAME.sha256.txt")
+          for report in windows2022-features windows2022-gui windows2025-features windows2025-gui; do
+            source=$(find candidate -type f -name "$report.json")
+            jq -e '.passed == true' "$source" >/dev/null
+            cp "$source" "replacement/verification-$report.json"
+          done
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir previous/assets \
+            --pattern "$PACKAGE_NAME" --pattern "$PACKAGE_NAME.sha256.txt" --pattern 'verification-windows*.json'
+          diff -u <(ls -1 previous/assets) <(ls -1 replacement)
+          (cd previous/assets && sha256sum --check ./*.sha256.txt)
+          repo="repos/$GITHUB_REPOSITORY"
+          test "$(gh api "$repo/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$RELEASE_TAG_SHA"
+          gh api "$repo/releases/latest" > previous/release.json
+          jq -e --arg id "$RELEASE_ID" --arg tag "$RELEASE_TAG" \
+            '(.id | tostring) == $id and .tag_name == $tag and .immutable == false' previous/release.json >/dev/null
+          jq -r '.body // ""' previous/release.json > previous/notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: previous-v5.5-windows-assets
+          path: previous/
+          if-no-files-found: error
+      - name: Replace only Windows files and verify the published digests
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          test "$(gh api "$repo/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$RELEASE_TAG_SHA"
+          gh api "$repo/releases/latest" > latest.json
+          compare_release() {
+            jq -S '{id, tag_name, body, immutable, assets: [.assets[] | {id, name, digest}] | sort_by(.name)}' "$1"
+          }
+          diff -u <(compare_release previous/release.json) <(compare_release latest.json)
+          cp previous/notes.md revised-notes.md
+          cat >> revised-notes.md <<EOF
+
+          ## Windows x64 のガラス描画更新
+
+          選択ピルの背景に屈折表現を加え、設定パネルの上下端に反射を追加しました。画面の文字や設定内容は通常の描画を使用します。
+
+          Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
+          EOF
+          rollback() {
+            echo 'Replacement failed. Restoring the previous Windows assets and notes.' >&2
+            gh release upload "$RELEASE_TAG" previous/assets/* --repo "$GITHUB_REPOSITORY" --clobber ||
+              echo 'Asset restoration failed. The originals are in the workflow backup.' >&2
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file previous/notes.md ||
+              echo 'Note restoration failed. The original notes are in the workflow backup.' >&2
+          }
+          trap rollback ERR
+          gh release upload "$RELEASE_TAG" replacement/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh api "$repo/releases/$RELEASE_ID/assets" > uploaded.json
+          for file in replacement/*; do
+            digest=$(sha256sum "$file" | cut -d ' ' -f1)
+            jq -e --arg name "${file##*/}" --arg digest "sha256:$digest" \
+              'any(.[]; .name == $name and .digest == $digest and .state == "uploaded")' uploaded.json >/dev/null
+          done
+          mac_assets='[.[] | select(.name | test("macOS|macos|office-parity")) | {id, name, digest}] | sort_by(.name)'
+          diff -u <(jq ".assets | $mac_assets" previous/release.json) <(jq "$mac_assets" uploaded.json)
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file revised-notes.md
+          gh api "$repo/releases/latest" | jq -e --arg sha "$CANDIDATE_SHA" --arg id "$RELEASE_ID" \
+            '(.id | tostring) == $id and (.body | contains($sha))' >/dev/null
+          trap - ERR
