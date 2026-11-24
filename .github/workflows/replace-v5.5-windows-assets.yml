@@ -5,7 +5,7 @@ on:
     paths: [.github/workflows/replace-v5.5-windows-assets.yml]
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 concurrency:
@@ -18,23 +18,13 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45334634085'
-      CANDIDATE_SHA: '280b3c88933c327cf9d05a9f86a1257924fc1e67'
+      CANDIDATE_RUN: '45345302443'
+      CANDIDATE_SHA: '1e2d7ab0446d04c3ec16e7b37df8ae8ddee368d4'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
       PACKAGE_NAME: 'Offline.PDF.Converter.v5.5.-Windows-x64.zip'
     steps:
-      - name: Cancel the superseded candidate build
-        run: |
-          set -euo pipefail
-          run_path="repos/$GITHUB_REPOSITORY/actions/runs/45334351557"
-          run=$(gh api "$run_path")
-          jq -e '.head_sha == "e179a2418d63b2550d504e98e46f685ec53c37a5" and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
-          if jq -e '.status != "completed"' <<<"$run" >/dev/null; then
-            gh api --method POST "$run_path/cancel" ||
-              gh api "$run_path" | jq -e '.status == "completed"' >/dev/null
-          fi
       - name: Wait for the verified and merged candidate
         run: |
           set -euo pipefail
@@ -61,14 +51,12 @@ jobs:
         with:
           github-token: ${{ github.token }}
           run-id: ${{ env.CANDIDATE_RUN }}
-          pattern: v5.5-*
+          pattern: v5.5-windows*
           path: candidate
       - name: Verify the Windows ZIP and back up its public files
         run: |
           set -euo pipefail
-          python scripts/verify-v5.5-release.py --archives candidate
-          parity=candidate/v5.5-office-parity/office-parity.json
-          jq -e --arg sha "$CANDIDATE_SHA" '.passed and .commit == $sha' "$parity" >/dev/null
+          python scripts/verify-v5.5-release.py --archives candidate --target Windows-x64
           mkdir replacement
           source=$(find candidate -type f -name 'Offline PDF Converter (v5.5)-Windows-x64.zip')
           cp "$source" "replacement/$PACKAGE_NAME"
@@ -103,12 +91,12 @@ jobs:
             jq -S '{id, tag_name, body, immutable, assets: [.assets[] | {id, name, digest}] | sort_by(.name)}' "$1"
           }
           diff -u <(compare_release previous/release.json) <(compare_release latest.json)
-          cp previous/notes.md revised-notes.md
+          sed 's/Office変換とOCRに必要なエンジンを同梱し、オフラインで動作します。/両版がOCRエンジンを同梱し、オフラインで動作します。Office変換はmacOS版で利用できます。/' previous/notes.md > revised-notes.md
           cat >> revised-notes.md <<EOF
 
-          ## Windows x64 の起動時レイアウトと設定パネルの更新
+          ## Windows x64 のOffice変換
 
-          起動ウインドウは画面の作業領域と表示倍率に合わせて横長で開きます。設定パネルの長いラベルは折り返し、上下端には反射が表示されます。選択ピルは前回の縁の調整と、移動中に文字が曲がる屈折を引き継ぎます。設定パネルの屈折は無効にしました。
+          Windows版から「Office → PDF」タブと変換エンジンを削除しました。macOS版は引き続きWord・Excel・PowerPointからPDFへの変換に対応します。
 
           Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
           EOF
