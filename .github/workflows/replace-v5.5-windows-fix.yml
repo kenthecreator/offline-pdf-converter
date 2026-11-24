@@ -1,0 +1,94 @@
+name: Replace v5.5 with the verified Windows fix
+on:
+  push:
+    branches: [codex/publish-v5.5-windows-fix]
+    paths: [.github/workflows/replace-v5.5-windows-fix.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: replace-v5.5
+  cancel-in-progress: false
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_RUN: '45318055109'
+      CANDIDATE_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
+      PREVIOUS_SHA: '8dd0fd437113a616d5fdaaf01eb0c3e3ca52ff54'
+      RELEASE_ID: '455464926'
+    steps:
+      - name: Confirm the verified source and current release
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          gh api "$repo/actions/runs/$CANDIDATE_RUN" | jq -e --arg sha "$CANDIDATE_SHA" \
+            '.head_sha == $sha and .path == ".github/workflows/release-v5.5.yml" and .conclusion == "success"'
+          gh api "$repo/compare/$CANDIDATE_SHA...main" --jq '.status' | grep -Ex 'ahead|identical'
+          test "$(gh api "$repo/git/ref/tags/v5.5.0" --jq '.object.sha')" = "$PREVIOUS_SHA"
+          test "$(gh api "$repo/releases/latest" --jq '.id')" = "$RELEASE_ID"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CANDIDATE_RUN }}
+          pattern: v5.5-*
+          path: candidate
+      - name: Verify and prepare replacement files
+        run: |
+          set -euo pipefail
+          python scripts/verify-v5.5-release.py --archives candidate
+          mkdir replacement
+          for target in Windows-x64 macOS-arm64; do
+            source=$(find candidate -type f -name "Offline PDF Converter (v5.5)-$target.zip")
+            name="Offline.PDF.Converter.v5.5.-$target.zip"
+            cp "$source" "replacement/$name"
+            (cd replacement && sha256sum "$name" > "$name.sha256.txt")
+          done
+          for report in macos-features macos-gui windows2022-features windows2022-gui windows2025-features windows2025-gui; do
+            source=$(find candidate -type f -name "$report.json")
+            jq -e '.passed == true' "$source" >/dev/null
+            cp "$source" "replacement/verification-$report.json"
+          done
+          parity=candidate/v5.5-office-parity/office-parity.json
+          jq -e --arg sha "$CANDIDATE_SHA" '.passed == true and .commit == $sha' "$parity" >/dev/null
+          cp "$parity" replacement/
+          gh release download v5.5.0 --repo "$GITHUB_REPOSITORY" --dir previous
+          diff -u <(ls -1 previous) <(ls -1 replacement)
+          (cd previous && sha256sum --check ./*.sha256.txt)
+      - name: Save the current public files for recovery
+        uses: actions/upload-artifact@v4
+        with:
+          name: previous-v5.5-release-assets
+          path: previous/
+          if-no-files-found: error
+      - name: Replace public assets and verify their digests
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          tag="$repo/git/refs/tags/v5.5.0"
+          assets="$repo/releases/$RELEASE_ID/assets"
+          test "$(gh api "$tag" --jq '.object.sha')" = "$PREVIOUS_SHA"
+          test "$(gh api "$repo/releases/latest" --jq '.id')" = "$RELEASE_ID"
+          rollback() {
+            echo 'Asset replacement failed. Restoring the previous public files.' >&2
+            gh release upload v5.5.0 previous/* --repo "$GITHUB_REPOSITORY" --clobber || \
+              echo 'Automatic restoration failed. The original assets are available in the workflow backup.' >&2
+          }
+          trap rollback ERR
+          gh release upload v5.5.0 replacement/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh api "$assets" > uploaded.json
+          for file in replacement/*; do
+            digest=$(sha256sum "$file" | cut -d ' ' -f1)
+            jq -e --arg name "${file##*/}" --arg digest "sha256:$digest" \
+              'any(.[]; .name == $name and .digest == $digest and .state == "uploaded")' uploaded.json >/dev/null
+          done
+          gh api --method PATCH "$tag" -f sha="$CANDIDATE_SHA" --jq '.object.sha' | grep -Fx "$CANDIDATE_SHA"
+          trap - ERR
