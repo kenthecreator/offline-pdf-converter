@@ -33,6 +33,7 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
     private Vector _capturedOffset;
     private Size _capturedViewport;
     private bool _captureQueued;
+    private bool _capturing;
     private bool _visible;
     private bool _disposed;
 
@@ -121,23 +122,46 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         try
         {
             var viewport = new Rect(point, presenter.Bounds.Size);
-            double scale = _captureAfterIdle ? Math.Max(1.5, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1) : 1;
+            double scale = _captureAfterIdle ? TopLevel.GetTopLevel(this)?.RenderScaling ?? 1 : 1;
             var dpi = new Vector(96 * scale, 96 * scale);
-            var pixels = PixelSize.FromSize(viewport.Size, scale);
+            Control source = presenter;
+            Vector sampleOrigin = default;
+            if (_captureAfterIdle && _panel.Child is { } surface &&
+                presenter.TranslatePoint(default, surface) is { } presenterOrigin)
+            {
+                // Include the live glass behind the viewport. RenderTargetBitmap also draws
+                // its root at Bounds.Position, so account for that offset when sampling.
+                source = surface;
+                sampleOrigin = (Vector)presenterOrigin + (Vector)surface.Bounds.Position;
+            }
+            var size = new Size(viewport.Width + Math.Max(0, sampleOrigin.X),
+                viewport.Height + Math.Max(0, sampleOrigin.Y));
+            var pixels = PixelSize.FromSize(size, scale);
             if (_snapshot?.PixelSize != pixels || _snapshotDpi != dpi)
             {
                 _snapshot?.Dispose();
                 _snapshot = new RenderTargetBitmap(pixels, dpi);
                 _snapshotDpi = dpi;
             }
-            _snapshot.Render(presenter);
+            _capturing = true;
+            try
+            {
+                _snapshot.Render(source);
+            }
+            finally
+            {
+                _capturing = false;
+            }
             using var bitmap = new SKBitmap(pixels.Width, pixels.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
             using var buffer = new CaptureBuffer(bitmap, pixels, dpi);
             _snapshot.CopyPixels(buffer, AlphaFormat.Premul);
             bitmap.SetImmutable();
             using var image = SKImage.FromBitmap(bitmap);
+            float inverseScale = (float)(1 / scale);
+            var samplingTransform = SKMatrix.CreateScaleTranslation(inverseScale, inverseScale,
+                (float)-sampleOrigin.X, (float)-sampleOrigin.Y);
             var texture = image.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp,
-                new SKSamplingOptions(SKFilterMode.Linear), SKMatrix.CreateScale((float)(1 / scale), (float)(1 / scale)));
+                new SKSamplingOptions(SKFilterMode.Linear), samplingTransform);
 
             _scene?.Dispose();
             _scene = texture;
@@ -161,7 +185,8 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
 
     public override void Render(DrawingContext context)
     {
-        if (_disposed || _pendingCapture is not null || _scene is null || _drawableWidth <= 0 || _capturedOffset != _scroll.Offset)
+        if (_disposed || _capturing || _pendingCapture is not null || _scene is null ||
+            _drawableWidth <= 0 || _capturedOffset != _scroll.Offset)
             return;
 
         // The viewport is inside the panel's padding, over its solid-color interior.
