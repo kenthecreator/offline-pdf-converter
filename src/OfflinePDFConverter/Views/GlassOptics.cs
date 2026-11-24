@@ -35,7 +35,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
     public bool Draw(DrawingContext context, Size size, Size trackSize, Vector origin,
         Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw,
         CornerRadius? cornerRadius = null, SKShader? labels = null, Vector labelsOffset = default,
-        float labelRefraction = 0)
+        float labelRefraction = 0, bool emphasizeTrack = false)
     {
         if (_disposed)
             return false;
@@ -60,7 +60,8 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 ["localRadii"] = radii,
                 ["hasLabels"] = labels is null ? 0f : 1f,
                 ["labelsOffset"] = new[] { (float)labelsOffset.X, (float)labelsOffset.Y },
-                ["labelRefraction"] = labelRefraction
+                ["labelRefraction"] = labelRefraction,
+                ["emphasizeTrack"] = emphasizeTrack ? 1f : 0f
             };
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("labels", labels ?? _emptyLabels);
@@ -244,6 +245,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         uniform float hasLabels;
         uniform float2 labelsOffset;
         uniform float labelRefraction;
+        uniform float emphasizeTrack;
 
         float2 fromCapsuleAxis(float2 point, float2 size) {
             float2 p = point - size * 0.5;
@@ -268,8 +270,17 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         }
 
         float3 trackSurface(float2 p) {
-            float inside = 1.0 - smoothstep(-0.7, 0.7, trackDistance(p));
-            return mix(surround, trackColor.rgb, trackColor.a * inside);
+            float distance = trackDistance(p);
+            float inside = 1.0 - smoothstep(-0.7, 0.7, distance);
+            float3 color = mix(surround, trackColor.rgb, trackColor.a * inside);
+            if (emphasizeTrack > 0.5) {
+                // Refract the modeled track lip with the same ray as the flat fill.
+                float lip = inside * smoothstep(-6.0, -1.0, distance);
+                float upper = 1.0 - smoothstep(0.15, 0.85, p.y / max(trackSize.y, 1.0));
+                color = mix(color, float3(0.0), lip * 0.11 * (1.0 - upper));
+                color = mix(color, float3(1.0), lip * 0.22 * upper);
+            }
+            return color;
         }
 
         float coverage(float distance) {

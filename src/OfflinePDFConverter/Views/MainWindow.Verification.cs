@@ -368,7 +368,8 @@ public partial class MainWindow
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
                         var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
-                        Check(OperatingSystem.IsWindows() ? edge is null : edge is not null,
+                        var rim = viewport.Children.OfType<SettingsScrollRim>().SingleOrDefault();
+                        Check(OperatingSystem.IsWindows() ? edge is null && rim is not null : edge is not null && rim is null,
                             $"Incorrect scroll glass for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
@@ -402,14 +403,23 @@ public partial class MainWindow
                         double bottomInset = panel.Bounds.Height - panelEnd.Y;
                         Check(panel.ClipToBounds && topInset is >= 2 and < 4 && bottomInset is >= 2 and < 4,
                             "The settings viewport does not keep the expected thin rim: " + name);
-                        if (edge is null)
+                        var max = scroll.Extent.Height - scroll.Viewport.Height;
+                        if (rim is not null)
                         {
+                            Check(!rim.IsHitTestVisible && !rim.Focusable, "Scroll rim intercepts input: " + name);
+                            scroll.Offset = new Vector(0, max / 2);
+                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength > 0);
+                            scroll.Offset = new Vector(0, max);
+                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength == 0);
                             scroll.Offset = default;
-                            checks.Add($"{name} scrolls without viewport snapshots in {themeName} theme");
+                            await Until(() => rim.TopStrength == 0 && rim.BottomStrength > 0);
+                            SaveSnapshot(Path.ChangeExtension(report, $".{name}-scroll-rim-{themeName}.png"));
+                            checks.Add($"{name} shows rim reflections without viewport snapshots in {themeName} theme");
                             continue;
                         }
+                        if (edge is null)
+                            throw new InvalidOperationException("Scroll glass is missing: " + name);
 
-                        var max = scroll.Extent.Height - scroll.Viewport.Height;
                         var captions = presenter.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) &&
                                            text.Bounds.Height is > 8 and < 60)

@@ -33,18 +33,24 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
-        var scrollEdges = Array.Empty<SettingsScrollGlass>();
-        if (!OperatingSystem.IsWindows())
+        bool useContentRefraction = !OperatingSystem.IsWindows();
+        var scrollEdges = new List<IDisposable>();
+        foreach (var name in new[] { "PdfOutputSettings", "OcrSettings" })
         {
-            scrollEdges = new[] { "PdfOutputSettings", "OcrSettings" }
-                .Select(name =>
-                {
-                    var viewport = Required<Grid>(name + "Viewport");
-                    var scroll = Required<ScrollViewer>(name + "Scroll");
-                    var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
-                    viewport.Children.Add(edge);
-                    return edge;
-                }).ToArray();
+            var viewport = Required<Grid>(name + "Viewport");
+            var scroll = Required<ScrollViewer>(name + "Scroll");
+            if (useContentRefraction)
+            {
+                var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
+                viewport.Children.Add(edge);
+                scrollEdges.Add(edge);
+            }
+            else
+            {
+                var edge = new SettingsScrollRim(scroll);
+                viewport.Children.Add(edge);
+                scrollEdges.Add(edge);
+            }
         }
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
         var dpiTrack = Required<Border>("PdfDpiTrack");
@@ -276,7 +282,8 @@ public partial class MainWindow
             float refraction = _refractLabels ? 1.35f * approach * approach * (3 - 2 * approach) : 0;
             if (!_effect.Draw(context, size, trackBounds.Size, origin, _background.Color,
                     _trackColor.Color, _pillColor.Color, rimOnly: false, OnDraw,
-                    labels: labels, labelsOffset: labelsOffset, labelRefraction: refraction))
+                    labels: labels, labelsOffset: labelsOffset, labelRefraction: refraction,
+                    emphasizeTrack: !_captureLabelBackdrop))
                 OnDraw(false);
         }
 
