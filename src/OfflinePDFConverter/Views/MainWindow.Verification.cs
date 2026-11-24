@@ -115,6 +115,14 @@ public partial class MainWindow
                 Check(caption.TextWrapping == TextWrapping.Wrap,
                     "The Windows output file name label is not configured to wrap.");
                 checks.Add("Windows startup frame and content fit the work area, and long settings labels wrap");
+                var toolsLabel = Required<TextBlock>("PdfToolsModeLabel");
+                var toolsPill = Required<Border>("ModeSelectionPill");
+                var labelCenter = toolsLabel.TranslatePoint(new Point(toolsLabel.Bounds.Width / 2, 0), _modeSelectorSwitch);
+                var pillCenter = toolsPill.TranslatePoint(new Point(toolsPill.Bounds.Width / 2, 0), _modeSelectorSwitch);
+                Check(labelCenter is { } labelPoint && pillCenter is { } pillPoint &&
+                      Math.Abs(labelPoint.X - pillPoint.X) <= 1,
+                    "The PDF Edit label is not centered on the Windows selection pill.");
+                checks.Add("Windows PDF Edit label is centered on its selection pill");
             }
             Check(!string.IsNullOrWhiteSpace(DefaultOutputFolder) &&
                   _pdfOutputFolderTextBox.Text == DefaultOutputFolder &&

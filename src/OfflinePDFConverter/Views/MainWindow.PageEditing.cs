@@ -55,6 +55,9 @@ public partial class MainWindow
 
     private async void OnOfficeToPdfClick(object? sender, RoutedEventArgs e)
     {
+        if (!OfficeConversionAvailable)
+            return;
+
         try
         {
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -85,6 +88,9 @@ public partial class MainWindow
 
     private async void OnSelectOfficeOutputFolderClick(object? sender, RoutedEventArgs e)
     {
+        if (!OfficeConversionAvailable)
+            return;
+
         var outputFolder = Required<Avalonia.Controls.TextBox>("OfficeOutputFolderTextBox");
         try
         {
@@ -105,6 +111,9 @@ public partial class MainWindow
 
     private async Task ConvertOfficeFilesAsync(IEnumerable<string> paths)
     {
+        if (!OfficeConversionAvailable)
+            return;
+
         if (_windowClosed || _conversionCts != null)
             return;
         var sources = paths.Where(OfficePdfService.IsSupported).Where(File.Exists).Distinct().ToArray();
