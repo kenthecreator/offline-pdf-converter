@@ -18,8 +18,8 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45334351557'
-      CANDIDATE_SHA: 'e179a2418d63b2550d504e98e46f685ec53c37a5'
+      CANDIDATE_RUN: '45334634085'
+      CANDIDATE_SHA: '280b3c88933c327cf9d05a9f86a1257924fc1e67'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
@@ -28,9 +28,9 @@ jobs:
       - name: Cancel the superseded candidate build
         run: |
           set -euo pipefail
-          run_path="repos/$GITHUB_REPOSITORY/actions/runs/45333604725"
+          run_path="repos/$GITHUB_REPOSITORY/actions/runs/45334351557"
           run=$(gh api "$run_path")
-          jq -e '.head_sha == "86d23744b23f80e8a5dd92044a8f26f9ced8a6c9" and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+          jq -e '.head_sha == "e179a2418d63b2550d504e98e46f685ec53c37a5" and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
           if jq -e '.status != "completed"' <<<"$run" >/dev/null; then
             gh api --method POST "$run_path/cancel" ||
               gh api "$run_path" | jq -e '.status == "completed"' >/dev/null
