@@ -5,7 +5,7 @@ on:
     paths: [.github/workflows/replace-v5.5-windows-assets.yml]
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -18,13 +18,27 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45322922834'
-      CANDIDATE_SHA: '06d9fb895a3c0f3baa3bc71b272cd59d4d53eeff'
+      CANDIDATE_RUN: '45328778745'
+      CANDIDATE_SHA: 'a764bdfe1e0a57affd1b92bd9ee22bf610264099'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
       PACKAGE_NAME: 'Offline.PDF.Converter.v5.5.-Windows-x64.zip'
     steps:
+      - name: Cancel superseded candidate builds
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          for target in '45328183665:148f2e41f14eed2fdb9d4ded1228ed5c4c8155fc' '45328463015:5115c644ffc10251f8cbe5ca6597cdc361495a91'; do
+            id="${target%%:*}"
+            sha="${target#*:}"
+            run=$(gh api "$repo/actions/runs/$id")
+            jq -e --arg sha "$sha" '.head_sha == $sha and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+            if jq -e '.status != "completed"' <<<"$run" >/dev/null; then
+              gh api --method POST "$repo/actions/runs/$id/cancel" ||
+                gh api "$repo/actions/runs/$id" | jq -e '.status == "completed"' >/dev/null
+            fi
+          done
       - name: Wait for the verified and merged candidate
         run: |
           set -euo pipefail
@@ -96,9 +110,9 @@ jobs:
           cp previous/notes.md revised-notes.md
           cat >> revised-notes.md <<EOF
 
-          ## Windows x64 のガラス描画更新
+          ## Windows x64 のガラス描画の調整
 
-          選択ピルが移動する間、ピルの縁で文字が曲がる表現を復元しました。停止時には通常の文字描画へ戻ります。設定パネルではスクロール中は縁の反射を描き、停止後に上下端の文字や内容が屈折します。
+          ピルの縁の反射と影を弱めました。設定パネルでは、スクロール停止後の屈折で変わる画素だけを描き、上下端の明暗が切り替わる帯を抑えました。
 
           Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
           EOF
