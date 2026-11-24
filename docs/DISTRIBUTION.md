@@ -7,7 +7,7 @@
 | macOS Apple Silicon | Offline.PDF.Converter.v5.5.-macOS-arm64.zip | Offline PDF Converter (v5.5).app |
 | Windows 10（1903以降）／11 x64 | Offline.PDF.Converter.v5.5.-Windows-x64.zip | Offline PDF Converter (v5.5).exe |
 
-両版に.NET、OCRエンジンと認識モデル、LibreOfficeKitを同梱します。Mac版はad-hoc署名、未公証です。Windows版は未署名の単体exeで、必要なVisual C++ DLLを内蔵します。初回は内蔵ファイルの展開に一時フォルダーへの書き込みが必要です。
+両版に.NET、OCRエンジンと認識モデルを同梱します。Office変換用のLibreOfficeKitはmacOS版に同梱します。Mac版はad-hoc署名、未公証です。Windows版は未署名の単体exeで、必要なVisual C++ DLLを内蔵します。初回は内蔵ファイルの展開に一時フォルダーへの書き込みが必要です。
 
 ## 各OSでの作成・確認
 
@@ -17,20 +17,20 @@ python3 scripts/build-paddle-edition.py --target mac --office-macos-app artifact
 python3 scripts/verify-v5.5-release.py --archives dist/paddle-edition --target macOS-arm64
 ```
 
-Windowsでの作成は [Windows用単体exeのビルド手順](BUILD_WINDOWS.md) を参照してください。両OSとも公式LibreOffice 26.8.3.1（`861effc5289d539f15c4c18d1ba8579ffd78728b`）を使います。インストーラーのSHA-256を固定し、展開時に同一のビルドIDを検証します。
+Windowsでの作成は [Windows用単体exeのビルド手順](BUILD_WINDOWS.md) を参照してください。macOS版は公式LibreOffice 26.8.3.1（`861effc5289d539f15c4c18d1ba8579ffd78728b`）を使います。インストーラーのSHA-256を固定し、展開時に同一のビルドIDを検証します。
 
-`Verify and prepare v5.5` はWindows Server 2022とmacOSで各配布ZIPを作成し、Windows Server 2025で同じWindows ZIPを再検証します。両Windows環境では対象exeのネットワークを遮断します。3環境のOffice出力について、ページ数・日本語の文字と順序・用紙寸法・文字と画像の位置を比較します。v5.1の検証基準を引き継ぎ、検証用Word原稿の縦位置差のみ、実測値に合わせて5 pt（約1.8 mm）まで許容します。横位置および他の形式の位置の許容値は3 ptです。Windows 10／11の実機と、Microsoft Office自身のPDF出力との比較は未検証です。
+`Verify and prepare v5.5` はWindows Server 2022とmacOSで各配布ZIPを作成し、Windows Server 2025で同じWindows ZIPを再検証します。両Windows環境では対象exeのネットワークを遮断します。macOSではOffice変換で出力したPDFのページ数、日本語の文字と順序、用紙寸法、文字と画像の位置も検証します。
 
 ## GitHub Releasesと公式ページの切り替え
 
 1. 公開候補のコミットを `main` に反映した後、`Verify and prepare v5.5` を `main` で `prepare_draft` を有効にして実行します。
-2. 両OSのビルド・GUI・Office出力比較が成功すると、検証結果とZIPを含む `v5.5.0` のリリース下書きができます。
+2. 両OSのビルド・GUI検証とmacOSのOffice出力検証が成功すると、検証結果とZIPを含む `v5.5.0` のリリース下書きができます。
 3. 管理者のGitHub CLI認証で `python3 scripts/publish-v5.5.py` を実行すると、下書きのZIP・SHA-256・検証結果と、CIで検証したコミットのダウンロードページを読み取りで照合します。
 4. 公開を実行する際は、同じスクリプトに `--publish` を付けます。v5.5を公開してタグと最新版を確認した後、`gh-pages` に新しいアイコンと `index.html` を反映します。Pagesのデプロイ後に、アイコン、2つのZIPとSHA-256、使い方リンクを確認します。
 5. 作業フォルダのREADMEと公開版の記録も、実際に確認したタグと配布パスに更新します。
 
-## Office文書の組み込み変換
+## Office文書の組み込み変換（macOS版）
 
-Word（`.docx`）、Excel（`.xlsx`）、PowerPoint（`.pptx`）を元ファイルと同じフォルダーに透かしなしで保存します。両OSで共通の書体を使うため、CalibriとCambriaにはそれぞれCarlitoとCaladeaを、MSゴシックとMS明朝にはそれぞれNoto Sans JPとNoto Serif CJK JPを使います。原稿が使う書体や機能によっては、変換後の改行や配置に差が出ることがあります。
+Word（`.docx`）、Excel（`.xlsx`）、PowerPoint（`.pptx`）を元ファイルと同じフォルダーに透かしなしで保存します。CalibriとCambriaにはそれぞれCarlitoとCaladeaを、MSゴシックとMS明朝にはそれぞれNoto Sans JPとNoto Serif CJK JPを使います。原稿が使う書体や機能によっては、変換後の改行や配置に差が出ることがあります。
 
 [LibreOfficeKit](https://docs.libreoffice.org/libreofficekit.html) · [LibreOfficeのライセンス](https://www.libreoffice.org/about-us/licenses/)

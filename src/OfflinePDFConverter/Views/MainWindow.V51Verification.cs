@@ -171,7 +171,29 @@ public partial class MainWindow
         Program.TraceGuiVerification("PDF layout and rotation verified");
 
         var fixtures = Environment.GetEnvironmentVariable("OPC_OFFICE_VERIFY_FIXTURES");
-        if (!string.IsNullOrEmpty(fixtures))
+        if (!OfficeConversionAvailable)
+        {
+            SelectDirection(2);
+            var labels = Required<Grid>("DirectionSelectorButtons");
+            Require(_mode == ConversionMode.ImageToPdf && labels.Children.Count == 2 &&
+                    labels.ColumnDefinitions.Count == 2 && _officeToPdfDirectionButton.Parent is null &&
+                    Required<Grid>("OfficePanel").Parent is null,
+                "Windows includes an Office tab or can select Office conversion.");
+            var officeDrop = Path.Combine(root, "unsupported.docx");
+            await File.WriteAllTextAsync(officeDrop, "Office conversion is disabled on Windows.");
+            int imageCount = _imageFiles.Count;
+            await AddDroppedFilesAsync(new[] { officeDrop });
+            Require(_imageFiles.Count == imageCount && !File.Exists(Path.ChangeExtension(officeDrop, ".pdf")),
+                "Windows processed an Office file drop.");
+            SetMode(ConversionMode.OfficeToPdf);
+            Require(_mode == ConversionMode.PdfToImage, "Windows entered the Office conversion mode.");
+            Require(!typeof(OfficePdfService).Assembly.GetManifestResourceNames().Any(name =>
+                    name == "OfflinePDFConverter.OfficeEngine.zip" ||
+                    name.StartsWith("OfflinePDFConverter.OfficeFonts.", StringComparison.Ordinal)),
+                "The Windows package includes Office conversion resources.");
+            checks.Add("Windows conversion selector, file-drop behavior and package contain no Office conversion");
+        }
+        else if (!string.IsNullOrEmpty(fixtures))
         {
             SelectDirection(2);
             var officeButton = this.GetVisualDescendants().OfType<Button>()

@@ -1,10 +1,9 @@
 # v5.5 Windows単体exeの作成
 
-Windows x64上で.NET 8 SDK、Visual Studioのx64再頒布ランタイム、Pythonを使います。配布する単体exeには.NET、OCR、Office変換エンジンを同梱します。
+Windows x64上で.NET 8 SDK、Visual Studioのx64再頒布ランタイム、Pythonを使います。配布する単体exeには.NETとOCRエンジンを同梱します。
 
 ```powershell
-python scripts/prepare-office-engine.py --target windows --output artifacts/office-engine
-python scripts/build-paddle-edition.py --target windows --office-windows-zip artifacts/office-engine/LibreOffice-win-x64.zip
+python scripts/build-paddle-edition.py --target windows
 ```
 
 出力は `dist/paddle-edition/Offline PDF Converter (v5.5)-Windows-x64.zip` です。配布ZIPと検証の流れは [配布手順](DISTRIBUTION.md) を参照してください。
