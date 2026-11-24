@@ -288,11 +288,8 @@ public partial class MainWindow : Window
         if ((Screens.ScreenFromPoint(Position) ?? Screens.Primary) is not { } screen)
             return;
 
-        var platform = PlatformImpl;
-        var frame = platform?.FrameSize;
-        var client = platform?.ClientSize;
-        var chrome = frame is { } outer && client is { } inner && outer.Height > inner.Height
-            ? outer - inner
+        var chrome = FrameSize is { } outer && outer.Height > ClientSize.Height
+            ? outer - ClientSize
             : new Size(16, 40);
         var size = FitWindowsStartupClientSize(new Size(Width, Height), screen.WorkingArea, screen.Scaling, chrome);
         MinWidth = Math.Min(MinWidth, size.Width);
