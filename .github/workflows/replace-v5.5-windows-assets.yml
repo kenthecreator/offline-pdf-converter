@@ -1,11 +1,11 @@
-name: Publish the verified v5.5 Windows glass update
+name: Publish the verified v5.5 Windows update
 on:
   push:
     branches: [codex/publish-v5.5-windows-glass]
     paths: [.github/workflows/replace-v5.5-windows-assets.yml]
 
 permissions:
-  actions: read
+  actions: write
   contents: write
 
 concurrency:
@@ -18,13 +18,23 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45345302443'
-      CANDIDATE_SHA: '1e2d7ab0446d04c3ec16e7b37df8ae8ddee368d4'
+      CANDIDATE_RUN: '45345893266'
+      CANDIDATE_SHA: '0b7218f38813624b7691273b83646f5085dee866'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
       PACKAGE_NAME: 'Offline.PDF.Converter.v5.5.-Windows-x64.zip'
     steps:
+      - name: Cancel the superseded candidate build
+        run: |
+          set -euo pipefail
+          run_path="repos/$GITHUB_REPOSITORY/actions/runs/45345302443"
+          run=$(gh api "$run_path")
+          jq -e '.head_sha == "1e2d7ab0446d04c3ec16e7b37df8ae8ddee368d4" and .path == ".github/workflows/release-v5.5.yml"' <<<"$run" >/dev/null
+          if jq -e '.status != "completed"' <<<"$run" >/dev/null; then
+            gh api --method POST "$run_path/cancel" ||
+              gh api "$run_path" | jq -e '.status == "completed"' >/dev/null
+          fi
       - name: Wait for the verified and merged candidate
         run: |
           set -euo pipefail
@@ -96,7 +106,7 @@ jobs:
 
           ## Windows x64 のOffice変換
 
-          Windows版から「Office → PDF」タブと変換エンジンを削除しました。macOS版は引き続きWord・Excel・PowerPointからPDFへの変換に対応します。
+          Windows版から「Office → PDF」タブと変換エンジンを削除しました。macOS版は引き続きWord・Excel・PowerPointからPDFへの変換に対応します。また、Windows版の「PDF編集」の文字を選択ピルの中央に配置しました。
 
           Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
           EOF
