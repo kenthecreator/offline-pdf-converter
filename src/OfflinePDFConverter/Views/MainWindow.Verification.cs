@@ -107,7 +107,7 @@ public partial class MainWindow
                 var modeLens = _selectorLenses["ModeSelectionPill"];
                 await Until(() => !modeLens.IsAvailable || modeLens.HasRendered);
                 Check(modeLens is { IsAvailable: true, HasRendered: true },
-                    "Skia did not draw the mode selection refraction.");
+                    "Skia did not draw the mode selection glass.");
             }
             Check(ButtonGlass.IsAppliedTo(Required<Button>("StartPdfToolButton")) == glassEnabled,
                 "Incorrect glass decoration on the main Start button.");
@@ -293,7 +293,9 @@ public partial class MainWindow
                         var lens = _selectorLenses[pillName];
                         var pill = Required<Border>(pillName);
                         var labels = Required<Grid>(labelsName);
-                        await Until(() => labels.IsEffectivelyVisible && lens.HasLabelBackdrop);
+                        await Until(() => labels.IsEffectivelyVisible);
+                        if (!OperatingSystem.IsWindows())
+                            await Until(() => lens.HasLabelBackdrop);
                         var translation = (TranslateTransform)pill.RenderTransform!;
                         var transitions = translation.Transitions;
                         var originalX = translation.X;
@@ -301,6 +303,14 @@ public partial class MainWindow
                         try
                         {
                             translation.X = step / 2;
+                            if (OperatingSystem.IsWindows())
+                            {
+                                Check(pill.ZIndex <= labels.ZIndex && !lens.HasLabelBackdrop,
+                                    $"The moving pill covers its live labels on Windows: {pillName}.");
+                                checks.Add($"{pillName} keeps live labels above the moving pill in {themeName} theme");
+                                continue;
+                            }
+
                             Check(pill.ZIndex > labels.ZIndex, $"The moving pill is behind its labels: {pillName}.");
                             var straightPath = Path.ChangeExtension(report, $".{pillName}-straight-{themeName}.png");
                             var bentPath = Path.ChangeExtension(report, $".{pillName}-bent-{themeName}.png");
@@ -357,7 +367,9 @@ public partial class MainWindow
                         SetMode(mode);
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
-                        var edge = viewport.Children.OfType<SettingsScrollGlass>().Single();
+                        var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
+                        Check(OperatingSystem.IsWindows() ? edge is null : edge is not null,
+                            $"Incorrect scroll glass for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
                         var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
@@ -390,6 +402,13 @@ public partial class MainWindow
                         double bottomInset = panel.Bounds.Height - panelEnd.Y;
                         Check(panel.ClipToBounds && topInset is >= 2 and < 4 && bottomInset is >= 2 and < 4,
                             "The settings viewport does not keep the expected thin rim: " + name);
+                        if (edge is null)
+                        {
+                            scroll.Offset = default;
+                            checks.Add($"{name} scrolls without viewport snapshots in {themeName} theme");
+                            continue;
+                        }
+
                         var max = scroll.Extent.Height - scroll.Viewport.Height;
                         var captions = presenter.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) &&

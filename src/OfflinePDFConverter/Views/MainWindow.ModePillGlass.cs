@@ -33,15 +33,19 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
-        var scrollEdges = new[] { "PdfOutputSettings", "OcrSettings" }
-            .Select(name =>
-            {
-                var viewport = Required<Grid>(name + "Viewport");
-                var scroll = Required<ScrollViewer>(name + "Scroll");
-                var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
-                viewport.Children.Add(edge);
-                return edge;
-            }).ToArray();
+        var scrollEdges = Array.Empty<SettingsScrollGlass>();
+        if (!OperatingSystem.IsWindows())
+        {
+            scrollEdges = new[] { "PdfOutputSettings", "OcrSettings" }
+                .Select(name =>
+                {
+                    var viewport = Required<Grid>(name + "Viewport");
+                    var scroll = Required<ScrollViewer>(name + "Scroll");
+                    var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
+                    viewport.Children.Add(edge);
+                    return edge;
+                }).ToArray();
+        }
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
         var dpiTrack = Required<Border>("PdfDpiTrack");
         if (dpiTrack.Child is Panel dpiTrackLayers)
@@ -97,6 +101,7 @@ public partial class MainWindow
         private readonly GlassOptics _effect;
         private readonly GlassDecoration _pillDecoration;
         private readonly Grid _labels;
+        private readonly bool _captureLabelBackdrop;
         private readonly double _step;
         private readonly RadioButton[] _buttons;
         private readonly TextBlock[] _labelText;
@@ -135,6 +140,7 @@ public partial class MainWindow
             _effect = effect;
             _pillDecoration = new GlassDecoration(this);
             _labels = labels;
+            _captureLabelBackdrop = !OperatingSystem.IsWindows();
             _step = step;
             _buttons = labels.Children.OfType<RadioButton>().ToArray();
             _labelText = labels.Children.OfType<TextBlock>()
@@ -147,6 +153,9 @@ public partial class MainWindow
             _background.PropertyChanged += OnPaletteChanged;
             _trackColor.PropertyChanged += OnPaletteChanged;
             _pillColor.PropertyChanged += OnPaletteChanged;
+            if (!_captureLabelBackdrop)
+                return;
+
             _labels.Loaded += OnLabelsLoaded;
             _labels.LayoutUpdated += OnLabelsLayoutUpdated;
             _labels.PropertyChanged += OnLabelChanged;
@@ -177,7 +186,7 @@ public partial class MainWindow
 
         private void QueueLabelCapture()
         {
-            if (!_labelCaptureDirty || _labelCaptureQueued || _labelCaptureFailed || _disposed ||
+            if (!_captureLabelBackdrop || !_labelCaptureDirty || _labelCaptureQueued || _labelCaptureFailed || _disposed ||
                 !_labels.IsEffectivelyVisible || _labels.Bounds.Width <= 0 || _labels.Bounds.Height <= 0)
                 return;
             _labelCaptureQueued = true;
@@ -233,6 +242,9 @@ public partial class MainWindow
 
         private void UpdateLabelLayer()
         {
+            if (!_captureLabelBackdrop)
+                return;
+
             // At each stop, let Avalonia draw the text directly at its original position.
             int zIndex = _labelTexture is not null && DistanceFromStop > .5 ? _labels.ZIndex + 1 : _labels.ZIndex;
             if (_pill.ZIndex != zIndex)
