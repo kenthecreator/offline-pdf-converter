@@ -35,7 +35,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
     public bool Draw(DrawingContext context, Size size, Size trackSize, Vector origin,
         Color surround, Color track, Color surface, bool rimOnly, Action<bool> onDraw,
         CornerRadius? cornerRadius = null, SKShader? labels = null, Vector labelsOffset = default,
-        float labelRefraction = 0)
+        float labelRefraction = 0, bool emphasizeTrack = false, Size? labelLayerSize = null)
     {
         if (_disposed)
             return false;
@@ -60,14 +60,16 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 ["localRadii"] = radii,
                 ["hasLabels"] = labels is null ? 0f : 1f,
                 ["labelsOffset"] = new[] { (float)labelsOffset.X, (float)labelsOffset.Y },
-                ["labelRefraction"] = labelRefraction
+                ["labelRefraction"] = labelRefraction,
+                ["emphasizeTrack"] = emphasizeTrack ? 1f : 0f,
+                ["warpLabelsOnly"] = labelLayerSize.HasValue ? 1f : 0f
             };
             var children = new SKRuntimeEffectChildren(effect);
             children.Add("labels", labels ?? _emptyLabels);
             if (effect.ToShader(uniforms, children) is not { } shader)
                 return false;
 
-            var operation = new DrawOperation(new Rect(size), shader, onDraw);
+            var operation = new DrawOperation(new Rect(labelLayerSize ?? size), shader, onDraw);
             try
             {
                 context.Custom(operation);
@@ -89,7 +91,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
     private static float[] Rgb(Color color) => new[] { color.R / 255f, color.G / 255f, color.B / 255f };
 
     internal bool DrawScrollEdges(DrawingContext context, Rect viewport, double drawableWidth, double band,
-        SKShader scene, Color panelColor, float top, float bottom, Action<bool> onDraw)
+        SKShader scene, Color panelColor, float top, float bottom, Action<bool> onDraw, bool stableSampling = false)
     {
         if (_disposed || _scrollEffectUnavailable)
             return false;
@@ -114,7 +116,8 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 ["drawableWidth"] = (float)drawableWidth,
                 ["band"] = (float)band,
                 ["panelColor"] = Rgb(panelColor),
-                ["strength"] = new[] { top, bottom }
+                ["strength"] = new[] { top, bottom },
+                ["stableSampling"] = stableSampling ? 1f : 0f
             };
             var children = new SKRuntimeEffectChildren(_scrollEffect);
             children.Add("scene", scene);
@@ -203,12 +206,25 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         uniform float band;
         uniform float3 panelColor;
         uniform float2 strength;
+        uniform float stableSampling;
 
         half4 main(float2 point) {
             float2 p = point - viewportOrigin;
             bool top = p.y < viewportHeight * 0.5;
             float distance = top ? p.y : viewportHeight - p.y;
             float amount = top ? strength.x : strength.y;
+            if (stableSampling > 0.5) {
+                float side = min(p.x, drawableWidth - p.x);
+                float inner = 1.0 - smoothstep(7.0, max(8.0, band - 3.0), distance);
+                float bend = smoothstep(3.0, 7.0, distance) * inner * smoothstep(5.0, 11.0, side);
+                p.y += (top ? 1.0 : -1.0) * 1.65 * amount * bend;
+                half4 sample = scene.eval(p);
+                // Where the sample moves, replace the live pixels completely to avoid double edges.
+                float alpha = smoothstep(1.0, 3.0, distance) *
+                    (1.0 - smoothstep(band - 3.0, band, distance)) * smoothstep(2.0, 5.0, side);
+                float3 color = sample.rgb + panelColor * (1.0 - sample.a);
+                return half4(color * alpha, alpha);
+            }
             float bevel = clamp(1.0 - distance / band, 0.0, 1.0);
             float slope = (top ? 1.0 : -1.0) * 1.55 * pow(bevel, 1.28);
             float3 normal = normalize(float3(0.0, slope, 1.0));
@@ -244,6 +260,8 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         uniform float hasLabels;
         uniform float2 labelsOffset;
         uniform float labelRefraction;
+        uniform float emphasizeTrack;
+        uniform float warpLabelsOnly;
 
         float2 fromCapsuleAxis(float2 point, float2 size) {
             float2 p = point - size * 0.5;
@@ -268,8 +286,17 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         }
 
         float3 trackSurface(float2 p) {
-            float inside = 1.0 - smoothstep(-0.7, 0.7, trackDistance(p));
-            return mix(surround, trackColor.rgb, trackColor.a * inside);
+            float distance = trackDistance(p);
+            float inside = 1.0 - smoothstep(-0.7, 0.7, distance);
+            float3 color = mix(surround, trackColor.rgb, trackColor.a * inside);
+            if (emphasizeTrack > 0.5) {
+                // Refract the modeled track lip with the same ray as the flat fill.
+                float lip = inside * smoothstep(-6.0, -1.0, distance);
+                float upper = 1.0 - smoothstep(0.15, 0.85, p.y / max(trackSize.y, 1.0));
+                color = mix(color, float3(0.0), lip * 0.11 * (1.0 - upper));
+                color = mix(color, float3(1.0), lip * 0.22 * upper);
+            }
+            return color;
         }
 
         float coverage(float distance) {
@@ -277,6 +304,16 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         }
 
         half4 main(float2 point) {
+            if (warpLabelsOnly > 0.5) {
+                float2 perpendicular = fromCapsuleAxis(point - origin, localSize);
+                float radial = length(perpendicular);
+                float depth = min(localSize.x, localSize.y) * 0.5 - radial;
+                float rise = smoothstep(0.0, 4.0, depth);
+                float fall = 1.0 - smoothstep(4.0, 13.0, depth);
+                // Use one sample per output pixel and taper the displacement to zero at both boundaries.
+                float2 offset = perpendicular / max(radial, 0.01) * (1.8 * labelRefraction * rise * fall);
+                return labels.eval(point + offset);
+            }
             float2 perpendicular = fromCapsuleAxis(point, localSize);
             float radial = length(perpendicular);
             float diameter = min(localSize.x, localSize.y);

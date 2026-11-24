@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SkiaSharp;
 
 namespace OfflinePDFConverter.Views;
@@ -33,18 +34,23 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
-        var scrollEdges = Array.Empty<SettingsScrollGlass>();
-        if (!OperatingSystem.IsWindows())
+        bool captureAfterIdle = OperatingSystem.IsWindows();
+        var scrollEdges = new List<IDisposable>();
+        foreach (var name in new[] { "PdfOutputSettings", "OcrSettings" })
         {
-            scrollEdges = new[] { "PdfOutputSettings", "OcrSettings" }
-                .Select(name =>
-                {
-                    var viewport = Required<Grid>(name + "Viewport");
-                    var scroll = Required<ScrollViewer>(name + "Scroll");
-                    var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
-                    viewport.Children.Add(edge);
-                    return edge;
-                }).ToArray();
+            var viewport = Required<Grid>(name + "Viewport");
+            var scroll = Required<ScrollViewer>(name + "Scroll");
+            if (captureAfterIdle)
+            {
+                var rim = new SettingsScrollRim(scroll);
+                viewport.Children.Add(rim);
+                scrollEdges.Add(rim);
+            }
+
+            var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect,
+                captureAfterIdle);
+            viewport.Children.Add(edge);
+            scrollEdges.Add(edge);
         }
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
         var dpiTrack = Required<Border>("PdfDpiTrack");
@@ -101,7 +107,9 @@ public partial class MainWindow
         private readonly GlassOptics _effect;
         private readonly GlassDecoration _pillDecoration;
         private readonly Grid _labels;
-        private readonly bool _captureLabelBackdrop;
+        private readonly LabelDecoration? _labelDecoration;
+        private int _labelWarpFailed;
+        private bool _showWarpedLabels;
         private readonly double _step;
         private readonly RadioButton[] _buttons;
         private readonly TextBlock[] _labelText;
@@ -117,6 +125,8 @@ public partial class MainWindow
         public bool IsAvailable => Volatile.Read(ref _disabled) == 0;
         public bool HasRendered => Volatile.Read(ref _rendered) != 0;
         public bool HasLabelBackdrop => _labelTexture is not null && !_labelCaptureDirty;
+        public bool UsesWarpedLabelLayer => _showWarpedLabels;
+        public bool LabelsAreLive => _labelText.All(label => label.Opacity == 1);
 
         private double DistanceFromStop =>
             Math.Abs(_translation.X - Math.Round(_translation.X / _step) * _step);
@@ -125,6 +135,7 @@ public partial class MainWindow
         {
             _refractLabels = enabled;
             _pillDecoration.InvalidateVisual();
+            _labelDecoration?.InvalidateVisual();
         }
 
         public ModePillGlass(Border track, Border pill, TranslateTransform translation,
@@ -140,11 +151,17 @@ public partial class MainWindow
             _effect = effect;
             _pillDecoration = new GlassDecoration(this);
             _labels = labels;
-            _captureLabelBackdrop = !OperatingSystem.IsWindows();
             _step = step;
             _buttons = labels.Children.OfType<RadioButton>().ToArray();
             _labelText = labels.Children.OfType<TextBlock>()
                 .Concat(_buttons.Select(button => button.Content).OfType<TextBlock>()).ToArray();
+
+            if (OperatingSystem.IsWindows() && labels.Parent is Panel labelParent)
+            {
+                _labelDecoration = new LabelDecoration(this);
+                Grid.SetColumnSpan(_labelDecoration, Grid.GetColumnSpan(labels));
+                labelParent.Children.Add(_labelDecoration);
+            }
 
             _pill.Child = _pillDecoration;
             _track.PropertyChanged += OnBoundsChanged;
@@ -153,9 +170,6 @@ public partial class MainWindow
             _background.PropertyChanged += OnPaletteChanged;
             _trackColor.PropertyChanged += OnPaletteChanged;
             _pillColor.PropertyChanged += OnPaletteChanged;
-            if (!_captureLabelBackdrop)
-                return;
-
             _labels.Loaded += OnLabelsLoaded;
             _labels.LayoutUpdated += OnLabelsLayoutUpdated;
             _labels.PropertyChanged += OnLabelChanged;
@@ -180,13 +194,16 @@ public partial class MainWindow
         private void InvalidateLabels()
         {
             _labelCaptureDirty = true;
+            if (_labelDecoration is not null)
+                UpdateLabelLayer();
             QueueLabelCapture();
             _pillDecoration.InvalidateVisual();
         }
 
         private void QueueLabelCapture()
         {
-            if (!_captureLabelBackdrop || !_labelCaptureDirty || _labelCaptureQueued || _labelCaptureFailed || _disposed ||
+            if (!_labelCaptureDirty || _labelCaptureQueued || _labelCaptureFailed || _disposed ||
+                Volatile.Read(ref _labelWarpFailed) != 0 ||
                 !_labels.IsEffectivelyVisible || _labels.Bounds.Width <= 0 || _labels.Bounds.Height <= 0)
                 return;
             _labelCaptureQueued = true;
@@ -204,7 +221,26 @@ public partial class MainWindow
                 const int scale = 2;
                 var size = PixelSize.FromSize(_labels.Bounds.Size, scale);
                 using var snapshot = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
-                snapshot.Render(_labels);
+                if (_labelDecoration is null)
+                {
+                    snapshot.Render(_labels);
+                }
+                else
+                {
+                    // Paint just the native glyphs with grayscale antialiasing on the transparent target.
+                    using var drawing = snapshot.CreateDrawingContext();
+                    using var renderOptions = drawing.PushRenderOptions(new RenderOptions
+                    {
+                        TextRenderingMode = TextRenderingMode.Antialias
+                    });
+                    foreach (var label in _labelText)
+                    {
+                        if (!label.IsEffectivelyVisible || label.TransformToVisual(_labels) is not { } transform)
+                            continue;
+                        using var state = drawing.PushTransform(transform);
+                        label.Render(drawing);
+                    }
+                }
                 using var encoded = new MemoryStream();
                 snapshot.Save(encoded);
                 using var image = SKImage.FromEncodedData(encoded.ToArray())
@@ -223,6 +259,7 @@ public partial class MainWindow
                 _labelTexture?.Dispose();
                 _labelTexture = null;
                 _pill.ClearValue(ZIndexProperty);
+                UpdateLabelLayer();
                 System.Diagnostics.Trace.WriteLine($"Selector labels could not be captured: {error.Message}");
             }
             _pillDecoration.InvalidateVisual();
@@ -231,7 +268,10 @@ public partial class MainWindow
         private void OnBoundsChanged(object? sender, AvaloniaPropertyChangedEventArgs args)
         {
             if (args.Property == BoundsProperty)
+            {
                 _pillDecoration.InvalidateVisual();
+                _labelDecoration?.InvalidateVisual();
+            }
         }
 
         private void OnPaletteChanged(object? sender, AvaloniaPropertyChangedEventArgs args)
@@ -242,8 +282,19 @@ public partial class MainWindow
 
         private void UpdateLabelLayer()
         {
-            if (!_captureLabelBackdrop)
+            if (_labelDecoration is { } decoration)
+            {
+                bool showWarp = !_disposed && HasLabelBackdrop && DistanceFromStop > .5 &&
+                    Volatile.Read(ref _labelWarpFailed) == 0;
+                if (_showWarpedLabels != showWarp)
+                {
+                    _showWarpedLabels = showWarp;
+                    foreach (var label in _labelText)
+                        label.SetCurrentValue(OpacityProperty, showWarp ? 0d : 1d);
+                }
+                decoration.InvalidateVisual();
                 return;
+            }
 
             // At each stop, let Avalonia draw the text directly at its original position.
             int zIndex = _labelTexture is not null && DistanceFromStop > .5 ? _labels.ZIndex + 1 : _labels.ZIndex;
@@ -276,8 +327,31 @@ public partial class MainWindow
             float refraction = _refractLabels ? 1.35f * approach * approach * (3 - 2 * approach) : 0;
             if (!_effect.Draw(context, size, trackBounds.Size, origin, _background.Color,
                     _trackColor.Color, _pillColor.Color, rimOnly: false, OnDraw,
-                    labels: labels, labelsOffset: labelsOffset, labelRefraction: refraction))
+                    labels: labels, labelsOffset: labelsOffset, labelRefraction: refraction,
+                    emphasizeTrack: _labelDecoration is not null))
                 OnDraw(false);
+        }
+
+        private void RenderWarpedLabels(DrawingContext context, Size size)
+        {
+            if (!UsesWarpedLabelLayer || _labelTexture is not { } texture || size.Width <= 0 || size.Height <= 0)
+                return;
+
+            var origin = _pill.Bounds.Position
+                + new Vector(_pill.BorderThickness.Left + _translation.X, _pill.BorderThickness.Top)
+                - _labels.Bounds.Position;
+            float progress = (float)Math.Clamp((DistanceFromStop - .5) / 12, 0, 1);
+            float strength = _refractLabels ? progress * progress * (3 - 2 * progress) : 0;
+            if (!_effect.Draw(context, _pillDecoration.Bounds.Size, _track.Bounds.Size, origin,
+                    _background.Color, _trackColor.Color, _pillColor.Color, rimOnly: false, OnLabelDraw,
+                    labels: texture, labelRefraction: strength, labelLayerSize: size))
+                OnLabelDraw(false);
+        }
+
+        private void OnLabelDraw(bool success)
+        {
+            if (!success && Interlocked.Exchange(ref _labelWarpFailed, 1) == 0)
+                Dispatcher.UIThread.Post(UpdateLabelLayer);
         }
 
         private void OnDraw(bool success)
@@ -294,6 +368,11 @@ public partial class MainWindow
                 return;
 
             _disposed = true;
+            if (_labelDecoration is { } decoration)
+            {
+                UpdateLabelLayer();
+                (decoration.Parent as Panel)?.Children.Remove(decoration);
+            }
             Interlocked.Exchange(ref _disabled, 1);
             _track.PropertyChanged -= OnBoundsChanged;
             _pill.PropertyChanged -= OnBoundsChanged;
@@ -312,6 +391,20 @@ public partial class MainWindow
             _labelTexture?.Dispose();
             _labelTexture = null;
             _pill.Child = null;
+        }
+
+        private sealed class LabelDecoration : Control
+        {
+            private readonly ModePillGlass _owner;
+
+            public LabelDecoration(ModePillGlass owner)
+            {
+                _owner = owner;
+                IsHitTestVisible = false;
+                Focusable = false;
+            }
+
+            public override void Render(DrawingContext context) => _owner.RenderWarpedLabels(context, Bounds.Size);
         }
 
         private sealed class GlassDecoration(ModePillGlass owner) : Control

@@ -293,9 +293,7 @@ public partial class MainWindow
                         var lens = _selectorLenses[pillName];
                         var pill = Required<Border>(pillName);
                         var labels = Required<Grid>(labelsName);
-                        await Until(() => labels.IsEffectivelyVisible);
-                        if (!OperatingSystem.IsWindows())
-                            await Until(() => lens.HasLabelBackdrop);
+                        await Until(() => labels.IsEffectivelyVisible && lens.HasLabelBackdrop);
                         var translation = (TranslateTransform)pill.RenderTransform!;
                         var transitions = translation.Transitions;
                         var originalX = translation.X;
@@ -305,13 +303,13 @@ public partial class MainWindow
                             translation.X = step / 2;
                             if (OperatingSystem.IsWindows())
                             {
-                                Check(pill.ZIndex <= labels.ZIndex && !lens.HasLabelBackdrop,
-                                    $"The moving pill covers its live labels on Windows: {pillName}.");
-                                checks.Add($"{pillName} keeps live labels above the moving pill in {themeName} theme");
-                                continue;
+                                await Until(() => lens.UsesWarpedLabelLayer && !lens.LabelsAreLive);
+                                await Task.Delay(50);
+                                Check(pill.ZIndex == labels.ZIndex,
+                                    $"The moving pill obscures the underlying controls: {pillName}.");
                             }
-
-                            Check(pill.ZIndex > labels.ZIndex, $"The moving pill is behind its labels: {pillName}.");
+                            else
+                                Check(pill.ZIndex > labels.ZIndex, $"The moving pill is behind its labels: {pillName}.");
                             var straightPath = Path.ChangeExtension(report, $".{pillName}-straight-{themeName}.png");
                             var bentPath = Path.ChangeExtension(report, $".{pillName}-bent-{themeName}.png");
                             lens.SetLabelRefraction(false);
@@ -345,7 +343,7 @@ public partial class MainWindow
                             for (int stop = 0; stop < labels.Children.Count; stop++)
                             {
                                 translation.X = stop * step;
-                                Check(pill.ZIndex == labels.ZIndex,
+                                Check(pill.ZIndex == labels.ZIndex && !lens.UsesWarpedLabelLayer && lens.LabelsAreLive,
                                     $"The settled pill covers its original labels at stop {stop}: {pillName}.");
                             }
                             checks.Add($"{pillName} refracts labels at both edges in {themeName} theme");
@@ -367,9 +365,9 @@ public partial class MainWindow
                         SetMode(mode);
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
-                        var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
-                        Check(OperatingSystem.IsWindows() ? edge is null : edge is not null,
-                            $"Incorrect scroll glass for this platform: {name}.");
+                        var edge = viewport.Children.OfType<SettingsScrollGlass>().Single();
+                        var rim = viewport.Children.OfType<SettingsScrollRim>().SingleOrDefault();
+                        Check(OperatingSystem.IsWindows() == (rim is not null), $"Incorrect scroll rim for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
                         var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
@@ -402,14 +400,19 @@ public partial class MainWindow
                         double bottomInset = panel.Bounds.Height - panelEnd.Y;
                         Check(panel.ClipToBounds && topInset is >= 2 and < 4 && bottomInset is >= 2 and < 4,
                             "The settings viewport does not keep the expected thin rim: " + name);
-                        if (edge is null)
+                        var max = scroll.Extent.Height - scroll.Viewport.Height;
+                        if (rim is not null)
                         {
+                            Check(!rim.IsHitTestVisible && !rim.Focusable, "Scroll rim intercepts input: " + name);
+                            scroll.Offset = new Vector(0, max / 2);
+                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength > 0);
+                            scroll.Offset = new Vector(0, max);
+                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength == 0);
                             scroll.Offset = default;
-                            checks.Add($"{name} scrolls without viewport snapshots in {themeName} theme");
-                            continue;
+                            await Until(() => rim.TopStrength == 0 && rim.BottomStrength > 0);
+                            checks.Add($"{name} shows rim reflections in {themeName} theme");
                         }
 
-                        var max = scroll.Extent.Height - scroll.Viewport.Height;
                         var captions = presenter.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text) &&
                                            text.Bounds.Height is > 8 and < 60)
@@ -424,6 +427,8 @@ public partial class MainWindow
                                 .First(candidate => candidate > SettingsScrollGlass.BandDepth &&
                                                     candidate < max - SettingsScrollGlass.BandDepth);
                             scroll.Offset = new Vector(0, offset);
+                            if (OperatingSystem.IsWindows())
+                                Check(!edge.HasBackdrop, "Scroll edge captured content before scrolling stopped: " + name);
                             await Until(() => edge.HasBackdrop);
                             // The edge redraw must still be in place after the scroll input has stopped.
                             await Task.Delay(350);
