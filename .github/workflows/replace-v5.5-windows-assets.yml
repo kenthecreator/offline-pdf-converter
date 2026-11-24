@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: replace-v5.5
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   replace-windows:
@@ -18,8 +18,8 @@ jobs:
     timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
-      CANDIDATE_RUN: '45321266659'
-      CANDIDATE_SHA: 'b1adbc997f815490d3e30153e8e5a9bae0cd83fb'
+      CANDIDATE_RUN: '45322280909'
+      CANDIDATE_SHA: '828a75aa9122a7189f2167a3485c75d55d3dd4c7'
       RELEASE_ID: '455464926'
       RELEASE_TAG: 'v5.5.0'
       RELEASE_TAG_SHA: '41a1d250377d816c81df668be76cef43f1c63721'
@@ -98,7 +98,7 @@ jobs:
 
           ## Windows x64 のガラス描画更新
 
-          選択ピルの背景に屈折表現を加え、設定パネルの上下端に反射を追加しました。画面の文字や設定内容は通常の描画を使用します。
+          選択ピルが移動する間、ピルの縁で文字が曲がる表現を復元しました。停止時には通常の文字描画へ戻ります。設定パネルの上下端では、スクロール位置に応じた反射を描画します。
 
           Windows版のソースは [$CANDIDATE_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$CANDIDATE_SHA) です。[配布版の検証結果](https://github.com/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN)。リリースタグはmacOS版のソースを指しています。
           EOF
