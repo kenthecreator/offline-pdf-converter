@@ -34,23 +34,24 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
-        bool captureAfterIdle = OperatingSystem.IsWindows();
+        bool useScrollRefraction = !OperatingSystem.IsWindows();
         var scrollEdges = new List<IDisposable>();
         foreach (var name in new[] { "PdfOutputSettings", "OcrSettings" })
         {
             var viewport = Required<Grid>(name + "Viewport");
             var scroll = Required<ScrollViewer>(name + "Scroll");
-            if (captureAfterIdle)
+            if (useScrollRefraction)
+            {
+                var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
+                viewport.Children.Add(edge);
+                scrollEdges.Add(edge);
+            }
+            else
             {
                 var rim = new SettingsScrollRim(scroll);
                 viewport.Children.Add(rim);
                 scrollEdges.Add(rim);
             }
-
-            var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect,
-                captureAfterIdle);
-            viewport.Children.Add(edge);
-            scrollEdges.Add(edge);
         }
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
         var dpiTrack = Required<Border>("PdfDpiTrack");

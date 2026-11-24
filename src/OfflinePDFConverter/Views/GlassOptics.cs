@@ -91,7 +91,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
     private static float[] Rgb(Color color) => new[] { color.R / 255f, color.G / 255f, color.B / 255f };
 
     internal bool DrawScrollEdges(DrawingContext context, Rect viewport, double drawableWidth, double band,
-        SKShader scene, Color panelColor, float top, float bottom, Action<bool> onDraw, bool stableSampling = false)
+        SKShader scene, Color panelColor, float top, float bottom, Action<bool> onDraw)
     {
         if (_disposed || _scrollEffectUnavailable)
             return false;
@@ -116,8 +116,7 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
                 ["drawableWidth"] = (float)drawableWidth,
                 ["band"] = (float)band,
                 ["panelColor"] = Rgb(panelColor),
-                ["strength"] = new[] { top, bottom },
-                ["stableSampling"] = stableSampling ? 1f : 0f
+                ["strength"] = new[] { top, bottom }
             };
             var children = new SKRuntimeEffectChildren(_scrollEffect);
             children.Add("scene", scene);
@@ -206,29 +205,12 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
         uniform float band;
         uniform float3 panelColor;
         uniform float2 strength;
-        uniform float stableSampling;
 
         half4 main(float2 point) {
             float2 p = point - viewportOrigin;
             bool top = p.y < viewportHeight * 0.5;
             float distance = top ? p.y : viewportHeight - p.y;
             float amount = top ? strength.x : strength.y;
-            if (stableSampling > 0.5) {
-                float side = min(p.x, drawableWidth - p.x);
-                float bend = smoothstep(2.0, 6.0, distance) *
-                    (1.0 - smoothstep(6.0, 12.0, distance)) * smoothstep(5.0, 12.0, side);
-                if (bend <= 0.0) return half4(0.0);
-
-                half4 original = scene.eval(p);
-                p.y += (top ? 1.0 : -1.0) * 1.2 * amount * bend;
-                half4 sample = scene.eval(p);
-                half4 difference = abs(sample - original);
-                float changed = max(max(difference.r, difference.g), max(difference.b, difference.a));
-                // Leave the live panel visible wherever bending produces the same pixel.
-                if (changed <= 0.004) return half4(0.0);
-                float3 color = sample.rgb + panelColor * (1.0 - sample.a);
-                return half4(color, 1.0);
-            }
             float bevel = clamp(1.0 - distance / band, 0.0, 1.0);
             float slope = (top ? 1.0 : -1.0) * 1.55 * pow(bevel, 1.28);
             float3 normal = normalize(float3(0.0, slope, 1.0));

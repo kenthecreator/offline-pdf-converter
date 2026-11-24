@@ -225,6 +225,8 @@ public partial class MainWindow : Window
     public MainWindow(bool isInitialDarkTheme)
     {
         InitializeComponent();
+        if (OperatingSystem.IsWindows())
+            ConfigureWindowsStartupLayout();
         _reduceMotion = ShouldReduceMotion();
         Classes.Set("reduce-motion", _reduceMotion);
         BindControls();
@@ -277,6 +279,32 @@ public partial class MainWindow : Window
         };
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent, OnDrop);
+    }
+
+    private void ConfigureWindowsStartupLayout()
+    {
+        Classes.Add("windows-layout");
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        if ((Screens.ScreenFromPoint(Position) ?? Screens.Primary) is not { } screen)
+            return;
+
+        var chrome = FrameSize is { } outer && outer.Height > ClientSize.Height
+            ? outer - ClientSize
+            : new Size(16, 40);
+        var size = FitWindowsStartupClientSize(new Size(Width, Height), screen.WorkingArea, screen.Scaling, chrome);
+        MinWidth = Math.Min(MinWidth, size.Width);
+        MinHeight = Math.Min(MinHeight, size.Height);
+        Width = size.Width;
+        Height = size.Height;
+    }
+
+    private static Size FitWindowsStartupClientSize(Size preferred, PixelRect workArea, double scaling, Size chrome)
+    {
+        // Reserve room for the native frame and leave one DIP for rounding at fractional scaling.
+        double width = Math.Max(1, workArea.Width / scaling - Math.Max(0, chrome.Width) - 1);
+        double height = Math.Max(1, workArea.Height / scaling - Math.Max(0, chrome.Height) - 1);
+        double scale = Math.Min(1, Math.Min(width / preferred.Width, height / preferred.Height));
+        return new Size(preferred.Width * scale, preferred.Height * scale);
     }
 
     private void BindControls()
