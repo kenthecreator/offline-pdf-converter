@@ -17,12 +17,15 @@ namespace OfflinePDFConverter.Views;
 internal sealed class SettingsScrollGlass : Control, IDisposable
 {
     internal const double BandDepth = 18;
-    private static readonly Vector CaptureDpi = new(96, 96);
+    private static readonly TimeSpan ScrollIdleDelay = TimeSpan.FromMilliseconds(180);
 
     private readonly ScrollViewer _scroll;
     private readonly Border _panel;
     private readonly GlassOptics _optics;
     private readonly SolidColorBrush? _panelBrush;
+    private readonly bool _captureAfterIdle;
+    private IDisposable? _pendingCapture;
+    private Vector _snapshotDpi;
     private RenderTargetBitmap? _snapshot;
     private SKShader? _scene;
     private Rect _viewport;
@@ -33,11 +36,12 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
     private bool _visible;
     private bool _disposed;
 
-    public SettingsScrollGlass(ScrollViewer scroll, Border panel, GlassOptics optics)
+    public SettingsScrollGlass(ScrollViewer scroll, Border panel, GlassOptics optics, bool captureAfterIdle = false)
     {
         _scroll = scroll;
         _panel = panel;
         _optics = optics;
+        _captureAfterIdle = captureAfterIdle;
         _panelBrush = panel.Background as SolidColorBrush;
         IsHitTestVisible = false;
         Focusable = false;
@@ -52,12 +56,12 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
             _panelBrush.PropertyChanged += OnPaletteChanged;
     }
 
-    internal bool HasBackdrop => _scene is not null && _capturedOffset == _scroll.Offset;
+    internal bool HasBackdrop => _pendingCapture is null && _scene is not null && _capturedOffset == _scroll.Offset;
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs args)
     {
         if (ReferenceEquals(args.Source, _scroll))
-            QueueCapture();
+            QueueCapture(restartIdleTimer: true);
     }
 
     private void OnPointerMoved(object? sender, PointerEventArgs args)
@@ -85,10 +89,20 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         _visible = visible;
     }
 
-    private void QueueCapture()
+    private void QueueCapture(bool restartIdleTimer = false)
     {
         if (_disposed || _captureQueued || !_scroll.IsEffectivelyVisible)
             return;
+        if (_captureAfterIdle)
+        {
+            if (_pendingCapture is not null && !restartIdleTimer)
+                return;
+            _pendingCapture?.Dispose();
+            _pendingCapture = DispatcherTimer.RunOnce(Capture, ScrollIdleDelay, DispatcherPriority.Background);
+            InvalidateVisual();
+            return;
+        }
+
         _captureQueued = true;
         // Capture after the ScrollViewer has arranged its content at the new offset.
         Dispatcher.UIThread.Post(Capture, DispatcherPriority.Background);
@@ -97,6 +111,7 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
     private void Capture()
     {
         _captureQueued = false;
+        _pendingCapture = null;
         if (_disposed || !_scroll.IsEffectivelyVisible ||
             _scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().FirstOrDefault() is not { } presenter ||
             presenter.TranslatePoint(default, this) is not { } point ||
@@ -106,19 +121,23 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         try
         {
             var viewport = new Rect(point, presenter.Bounds.Size);
-            var pixels = PixelSize.FromSize(viewport.Size, 1);
-            if (_snapshot?.PixelSize != pixels)
+            double scale = _captureAfterIdle ? Math.Max(1.5, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1) : 1;
+            var dpi = new Vector(96 * scale, 96 * scale);
+            var pixels = PixelSize.FromSize(viewport.Size, scale);
+            if (_snapshot?.PixelSize != pixels || _snapshotDpi != dpi)
             {
                 _snapshot?.Dispose();
-                _snapshot = new RenderTargetBitmap(pixels, CaptureDpi);
+                _snapshot = new RenderTargetBitmap(pixels, dpi);
+                _snapshotDpi = dpi;
             }
             _snapshot.Render(presenter);
             using var bitmap = new SKBitmap(pixels.Width, pixels.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using var buffer = new CaptureBuffer(bitmap, pixels);
+            using var buffer = new CaptureBuffer(bitmap, pixels, dpi);
             _snapshot.CopyPixels(buffer, AlphaFormat.Premul);
             bitmap.SetImmutable();
             using var image = SKImage.FromBitmap(bitmap);
-            var texture = image.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, new SKSamplingOptions(SKFilterMode.Linear));
+            var texture = image.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp,
+                new SKSamplingOptions(SKFilterMode.Linear), SKMatrix.CreateScale((float)(1 / scale), (float)(1 / scale)));
 
             _scene?.Dispose();
             _scene = texture;
@@ -142,7 +161,7 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
 
     public override void Render(DrawingContext context)
     {
-        if (_disposed || _scene is null || _drawableWidth <= 0 || _capturedOffset != _scroll.Offset)
+        if (_disposed || _pendingCapture is not null || _scene is null || _drawableWidth <= 0 || _capturedOffset != _scroll.Offset)
             return;
 
         // The viewport is inside the panel's padding, over its solid-color interior.
@@ -151,10 +170,13 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         byte Blend(byte front, byte back) => (byte)((front * panel.A + back * (255 - panel.A) + 127) / 255);
         var surface = Color.FromRgb(Blend(panel.R, backdrop.R), Blend(panel.G, backdrop.G), Blend(panel.B, backdrop.B));
         var band = Math.Min(BandDepth, _viewport.Height / 2);
+        if (_captureAfterIdle && band < BandDepth)
+            return;
+
         float top = EdgeStrength(_scroll.Offset.Y);
         float bottom = EdgeStrength(_scroll.Extent.Height - _scroll.Viewport.Height - _scroll.Offset.Y);
         if ((top > 0 || bottom > 0) &&
-            !_optics.DrawScrollEdges(context, _viewport, _drawableWidth, band, _scene, surface, top, bottom, OnDraw))
+            !_optics.DrawScrollEdges(context, _viewport, _drawableWidth, band, _scene, surface, top, bottom, OnDraw, stableSampling: _captureAfterIdle))
             Dispose();
 
         float EdgeStrength(double hiddenHeight)
@@ -175,6 +197,8 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        _pendingCapture?.Dispose();
+        _pendingCapture = null;
         _scroll.ScrollChanged -= OnScrollChanged;
         _scroll.LayoutUpdated -= OnLayoutUpdated;
         _scroll.RemoveHandler(PointerMovedEvent, OnPointerMoved);
@@ -190,12 +214,12 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         InvalidateVisual();
     }
 
-    private sealed class CaptureBuffer(SKBitmap bitmap, PixelSize size) : ILockedFramebuffer
+    private sealed class CaptureBuffer(SKBitmap bitmap, PixelSize size, Vector dpi) : ILockedFramebuffer
     {
         public IntPtr Address => bitmap.GetPixels();
         public PixelSize Size => size;
         public int RowBytes => bitmap.RowBytes;
-        public Vector Dpi => CaptureDpi;
+        public Vector Dpi => dpi;
         public PixelFormat Format => PixelFormat.Bgra8888;
         public void Dispose() { }
     }
