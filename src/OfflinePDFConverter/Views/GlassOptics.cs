@@ -215,15 +215,19 @@ internal sealed class GlassOptics(SKRuntimeEffect effect, SolidColorBrush backgr
             float amount = top ? strength.x : strength.y;
             if (stableSampling > 0.5) {
                 float side = min(p.x, drawableWidth - p.x);
-                float inner = 1.0 - smoothstep(7.0, max(8.0, band - 3.0), distance);
-                float bend = smoothstep(3.0, 7.0, distance) * inner * smoothstep(5.0, 11.0, side);
-                p.y += (top ? 1.0 : -1.0) * 1.65 * amount * bend;
+                float bend = smoothstep(2.0, 6.0, distance) *
+                    (1.0 - smoothstep(6.0, 12.0, distance)) * smoothstep(5.0, 12.0, side);
+                if (bend <= 0.0) return half4(0.0);
+
+                half4 original = scene.eval(p);
+                p.y += (top ? 1.0 : -1.0) * 1.2 * amount * bend;
                 half4 sample = scene.eval(p);
-                // Where the sample moves, replace the live pixels completely to avoid double edges.
-                float alpha = smoothstep(1.0, 3.0, distance) *
-                    (1.0 - smoothstep(band - 3.0, band, distance)) * smoothstep(2.0, 5.0, side);
+                half4 difference = abs(sample - original);
+                float changed = max(max(difference.r, difference.g), max(difference.b, difference.a));
+                // Leave the live panel visible wherever bending produces the same pixel.
+                if (changed <= 0.004) return half4(0.0);
                 float3 color = sample.rgb + panelColor * (1.0 - sample.a);
-                return half4(color * alpha, alpha);
+                return half4(color, 1.0);
             }
             float bevel = clamp(1.0 - distance / band, 0.0, 1.0);
             float slope = (top ? 1.0 : -1.0) * 1.55 * pow(bevel, 1.28);

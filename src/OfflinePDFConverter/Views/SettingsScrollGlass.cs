@@ -121,7 +121,7 @@ internal sealed class SettingsScrollGlass : Control, IDisposable
         try
         {
             var viewport = new Rect(point, presenter.Bounds.Size);
-            double scale = _captureAfterIdle ? Math.Max(1.5, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1) : 1;
+            double scale = _captureAfterIdle ? (TopLevel.GetTopLevel(this)?.RenderScaling ?? 1) : 1;
             var dpi = new Vector(96 * scale, 96 * scale);
             var pixels = PixelSize.FromSize(viewport.Size, scale);
             if (_snapshot?.PixelSize != pixels || _snapshotDpi != dpi)

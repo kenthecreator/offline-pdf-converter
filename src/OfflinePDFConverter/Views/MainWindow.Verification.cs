@@ -474,7 +474,8 @@ public partial class MainWindow
 
                             int changed = isTop ? ChangedPixels((int)start.Y + 1, (int)(start.Y + band))
                                 : ChangedPixels((int)(end.Y - band), (int)end.Y - 1);
-                            int middle = ChangedPixels((int)(start.Y + band) + 1, (int)(end.Y - band) - 1);
+                            double activeBand = OperatingSystem.IsWindows() ? 12 : band;
+                            int middle = ChangedPixels((int)(start.Y + activeBand) + 1, (int)(end.Y - activeBand) - 1);
                             Check((atEnd ? changed == 0 : changed > 20) && middle == 0,
                                 $"Stopped scroll glass on {name} {endName} in {themeName}: edge={changed}, middle={middle}.");
                         }
