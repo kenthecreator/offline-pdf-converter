@@ -27,10 +27,11 @@ public partial class MainWindow
         var report = Path.GetFullPath(reportPath);
         Directory.CreateDirectory(Path.GetDirectoryName(report)!);
         static void Check(bool value, string message) { if (!value) throw new InvalidDataException(message); }
-        void SaveSnapshot(string path)
+        void SaveSnapshot(string path, Control? control = null)
         {
-            using var snapshot = new RenderTargetBitmap(new PixelSize((int)Bounds.Width, (int)Bounds.Height), new Vector(96, 96));
-            snapshot.Render(this);
+            control ??= this;
+            using var snapshot = new RenderTargetBitmap(new PixelSize((int)control.Bounds.Width, (int)control.Bounds.Height), new Vector(96, 96));
+            snapshot.Render(control);
             snapshot.Save(path);
         }
         void CheckSurfaceTone(SkiaSharp.SKBitmap image, Border surface, bool dark)
@@ -407,9 +408,6 @@ public partial class MainWindow
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
                         var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
-                        var rim = viewport.Children.OfType<SettingsScrollRim>().SingleOrDefault();
-                        Check(OperatingSystem.IsWindows() ? edge is null && rim is not null : edge is not null && rim is null,
-                            $"Incorrect scroll decoration for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
                         var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
@@ -443,16 +441,18 @@ public partial class MainWindow
                         Check(panel.ClipToBounds && topInset is >= 2 and < 4 && bottomInset is >= 2 and < 4,
                             "The settings viewport does not keep the expected thin rim: " + name);
                         var max = scroll.Extent.Height - scroll.Viewport.Height;
-                        if (rim is not null)
+                        if (OperatingSystem.IsWindows())
                         {
-                            Check(!rim.IsHitTestVisible && !rim.Focusable, "Scroll rim intercepts input: " + name);
-                            scroll.Offset = new Vector(0, max / 2);
-                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength > 0);
-                            scroll.Offset = new Vector(0, max);
-                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength == 0);
+                            scroll.Offset = new Vector(0, Math.Round(max / 2));
+                            await Task.Delay(700);
+                            await Until(() => thumb.Opacity == 0);
+                            Check(scroll.Offset.Y > 6 && max - scroll.Offset.Y > 6,
+                                "The screenshot did not reach an interior scroll position: " + name);
+                            Check(viewport.Children.Count == 1 && ReferenceEquals(viewport.Children[0], scroll),
+                                "The Windows settings viewport has a scroll overlay: " + name);
+                            SaveSnapshot(Path.ChangeExtension(report, $".settings-{name}-{themeName}.png"), panel);
                             scroll.Offset = default;
-                            await Until(() => rim.TopStrength == 0 && rim.BottomStrength > 0);
-                            checks.Add($"{name} scrolls with rim reflections and no viewport capture in {themeName} theme");
+                            checks.Add($"{name} scrolls without edge overlays in {themeName} theme");
                             continue;
                         }
                         if (edge is null)
