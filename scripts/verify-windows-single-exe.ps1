@@ -76,6 +76,11 @@ try {
       New-Item -ItemType Directory -Force (Split-Path $destination -Parent) | Out-Null
       $result | ConvertTo-Json -Depth 8 | Set-Content $destination -Encoding utf8
       if ($VerifyGui -and (Test-Path ([IO.Path]::ChangeExtension($report, ".png")))) { Copy-Item ([IO.Path]::ChangeExtension($report, ".png")) ([IO.Path]::ChangeExtension($destination, ".png")) }
+      if ($VerifyGui) {
+        Get-ChildItem $testDirectory -File -Filter 'report.settings-*.png' | ForEach-Object {
+          Copy-Item $_.FullName ([IO.Path]::ChangeExtension($destination, $_.Name.Substring('report.'.Length)))
+        }
+      }
       if (Test-Path $officeEvidence) {
         $evidenceDestination = [IO.Path]::ChangeExtension($destination, ".office")
         New-Item -ItemType Directory -Force $evidenceDestination | Out-Null
