@@ -405,9 +405,6 @@ public partial class MainWindow
                         var scroll = Required<ScrollViewer>(name + "Scroll");
                         var viewport = Required<Grid>(name + "Viewport");
                         var edge = viewport.Children.OfType<SettingsScrollGlass>().SingleOrDefault();
-                        var rim = viewport.Children.OfType<SettingsScrollRim>().SingleOrDefault();
-                        Check(OperatingSystem.IsWindows() ? edge is null && rim is not null : edge is not null && rim is null,
-                            $"Incorrect scroll decoration for this platform: {name}.");
                         await Until(() => scroll.Viewport.Height > 0 && scroll.Extent.Height > scroll.Viewport.Height);
                         var presenter = scroll.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
                         var bar = scroll.GetVisualDescendants().OfType<ScrollBar>()
@@ -448,18 +445,11 @@ public partial class MainWindow
                             await Until(() => thumb.Opacity == 0);
                             Check(scroll.Offset.Y > 6 && max - scroll.Offset.Y > 6,
                                 "The screenshot did not reach an interior scroll position: " + name);
+                            Check(viewport.Children.Count == 1 && ReferenceEquals(viewport.Children[0], scroll),
+                                "The Windows settings viewport has a scroll overlay: " + name);
                             SaveSnapshot(Path.ChangeExtension(report, $".settings-{name}-{themeName}.png"), panel);
-                        }
-                        if (rim is not null)
-                        {
-                            Check(!rim.IsHitTestVisible && !rim.Focusable, "Scroll rim intercepts input: " + name);
-                            scroll.Offset = new Vector(0, max / 2);
-                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength > 0);
-                            scroll.Offset = new Vector(0, max);
-                            await Until(() => rim.TopStrength > 0 && rim.BottomStrength == 0);
                             scroll.Offset = default;
-                            await Until(() => rim.TopStrength == 0 && rim.BottomStrength > 0);
-                            checks.Add($"{name} scrolls with rim reflections and no viewport capture in {themeName} theme");
+                            checks.Add($"{name} scrolls without edge overlays in {themeName} theme");
                             continue;
                         }
                         if (edge is null)

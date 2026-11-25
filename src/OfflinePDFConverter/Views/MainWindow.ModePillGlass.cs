@@ -34,23 +34,16 @@ public partial class MainWindow
         if (GlassOptics.Compile(Program.GlassTrial, background) is not { } effect)
             return;
         PillOptics = effect;
-        bool useScrollRefraction = !OperatingSystem.IsWindows();
-        var scrollEdges = new List<IDisposable>();
-        foreach (var name in new[] { "PdfOutputSettings", "OcrSettings" })
+        var scrollEdges = new List<SettingsScrollGlass>();
+        if (!OperatingSystem.IsWindows())
         {
-            var viewport = Required<Grid>(name + "Viewport");
-            var scroll = Required<ScrollViewer>(name + "Scroll");
-            if (useScrollRefraction)
+            foreach (var name in new[] { "PdfOutputSettings", "OcrSettings" })
             {
+                var viewport = Required<Grid>(name + "Viewport");
+                var scroll = Required<ScrollViewer>(name + "Scroll");
                 var edge = new SettingsScrollGlass(scroll, (Border)viewport.Parent!, effect);
                 viewport.Children.Add(edge);
                 scrollEdges.Add(edge);
-            }
-            else
-            {
-                var rim = new SettingsScrollRim(scroll);
-                viewport.Children.Add(rim);
-                scrollEdges.Add(rim);
             }
         }
         _mainProgressBar.TemplateApplied += OnProgressTemplateApplied;
