@@ -170,28 +170,18 @@ public partial class MainWindow
         checks.Add("PDF Edit rotation of selected and all pages through the actual buttons, verified in the saved PDF");
         Program.TraceGuiVerification("PDF layout and rotation verified");
 
-        if (!OfficeConversionAvailable)
-        {
-            SelectDirection(2);
-            var labels = Required<Grid>("DirectionSelectorButtons");
-            Require(_mode == ConversionMode.ImageToPdf && labels.Children.Count == 2 &&
-                    labels.ColumnDefinitions.Count == 2 && _officeToPdfDirectionButton.Parent is null &&
-                    Required<Grid>("OfficePanel").Parent is null,
-                "The app includes an Office tab or can select Office conversion.");
-            var officeDrop = Path.Combine(root, "unsupported.docx");
-            await File.WriteAllTextAsync(officeDrop, "Office conversion is disabled.");
-            int imageCount = _imageFiles.Count;
-            await AddDroppedFilesAsync(new[] { officeDrop });
-            Require(_imageFiles.Count == imageCount && !File.Exists(Path.ChangeExtension(officeDrop, ".pdf")),
-                "The app processed an Office file drop.");
-            SetMode(ConversionMode.OfficeToPdf);
-            Require(_mode == ConversionMode.PdfToImage, "The app entered the Office conversion mode.");
-            Require(!typeof(OfficePdfService).Assembly.GetManifestResourceNames().Any(name =>
-                    name == "OfflinePDFConverter.OfficeEngine.zip" ||
-                    name.StartsWith("OfflinePDFConverter.OfficeFonts.", StringComparison.Ordinal)),
-                "The package includes Office conversion resources.");
-            checks.Add("Conversion selector, file-drop behavior and package contain no Office conversion");
-        }
+        SelectDirection(2);
+        var labels = Required<Grid>("DirectionSelectorButtons");
+        Require(_mode == ConversionMode.ImageToPdf && labels.Children.Count == 2 &&
+                labels.ColumnDefinitions.Count == 2,
+            "The conversion selector must contain exactly two directions.");
+        var unsupportedFile = Path.Combine(root, "unsupported.txt");
+        await File.WriteAllTextAsync(unsupportedFile, "Unsupported file type.");
+        int imageCount = _imageFiles.Count;
+        await AddDroppedFilesAsync(new[] { unsupportedFile });
+        Require(_imageFiles.Count == imageCount && !File.Exists(Path.ChangeExtension(unsupportedFile, ".pdf")),
+            "The app processed an unsupported file drop.");
+        checks.Add("Two conversion directions and unsupported file rejection");
         _pdfFiles.Clear();
         _pdfToolOperationCombo.SelectedIndex = 0;
         _pdfToolOutputPdfTextBox.Text = previousOutput;

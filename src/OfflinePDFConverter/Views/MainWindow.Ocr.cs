@@ -225,7 +225,7 @@ public partial class MainWindow
                 selectedLanguage, pages, passwords.TryGetValue(file, out var password) ? password : "", progress, token);
             if (result.OutputPaths.FirstOrDefault() is { } output) _ocrOutputPaths[file] = output;
             return result;
-        }, WaitForOcrScanAsync, StopOcrScan);
+        }, StopOcrScan);
         RefreshOcrPreview();
     }
 

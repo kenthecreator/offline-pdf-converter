@@ -73,9 +73,3 @@ Zen Kaku Gothic New Regularを未改変でexeに内蔵します。Copyright 2022
 ## v4.3内蔵OCR用フォント
 
 Noto Sans Japanese（Noto Sans JP）のRegularをOCRの非表示文字層に使用します。Google Fontsの固定コミット295d98a7a0c17c68f1341eaeea354e7960ea70d3のNotoSansJP[wght].ttfからfontTools 4.61.1でwght=400の静的インスタンスをビルド時に生成します。Copyright 2014-2021 Adobe、Reserved Font Name Source。SIL Open Font License 1.1です。全文は`OFL-NotoSansJP.txt`とexeに内蔵します。取得元、元フォントのSHA-256、生成方法、同梱フォントのSHA-256は`Assets/Fonts/manifest.json`に記録します。ビルド時のフォント取得と利用時の処理は別であり、利用時のネット接続・ダウンロードはありません。認識モデル・OCRエンジンのライセンスは従来と同じです。
-
-## v5.1のOffice変換コンポーネント
-
-LibreOfficeKitはThe Document FoundationのLibreOfficeの一部です。LibreOfficeと同梱されるコンポーネントにはそれぞれのライセンスが適用されます。v5.1に同梱する LibreOffice 26.8.3.1 のソースはコミット `861effc5289d539f15c4c18d1ba8579ffd78728b` に対応します。[ライセンス情報](https://www.libreoffice.org/about-us/licenses/) · [対応ソース](https://github.com/LibreOffice/core/tree/861effc5289d539f15c4c18d1ba8579ffd78728b)
-
-Office変換には、同版のLibreOfficeから抽出したCalibriおよびCambriaの互換書体CarlitoとCaladea、Noto Sans JP、日本語の明朝体Noto Serif CJK JP 2.003を使用します。Carlito、Caladea、Noto Serif CJK JPのSIL Open Font License全文は各配布ZIPに含めています。[Noto Serif CJK JPの配布元](https://github.com/notofonts/noto-cjk/tree/Serif2.003/Serif/OTF/Japanese)

@@ -5,6 +5,5 @@ public enum ConversionMode
     PdfToImage,
     ImageToPdf,
     PdfTools,
-    Ocr,
-    OfficeToPdf
+    Ocr
 }

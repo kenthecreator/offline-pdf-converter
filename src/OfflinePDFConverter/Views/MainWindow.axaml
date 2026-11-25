@@ -928,38 +928,6 @@
         </Border>
       </Grid>
 
-      <Grid x:Name="OfficePanel" ColumnDefinitions="*,240" ColumnSpacing="22" IsVisible="False">
-        <Border Classes="glass-surface" Background="{DynamicResource GlassPanelBrush}"
-                BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1"
-                CornerRadius="28" Padding="24">
-          <Border Classes="glass-surface" Background="{DynamicResource GlassCardBrush}"
-                  BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                  CornerRadius="22" Margin="0,54,0,0" Padding="16">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-              <TextBlock Text="Word・Excel・PowerPoint" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-              <TextBlock Text=".docx・.xlsx・.pptx を選択またはドロップすると変換を開始します。"
-                         Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" />
-              <Button Classes="small-action" Content="Officeファイルを追加…"
-                      HorizontalAlignment="Center" Click="OnOfficeToPdfClick" />
-            </StackPanel>
-          </Border>
-        </Border>
-        <Border Grid.Column="1" Classes="glass-surface" Background="{DynamicResource GlassPanelBrush}"
-                BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1"
-                CornerRadius="28" Padding="16">
-          <StackPanel Spacing="12">
-            <TextBlock Text="PDF出力設定" FontSize="20" FontWeight="Bold" />
-            <TextBlock Classes="label" Text="保存先フォルダー" />
-            <TextBox x:Name="OfficeOutputFolderTextBox" Classes="settings-input"
-                     AutomationProperties.Name="Office変換の保存先フォルダー"
-                     Watermark="元ファイルと同じフォルダー" />
-            <Button Classes="small-action" Content="参照…" Click="OnSelectOfficeOutputFolderClick" />
-            <TextBlock Text="空欄の場合は、各PDFを元ファイルと同じフォルダーに保存します。"
-                       Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" />
-          </StackPanel>
-        </Border>
-      </Grid>
-
       <Grid x:Name="DirectionSelectorHost"
             ColumnDefinitions="*,240"
             ColumnSpacing="22"
@@ -967,7 +935,7 @@
             Panel.ZIndex="10">
         <Border x:Name="DirectionSelectorSwitch"
                 Grid.Column="0"
-                Width="403"
+                Width="270"
                 Height="46"
                 Margin="0,20,0,0"
                 CornerRadius="23"
@@ -981,8 +949,8 @@
                 AutomationProperties.HelpText="クリックまたは左右へドラッグして変換方向を切り替えます"
                 AutomationProperties.ControlTypeOverride="Group"
                 KeyDown="OnDirectionSelectorKeyDown">
-          <Grid Width="399" Height="46" ColumnDefinitions="133,133,133">
-            <Border x:Name="DirectionSelectorTrack" Grid.ColumnSpan="3"
+          <Grid Width="266" Height="46" ColumnDefinitions="133,133">
+            <Border x:Name="DirectionSelectorTrack" Grid.ColumnSpan="2"
                     Height="43"
                     Margin="1,0"
                     CornerRadius="21.5"
@@ -1014,7 +982,7 @@
               </Border.RenderTransform>
             </Border>
 
-            <Grid x:Name="DirectionSelectorButtons" Grid.ColumnSpan="3" ColumnDefinitions="133,133,133">
+            <Grid x:Name="DirectionSelectorButtons" Grid.ColumnSpan="2" ColumnDefinitions="133,133">
               <RadioButton x:Name="PdfToImageDirectionButton"
                            Grid.Column="0"
                            Classes="direction-segment"
@@ -1041,14 +1009,6 @@
                     <TranslateTransform X="0" />
                   </TextBlock.RenderTransform>
                 </TextBlock>
-              </RadioButton>
-              <RadioButton x:Name="OfficeToPdfDirectionButton"
-                           Grid.Column="2"
-                           Classes="direction-segment"
-                           GroupName="ConversionDirection"
-                           AutomationProperties.Name="OfficeからPDF"
-                           Click="OnOfficeToPdfDirectionClick">
-                <TextBlock Text="Office → PDF" />
               </RadioButton>
             </Grid>
           </Grid>

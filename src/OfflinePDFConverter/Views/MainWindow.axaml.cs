@@ -34,8 +34,7 @@ public partial class MainWindow : Window
     private const double ModeSegmentWidth = 144;
     private const double ModeDragMaximum = ModeSegmentWidth * 2;
     private const double DirectionSegmentWidth = 133;
-    private static bool OfficeConversionAvailable => false;
-    private static int LastDirectionIndex => OfficeConversionAvailable ? 2 : 1;
+    private const int LastDirectionIndex = 1;
     private static double DirectionDragMaximum => LastDirectionIndex * DirectionSegmentWidth;
     private const double PreviewViewDragMaximum = 72;
     private const double ThemeSegmentWidth = 50;
@@ -138,7 +137,6 @@ public partial class MainWindow : Window
     private Grid _directionSelectorHost = null!;
     private Border _directionSelectorSwitch = null!;
     private RadioButton _pdfToImageDirectionButton = null!;
-    private RadioButton _officeToPdfDirectionButton = null!;
     private RadioButton _imageToPdfDirectionButton = null!;
     private TextBlock _pdfToImageDirectionLabel = null!;
     private TextBlock _imageToPdfDirectionLabel = null!;
@@ -333,9 +331,6 @@ public partial class MainWindow : Window
         _directionSelectorHost = Required<Grid>("DirectionSelectorHost");
         _directionSelectorSwitch = Required<Border>("DirectionSelectorSwitch");
         _pdfToImageDirectionButton = Required<RadioButton>("PdfToImageDirectionButton");
-        _officeToPdfDirectionButton = Required<RadioButton>("OfficeToPdfDirectionButton");
-        if (!OfficeConversionAvailable)
-            RemoveOfficeConversionUi();
         _imageToPdfDirectionButton = Required<RadioButton>("ImageToPdfDirectionButton");
         _pdfToImageDirectionLabel = Required<TextBlock>("PdfToImageDirectionLabel");
         _imageToPdfDirectionLabel = Required<TextBlock>("ImageToPdfDirectionLabel");
@@ -525,7 +520,6 @@ public partial class MainWindow : Window
         SetMode(ConversionMode.ImageToPdf);
     }
 
-    private void OnOfficeToPdfDirectionClick(object? sender, RoutedEventArgs e) => SetMode(ConversionMode.OfficeToPdf);
 
     private void OnPdfDpiSliderKeyDown(object? sender, KeyEventArgs e)
     {
@@ -737,28 +731,7 @@ public partial class MainWindow : Window
         SelectCategory(index);
     }
 
-    private void RemoveOfficeConversionUi()
-    {
-        var officePanel = Required<Grid>("OfficePanel");
-        ((Panel)officePanel.Parent!).Children.Remove(officePanel);
-
-        var labels = Required<Grid>("DirectionSelectorButtons");
-        labels.Children.Remove(_officeToPdfDirectionButton);
-        labels.ColumnDefinitions.RemoveAt(2);
-        Grid.SetColumnSpan(labels, 2);
-        Grid.SetColumnSpan(Required<Border>("DirectionSelectorTrack"), 2);
-        var track = (Grid)labels.Parent!;
-        track.ColumnDefinitions.RemoveAt(2);
-        track.Width = 2 * DirectionSegmentWidth;
-        _directionSelectorSwitch.Width = track.Width + 4;
-    }
-
-    private int GetDirectionIndex() => _mode switch
-    {
-        ConversionMode.ImageToPdf => 1,
-        ConversionMode.OfficeToPdf => 2,
-        _ => 0
-    };
+    private int GetDirectionIndex() => _mode == ConversionMode.ImageToPdf ? 1 : 0;
 
     private void SelectDirection(int index)
     {
@@ -771,10 +744,6 @@ public partial class MainWindow : Window
             case 1:
                 SetMode(ConversionMode.ImageToPdf);
                 _imageToPdfDirectionButton.Focus();
-                break;
-            case 2:
-                SetMode(ConversionMode.OfficeToPdf);
-                _officeToPdfDirectionButton.Focus();
                 break;
         }
     }
@@ -1068,31 +1037,26 @@ public partial class MainWindow : Window
 
     private void SetMode(ConversionMode mode)
     {
-        if (mode == ConversionMode.OfficeToPdf && !OfficeConversionAvailable)
-            mode = ConversionMode.PdfToImage;
         _mode = mode;
         if (mode != ConversionMode.Ocr) CancelOcrPreview();
         _pdfPanel.IsVisible = mode == ConversionMode.PdfToImage;
         _imagePanel.IsVisible = mode == ConversionMode.ImageToPdf;
-        if (OfficeConversionAvailable)
-            Required<Grid>("OfficePanel").IsVisible = mode == ConversionMode.OfficeToPdf;
         _pdfToolsPanel.IsVisible = mode == ConversionMode.PdfTools;
         _ocrPanel.IsVisible = mode == ConversionMode.Ocr;
         Required<Grid>("ActionFooter").ColumnDefinitions[1].Width = new GridLength(mode == ConversionMode.Ocr ? 300 : 240);
-        _directionSelectorHost.IsVisible = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf or ConversionMode.OfficeToPdf;
+        _directionSelectorHost.IsVisible = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
         _startOcrButton.IsVisible = mode == ConversionMode.Ocr;
         _startPdfButton.IsVisible = mode == ConversionMode.PdfToImage;
         _startImageButton.IsVisible = mode == ConversionMode.ImageToPdf;
         _startPdfToolButton.IsVisible = mode == ConversionMode.PdfTools;
         var isPdfToolsMode = mode == ConversionMode.PdfTools;
         _pdfToolsModeButton.IsChecked = isPdfToolsMode;
-        _pdfModeButton.IsChecked = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf or ConversionMode.OfficeToPdf;
+        _pdfModeButton.IsChecked = mode is ConversionMode.PdfToImage or ConversionMode.ImageToPdf;
         _ocrModeButton.IsChecked = mode == ConversionMode.Ocr;
         _modeSelectionTransform.X = GetCategoryIndex() * ModeSegmentWidth;
         var directionIndex = GetDirectionIndex();
         _pdfToImageDirectionButton.IsChecked = directionIndex == 0;
         _imageToPdfDirectionButton.IsChecked = directionIndex == 1;
-        _officeToPdfDirectionButton.IsChecked = directionIndex == 2;
         _directionSelectionTransform.X = directionIndex * DirectionSegmentWidth;
         SetStatus(null);
 
@@ -1881,14 +1845,7 @@ public partial class MainWindow : Window
 
     private async Task AddDroppedFilesAsync(IEnumerable<string> localPaths)
     {
-        var directPaths = localPaths.ToArray();
-        if (OfficeConversionAvailable && _mode == ConversionMode.OfficeToPdf)
-        {
-            await ConvertOfficeFilesAsync(directPaths);
-            return;
-        }
-
-        var paths = ExpandDroppedPaths(directPaths);
+        var paths = ExpandDroppedPaths(localPaths);
         if (_mode == ConversionMode.ImageToPdf)
             AddImagePaths(paths);
         else

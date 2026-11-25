@@ -70,9 +70,6 @@ internal static class Program
             PaddleOcrService.Cleanup();
 #endif
             BundledOcrRuntime.Cleanup();
-            TraceGuiVerification("Closing Office runtime");
-            OfficePdfService.Cleanup();
-            TraceGuiVerification("Office runtime closed");
         }
     }
 

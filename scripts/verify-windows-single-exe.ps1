@@ -2,8 +2,7 @@ param(
   [Parameter(Mandatory=$true)][string]$ExePath,
   [switch]$BlockNetwork,
   [switch]$VerifyGui,
-  [string]$ReportPath = '',
-  [string]$OfficeFixtures = ''
+  [string]$ReportPath = ''
 )
 $ErrorActionPreference = 'Stop'
 $source = (Resolve-Path $ExePath).Path
@@ -41,14 +40,11 @@ try {
   $previousPath = $env:PATH
   $previousTessdata = $env:TESSDATA_PREFIX
   $previousBundleDirectory = $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR
-  $previousOfficeFixtures = $env:OPC_OFFICE_VERIFY_FIXTURES
-  $resolvedOfficeFixtures = if ($OfficeFixtures) { (Resolve-Path $OfficeFixtures).Path } else { $null }
   try {
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     $env:TESSDATA_PREFIX = Join-Path $testDirectory 'missing-data'
     # A fresh private directory avoids accidentally testing an older extracted bundle.
     $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $testDirectory 'bundle'
-    $env:OPC_OFFICE_VERIFY_FIXTURES = $resolvedOfficeFixtures
     $mode = if ($VerifyGui) { '--verify-gui' } else { '--verify-offline' }
     $process = Start-Process $isolatedExe -WorkingDirectory $testDirectory -ArgumentList @($mode, ('"' + $report + '"')) -PassThru
     $exited = $process.WaitForExit(300000)
@@ -67,10 +63,6 @@ try {
     $result | Add-Member -NotePropertyName networkIsolation -NotePropertyValue $(if ($BlockNetwork) { 'Windows Firewall: tested exe blocked inbound and outbound on all profiles' } else { 'not enforced' })
     $result | Add-Member -NotePropertyName freshBundleExtraction -NotePropertyValue $true
     $result | ConvertTo-Json -Depth 8 | Write-Output
-    $officeEvidence = [IO.Path]::ChangeExtension($report, ".office")
-    if ($VerifyGui -and $OfficeFixtures -and @(Get-ChildItem $officeEvidence -Filter '*.pdf').Count -ne 3) {
-      throw 'Expected three Office PDF outputs from the tested exe.'
-    }
     if ($ReportPath) {
       $destination = [IO.Path]::GetFullPath($ReportPath)
       New-Item -ItemType Directory -Force (Split-Path $destination -Parent) | Out-Null
@@ -81,13 +73,8 @@ try {
           Copy-Item $_.FullName ([IO.Path]::ChangeExtension($destination, $_.Name.Substring('report.'.Length)))
         }
       }
-      if (Test-Path $officeEvidence) {
-        $evidenceDestination = [IO.Path]::ChangeExtension($destination, ".office")
-        New-Item -ItemType Directory -Force $evidenceDestination | Out-Null
-        Copy-Item (Join-Path $officeEvidence '*.pdf') $evidenceDestination
-      }
     }
-  } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory; $env:OPC_OFFICE_VERIFY_FIXTURES = $previousOfficeFixtures }
+  } finally { $env:PATH = $previousPath; $env:TESSDATA_PREFIX = $previousTessdata; $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $previousBundleDirectory }
 } finally {
   foreach ($name in $rules) { Remove-NetFirewallRule -DisplayName $name -ErrorAction Continue }
   foreach ($profile in $profiles) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Continue }

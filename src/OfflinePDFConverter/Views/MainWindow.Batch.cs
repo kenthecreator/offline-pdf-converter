@@ -10,7 +10,7 @@ public partial class MainWindow
 {
     private async Task RunBatchAsync(IReadOnlyList<string> files,
         Func<string, IProgress<ConversionProgress>, CancellationToken, Task<ConversionResult>> convert,
-        Func<CancellationToken, Task>? beforeResult = null, Action? cleanup = null)
+        Action? cleanup = null)
     {
         if (_conversionCts != null) return;
         var pending = files;
@@ -24,7 +24,6 @@ public partial class MainWindow
                 result = await BatchRunner.RunAsync(pending, convert,
                     new Progress<ConversionProgress>(UpdateProgress), _conversionCts.Token);
                 if (_closeWhenIdle) return;
-                if (beforeResult != null) await beforeResult(_conversionCts.Token);
                 _mainProgressBar.Value = result.Items.Any(x => x.Status is FileConversionStatus.Cancelled or FileConversionStatus.NotStarted) ? _mainProgressBar.Value : 100;
                 SetStatus("一括処理の結果を確認してください。");
             }
@@ -64,8 +63,6 @@ public partial class MainWindow
     private void SetBusy(bool busy)
     {
         foreach (var panel in new[] { "PdfPanel", "ImagePanel", "PdfToolsPanel" }) Required<Grid>(panel).IsEnabled = !busy;
-        if (OfficeConversionAvailable)
-            Required<Grid>("OfficePanel").IsEnabled = !busy;
         if (this.FindControl<Button>("CancelConversionButton") is { } cancel) cancel.IsVisible = busy;
         _startOcrButton.IsEnabled = !busy && _pdfFiles.Count > 0;
         _ocrModeButton.IsEnabled = !busy;

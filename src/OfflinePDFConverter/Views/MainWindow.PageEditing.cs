@@ -1,5 +1,3 @@
-using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using OfflinePDFConverter.Models;
 using OfflinePDFConverter.Services;
 
@@ -51,82 +49,5 @@ public partial class MainWindow
         {
             _openingPageEditor = false;
         }
-    }
-
-    private async void OnOfficeToPdfClick(object? sender, RoutedEventArgs e)
-    {
-        if (!OfficeConversionAvailable)
-            return;
-
-        try
-        {
-            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "PDFに変換するWord・Excel・PowerPointファイルを追加",
-                AllowMultiple = true,
-                FileTypeFilter = new[]
-                {
-                    new FilePickerFileType("Word・Excel・PowerPoint")
-                    {
-                        Patterns = OfficePdfService.Extensions.Select(extension => "*" + extension).ToArray(),
-                        AppleUniformTypeIdentifiers = new[]
-                        {
-                            "org.openxmlformats.wordprocessingml.document",
-                            "org.openxmlformats.spreadsheetml.sheet",
-                            "org.openxmlformats.presentationml.presentation"
-                        }
-                    }
-                }
-            });
-            await ConvertOfficeFilesAsync(files.Select(file => file.TryGetLocalPath()).WhereNotNull());
-        }
-        catch (Exception ex)
-        {
-            if (!_windowClosed) await ShowMessageAsync("変換できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
-        }
-    }
-
-    private async void OnSelectOfficeOutputFolderClick(object? sender, RoutedEventArgs e)
-    {
-        if (!OfficeConversionAvailable)
-            return;
-
-        var outputFolder = Required<Avalonia.Controls.TextBox>("OfficeOutputFolderTextBox");
-        try
-        {
-            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "PDFの保存先フォルダーを選択",
-                SuggestedStartLocation = await GetOutputPickerLocationAsync(outputFolder.Text),
-                AllowMultiple = false
-            });
-            if (folders.FirstOrDefault()?.TryGetLocalPath() is { } folder)
-                outputFolder.Text = folder;
-        }
-        catch (Exception ex)
-        {
-            if (!_windowClosed) await ShowMessageAsync("操作を完了できませんでした", FriendlyErrorFormatter.ToUserMessage(ex));
-        }
-    }
-
-    private async Task ConvertOfficeFilesAsync(IEnumerable<string> paths)
-    {
-        if (!OfficeConversionAvailable)
-            return;
-
-        if (_windowClosed || _conversionCts != null)
-            return;
-        var sources = paths.Where(OfficePdfService.IsSupported).Where(File.Exists).Distinct().ToArray();
-        if (sources.Length == 0)
-            return;
-
-        var folder = Required<Avalonia.Controls.TextBox>("OfficeOutputFolderTextBox").Text?.Trim();
-        if (!string.IsNullOrEmpty(folder) && !Directory.Exists(folder))
-            throw new ArgumentException("保存先フォルダーが見つかりません。");
-
-        var message = string.IsNullOrEmpty(folder)
-            ? "元ファイルと同じフォルダーにPDFを保存しました。"
-            : "指定したフォルダーにPDFを保存しました。";
-        await RunConversionAsync((progress, token) => OfficePdfService.ConvertAsync(sources, folder, progress, token), message);
     }
 }

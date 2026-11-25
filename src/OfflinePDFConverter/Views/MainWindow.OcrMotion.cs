@@ -108,18 +108,6 @@ public partial class MainWindow
         }, DispatcherPriority.Loaded);
     }
 
-    private async Task WaitForOcrScanAsync(CancellationToken token)
-    {
-        if (_ocrScanningPages.Count == 0 || token.IsCancellationRequested) return;
-        var remaining = TimeSpan.FromSeconds(5) - _ocrScanWatch.Elapsed;
-        if (remaining > TimeSpan.Zero)
-        {
-            SetStatus("処理結果を準備しています…");
-            try { await Task.Delay(remaining, token); }
-            catch (OperationCanceledException) { /* Keep completed file results when cancelling only the visual delay. */ }
-        }
-    }
-
     private void StopOcrScan()
     {
         _ocrScanTimer.Stop(); _ocrScanWatch.Stop();
