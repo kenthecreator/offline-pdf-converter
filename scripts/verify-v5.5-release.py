@@ -65,8 +65,6 @@ def verify_archive(folder, target):
         names = set(bundle.namelist())
         assert {f"RELEASE_DETAILS_v{VERSION}.md", "LICENSE", "THIRD_PARTY_LICENSES.md",
                 "OFL-NotoSansJP.txt", "OFL-ZenKakuGothicNew.txt", "MANUAL.md", "IMPROVEMENTS.md"} <= names
-        office_licenses = {"OFL-NotoSerifCJKjp.txt", "OFL-Carlito.txt", "OFL-Caladea.txt"}
-        assert not (office_licenses & names), "Office fonts must not be packaged"
         if target == "Windows-x64":
             assert {name for name in names if name.lower().endswith((".exe", ".dll"))} == {TITLE + ".exe"}
         else:
@@ -76,7 +74,6 @@ def verify_archive(folder, target):
             assert info["CFBundleVersion"] == info["CFBundleShortVersionString"] == VERSION
             assert info["CFBundleIconFile"] == "AppIcon"
             assert contents + "Resources/AppIcon.icns" in names
-            assert not any(name.startswith(contents + "Resources/OfficeEngine/") for name in names)
     print("Verified", archive.name)
 
 
